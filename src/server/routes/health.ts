@@ -13,6 +13,7 @@ export async function healthRoute(app: FastifyInstance, ctx: AppContext): Promis
       sqlite: sqliteOk ? "open" : "closed",
       instanceId: ctx.instanceId,
       uptimeSeconds: Math.round((Date.now() - ctx.startedAt) / 1000),
+      lastIndexedAt: ctx.indexer?.getLastIndexedAt() ?? null,
     };
   });
 }

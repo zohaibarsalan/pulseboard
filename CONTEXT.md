@@ -32,29 +32,51 @@ We are building **v0.1** per spec §19.
 | Build pipeline (`pnpm build`) | done | tsc + sql migrations copy step; produces runnable `dist/cli.js` |
 | Smoke-tested end-to-end | done | tsx-dev and built binary both verified against local Redis + 3 seeded jobs |
 | FTS5 virtual table for failure text | **deferred** | Drizzle has no FTS5 helper; needs hand-written SQL migration before search lands |
-| Minimal QueueEvents indexer | not started | Next session — Step 5 in §25 |
-| Vite + React + Coss UI scaffold | not started | Step after indexer |
-| Docker image | not started | Step after UI |
+| Minimal QueueEvents indexer | done | `src/indexer/event-indexer.ts` — bounded buffer (10k), 250ms flush, drop-with-warning, batched upserts to `jobs` + `job_events` |
+| `GET /api/instances/:instanceId/queues/:queueName/events` | done | Paginated newest-first via `?before` cursor; default limit 100, max 500 |
+| `lastIndexedAt` in `/api/health` | done | Powers the "Last indexed at" topbar indicator (trust principle) |
+| Vite + React + Tailwind scaffold | done | Tailwind 3 with custom Vercel/Linear tokens; class-based dark mode; Geist Variable + Geist Mono Variable via `@fontsource-variable` |
+| App shell (sidebar + topbar) | done | 240px sidebar (Queues, Failed Jobs, Flows, Analytics, Settings); topbar with connection badge + last-indexed indicator + theme toggle |
+| Queues page | done | Live queue list with status pills (active/waiting/delayed/failed/completed); 3s auto-refresh via TanStack Query |
+| Placeholder pages | done | Failed Jobs / Flows / Analytics / Settings / queue detail all stubbed with "coming soon" |
+| Fastify serves UI | done | `@fastify/static` for assets; SPA fallback via setNotFoundHandler reading index.html into memory at boot; `@fastify/http-proxy` to Vite in dev when `PULSEBOARD_DEV_PROXY` env is set |
+| End-to-end smoke test | done | Built binary serves UI + API + indexer; verified with worker processing 2 successes + 1 failure |
+| FTS5 virtual table for failure text | **deferred** | Drizzle has no FTS5 helper; needs hand-written SQL migration before search lands |
+| Docker image | not started | Next session |
+| Queue detail page (job table + drawer) | not started | Spec §10 — next session |
 
 The implementation order is fixed in spec §25.
 
 ### Verified working
 
 ```bash
+# one-time setup
 pnpm install
 pnpm db:generate              # generates SQL migration from schema
-pnpm typecheck                # clean
-pnpm tsx src/cli.ts --redis redis://localhost:6379 --port 4547 --auto-discover
-# OR
-pnpm build && node dist/cli.js --redis redis://localhost:6379 --auto-discover
+pnpm typecheck                # checks server + web (two tsconfigs)
 
-curl http://127.0.0.1:4547/api/health
-curl http://127.0.0.1:4547/api/instances/default/queues
+# production-mode run (UI + API in one process)
+pnpm build                    # builds web bundle + server bundle, copies migrations
+node dist/cli.js --redis redis://localhost:6379 --auto-discover
+# Then open http://127.0.0.1:4545
+
+# dev mode with HMR (two terminals)
+pnpm dev                      # Fastify, proxies non-/api to Vite
+pnpm dev:web                  # Vite on :5173
+# Open http://127.0.0.1:4545 — the proxy hides Vite from the user
+
+# manual smoke
+curl http://127.0.0.1:4545/api/health
+curl http://127.0.0.1:4545/api/instances/default/queues
+curl "http://127.0.0.1:4545/api/instances/default/queues/email/events?limit=20"
 ```
 
-### Seed script for local testing
+### Seed and worker scripts for local testing
 
-`scripts/seed.ts` pushes a few jobs into a queue named `email`. Run with `pnpm tsx scripts/seed.ts`.
+- `scripts/seed.ts` — pushes 3 jobs into queue `email` (2 immediate, 1 delayed 60s).
+- `scripts/worker.ts` — processes the `email` queue; intentionally fails `send-receipt` jobs to generate failure events.
+
+Run with `pnpm tsx scripts/seed.ts` and `pnpm tsx scripts/worker.ts`.
 
 ---
 
@@ -96,31 +118,54 @@ If SQLite is deleted, Pulseboard still works — it loses historical analytics a
 
 ```
 src/
-  cli.ts              ← CLI entry, parses args, boots server
-  config/             ← config loading (CLI + env, validated)
+  cli.ts                  ← CLI entry, parses args, boots server (commander)
+  config/index.ts         ← zod-validated config (CLI + env)
   server/
-    app.ts            ← Fastify app factory
-    routes/           ← API route modules
-  web/                ← React + Vite app (served as static + dev proxy)
+    app.ts                ← Fastify app factory; serves static UI or proxies to Vite
+    context.ts            ← AppContext (db, redis, registry, indexer)
+    routes/
+      health.ts           ← GET /api/health
+      queues.ts           ← GET /api/instances, GET /api/instances/:id/queues
+      events.ts           ← GET /api/instances/:id/queues/:name/events
+  web/                    ← React + Vite app, served by Fastify
+    index.html            ← shell with <div id="root"> + script tag
+    main.tsx              ← React mount + theme bootstrap + React Query
+    App.tsx               ← wouter routes
+    styles.css            ← Tailwind + CSS variables (light/dark tokens)
+    components/
+      Sidebar.tsx
+      Topbar.tsx          ← connection badge, last-indexed indicator, theme toggle
+      StatusPill.tsx      ← compact pill with dot + label + count
+    pages/
+      Queues.tsx          ← live queue list w/ TanStack Query
+      Placeholder.tsx     ← shared "coming soon" page
+    lib/
+      api.ts              ← typed fetch helpers
+      cn.ts               ← class composition
+      format.ts           ← number + relative-time formatting
   db/
-    schema.ts         ← Drizzle schema (all tables include instance_id)
-    client.ts         ← better-sqlite3 client, WAL mode mandatory
-    migrations/       ← Drizzle-generated SQL migrations
+    schema.ts             ← Drizzle schema (all tables include instance_id)
+    client.ts             ← better-sqlite3, WAL mode + 5s busy timeout
+    migrate.ts            ← Drizzle migration runner
+    migrations/           ← drizzle-kit generated SQL
   bullmq/
-    connection.ts     ← ioredis connection
-    queue-registry.ts ← named queue instances
-    queue-service.ts  ← reads (counts, jobs)
-    job-service.ts    ← single job read/merge live + indexed
-    event-service.ts  ← QueueEvents subscriptions
-    flow-service.ts   ← (later) flow graph reads
-    action-service.ts ← retry, pause, resume, etc.
+    connection.ts         ← ioredis with maxRetriesPerRequest: null
+    queue-registry.ts     ← named queue instances + SCAN-based auto-discovery
+    queue-service.ts      ← reads (getJobCounts + isPaused)
+    event-service.ts      ← QueueEvents subscriptions (active/completed/failed/stalled)
+    job-service.ts        ← (not started) single job read/merge live + indexed
+    flow-service.ts       ← (not started) flow graph reads
+    action-service.ts     ← (not started) retry, pause, resume, etc.
   indexer/
-    bootstrap-indexer.ts ← startup backfill (paginated, streaming)
-    event-indexer.ts     ← live QueueEvents → SQLite (bounded buffer)
-    reconciliation.ts    ← periodic Redis state checks
+    event-indexer.ts      ← live QueueEvents → SQLite (bounded buffer, drop-with-warning)
+    bootstrap-indexer.ts  ← (not started) startup backfill (paginated, streaming)
+    reconciliation.ts     ← (not started) periodic Redis state checks
   security/
-    redaction.ts      ← redact secret-shaped keys from payloads
-    auth.ts           ← password auth, localhost-trusted detection
+    redaction.ts          ← (not started) redact secret-shaped keys from payloads
+    auth.ts               ← (not started) password auth, localhost-trusted detection
+scripts/
+  seed.ts                 ← local-dev: push test jobs into a queue
+  worker.ts               ← local-dev: process the email queue (intentional failures)
 docs/
   pulseboard-product-spec.md
 ```
@@ -179,7 +224,10 @@ npx pulseboard --redis redis://localhost:6379
 - **Node 24 + better-sqlite3 has no prebuilt binary.** `prebuild-install` will fail and fall through to `node-gyp rebuild --release`. The first install takes ~30s while it compiles. Make sure Xcode CLI tools are present.
 - **Migrations are `.sql` files; tsc does not copy them to `dist/`.** The `build` script has a post-step that `cpSync`s `src/db/migrations/` to `dist/db/migrations/`. If you change the build pipeline, preserve this.
 - **Drizzle has no FTS5 helper.** The FTS5 virtual table on `failed_reason`/`stacktrace_preview`/`job_name` must be added via a hand-written SQL migration before search lands. Not blocking until v0.3-era search work.
-- **Coss UI** is new (©2026); used in production by Cal.com but limited ecosystem docs. If you hit a wall, fall back to Base UI primitives directly rather than swapping the whole library.
+- **Coss UI not used yet.** Despite the spec listing Coss UI, the v0.1 UI is pure Tailwind + lucide icons — the queue list and shell don't need component-library primitives. Add Coss UI (or Base UI primitives) when we hit a screen that needs dialogs, popovers, command menu, etc. — likely the job detail drawer.
+- **The `geist` npm package is Next.js-only** (it exports font helpers, not CSS). For non-Next projects use `@fontsource-variable/geist` and `@fontsource-variable/geist-mono` — the CSS-family variants. Initially tried `geist` and it broke the Vite build.
+- **Tailwind 3, not Tailwind 4.** Tailwind 4 changed the config story significantly (CSS-first, no `tailwind.config.ts`). Sticking with v3 for stability; revisit when the v4 ecosystem stabilizes.
+- **`@fastify/static` does not auto-serve `index.html` for `/` with `wildcard: false`.** Fixed by reading `index.html` into memory once at boot and serving it from the not-found handler for non-`/api/` paths. This also gives us SPA client-route fallback for free.
 - BullMQ Cluster support is an explicit v1 non-goal (spec §5). Don't add it.
 - Concrete retention numbers (spec §14) are starting points, not commitments — easy to tune.
 - Operational guarantee thresholds (max Redis RPS, max DB growth/day) — measure once the indexer is running; don't try to predict now.

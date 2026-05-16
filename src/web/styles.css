@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, "SF Mono", "Menlo", monospace;
+
+  --bg: 0 0% 100%;
+  --bg-subtle: 0 0% 98.5%;
+  --bg-muted: 0 0% 96%;
+  --fg: 0 0% 9%;
+  --fg-muted: 0 0% 32%;
+  --fg-subtle: 0 0% 55%;
+  --border: 0 0% 92%;
+  --border-strong: 0 0% 84%;
+
+  --accent: 217 91% 56%;
+  --success: 142 71% 38%;
+  --warning: 38 92% 50%;
+  --danger: 0 72% 51%;
+  --info: 217 91% 56%;
+}
+
+.dark {
+  --bg: 0 0% 4%;
+  --bg-subtle: 0 0% 6.5%;
+  --bg-muted: 0 0% 10%;
+  --fg: 0 0% 96%;
+  --fg-muted: 0 0% 68%;
+  --fg-subtle: 0 0% 48%;
+  --border: 0 0% 14%;
+  --border-strong: 0 0% 22%;
+
+  --accent: 217 91% 64%;
+  --success: 142 60% 50%;
+  --warning: 38 92% 58%;
+  --danger: 0 72% 60%;
+  --info: 217 91% 64%;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-feature-settings: "cv11", "ss01", "ss03";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: hsl(var(--accent) / 0.18);
+  color: hsl(var(--fg));
+}
+
+@layer components {
+  .pb-pill {
+    @apply inline-flex items-center gap-1.5 rounded-md border border-border bg-bg-subtle px-1.5 py-0.5 text-2xs font-medium text-fg-muted;
+  }
+  .pb-dot {
+    @apply inline-block h-1.5 w-1.5 rounded-full;
+  }
+  .pb-nav-item {
+    @apply flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-fg-muted transition-colors hover:bg-bg-muted hover:text-fg;
+  }
+  .pb-nav-item-active {
+    @apply bg-bg-muted text-fg;
+  }
+  .pb-card {
+    @apply rounded-lg border border-border bg-bg-subtle;
+  }
+}

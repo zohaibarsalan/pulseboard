@@ -6,6 +6,7 @@ import { openDb, closeDb } from "./db/client.js";
 import { runMigrations } from "./db/migrate.js";
 import { createRedisConnection, pingRedis } from "./bullmq/connection.js";
 import { QueueRegistry, discoverQueues } from "./bullmq/queue-registry.js";
+import { EventIndexer } from "./indexer/event-indexer.js";
 import { buildApp } from "./server/app.js";
 import { DEFAULT_INSTANCE_ID, type AppContext } from "./server/context.js";
 
@@ -51,11 +52,22 @@ async function start(opts: ConfigOverrides): Promise<void> {
   const registry = new QueueRegistry(redis);
   await resolveQueues(config, registry, redis);
 
+  const indexer =
+    registry.list().length > 0
+      ? new EventIndexer(db, registry, redis, { instanceId: DEFAULT_INSTANCE_ID })
+      : null;
+
+  if (indexer) {
+    indexer.start();
+    console.log(pc.dim(`  Indexer: watching ${registry.list().length} queue(s)`));
+  }
+
   const ctx: AppContext = {
     config,
     db,
     redis,
     registry,
+    indexer,
     instanceId: DEFAULT_INSTANCE_ID,
     startedAt: Date.now(),
   };
@@ -66,6 +78,7 @@ async function start(opts: ConfigOverrides): Promise<void> {
     app.log.info({ signal }, "shutting down");
     try {
       await app.close();
+      if (indexer) await indexer.stop();
       await registry.closeAll();
       redis.disconnect();
       closeDb(db);
