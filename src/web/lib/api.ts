@@ -17,10 +17,77 @@ export type QueueSummary = {
 export type Health = {
   status: "ok" | "degraded";
   redis: "connected" | "disconnected";
+  redisUrl: string;
+  redisHost: string;
   sqlite: "open" | "closed";
   instanceId: string;
   uptimeSeconds: number;
   lastIndexedAt: number | null;
+  readonly: boolean;
+  version: string;
+};
+
+export type ActivityBucket = { ts: number; completed: number; failed: number };
+export type Activity = {
+  instanceId: string;
+  bucketSizeSeconds: number;
+  rangeDays: number;
+  buckets: ActivityBucket[];
+  totals: { completed: number; failed: number };
+};
+
+export type ErrorGroup = {
+  id: string;
+  instanceId: string;
+  queueName: string;
+  jobName: string | null;
+  errorHash: string;
+  failedReason: string | null;
+  count: number;
+  firstSeenAt: number;
+  lastSeenAt: number;
+};
+
+export type IndexedJob = {
+  id: string;
+  instanceId: string;
+  queueName: string;
+  jobId: string;
+  jobName: string;
+  status: string;
+  attemptsMade: number | null;
+  createdAt: number | null;
+  processedOn: number | null;
+  finishedOn: number | null;
+  waitTimeMs: number | null;
+  processingTimeMs: number | null;
+  failedReason: string | null;
+  errorHash: string | null;
+  stacktracePreview: string | null;
+  updatedAt: number;
+};
+
+export type JobDetail = {
+  instanceId: string;
+  queueName: string;
+  jobId: string;
+  live: {
+    name: string;
+    data: unknown;
+    returnValue: unknown;
+    opts: unknown;
+    attemptsMade: number;
+    progress: unknown;
+    timestamp: number | null;
+    processedOn: number | null;
+    finishedOn: number | null;
+    failedReason: string | null;
+    stacktrace: string[] | null;
+    parent: unknown;
+  } | null;
+  indexed: IndexedJob | null;
+  timeline: JobEvent[];
+  removedFromRedis: boolean;
 };
 
 export type JobEvent = {
@@ -49,5 +116,19 @@ export const api = {
   events: (instanceId: string, queueName: string, limit = 50) =>
     get<{ events: JobEvent[]; nextBefore: number | null }>(
       `/api/instances/${instanceId}/queues/${queueName}/events?limit=${limit}`,
+    ),
+  activity: (instanceId: string, days = 7, queue?: string) =>
+    get<Activity>(
+      `/api/instances/${instanceId}/activity?days=${days}${queue ? `&queue=${encodeURIComponent(queue)}` : ""}`,
+    ),
+  job: (instanceId: string, queueName: string, jobId: string) =>
+    get<JobDetail>(
+      `/api/instances/${instanceId}/queues/${queueName}/jobs/${encodeURIComponent(jobId)}`,
+    ),
+  errorGroups: (instanceId: string) =>
+    get<{ instanceId: string; groups: ErrorGroup[] }>(`/api/instances/${instanceId}/error-groups`),
+  errorGroupJobs: (instanceId: string, errorHash: string) =>
+    get<{ instanceId: string; errorHash: string; jobs: IndexedJob[] }>(
+      `/api/instances/${instanceId}/error-groups/${errorHash}/jobs`,
     ),
 };

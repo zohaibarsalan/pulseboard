@@ -9,6 +9,9 @@ import type { AppContext } from "./context.js";
 import { healthRoute } from "./routes/health.js";
 import { queuesRoute } from "./routes/queues.js";
 import { eventsRoute } from "./routes/events.js";
+import { activityRoute } from "./routes/activity.js";
+import { jobRoute } from "./routes/jobs.js";
+import { errorGroupsRoute } from "./routes/error-groups.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -32,6 +35,9 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
   await healthRoute(app, ctx);
   await queuesRoute(app, ctx);
   await eventsRoute(app, ctx);
+  await activityRoute(app, ctx);
+  await jobRoute(app, ctx);
+  await errorGroupsRoute(app, ctx);
 
   const devProxyTarget = process.env.PULSEBOARD_DEV_PROXY;
   if (devProxyTarget) {

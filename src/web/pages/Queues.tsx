@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { ChevronRight, Pause } from "lucide-react";
+import { ChevronRight, Pause, Search } from "lucide-react";
 import { Topbar } from "../components/Topbar.js";
-import { StatusPill } from "../components/StatusPill.js";
+import { CountPill } from "../components/CountPill.js";
+import { ActivityChart } from "../components/ActivityChart.js";
 import { api, type QueueSummary } from "../lib/api.js";
 import { formatNumber } from "../lib/format.js";
 
@@ -15,31 +16,47 @@ export function QueuesPage(): React.ReactElement {
     refetchInterval: 3_000,
   });
 
+  const { data: activity, isLoading: activityLoading } = useQuery({
+    queryKey: ["activity", INSTANCE_ID, 7],
+    queryFn: () => api.activity(INSTANCE_ID, 7),
+    refetchInterval: 15_000,
+  });
+
   return (
     <div className="flex h-full flex-col">
-      <Topbar title="Queues" description="All BullMQ queues registered with this Pulseboard instance." />
+      <Topbar title="Queues" />
 
-      <div className="flex-1 overflow-y-auto p-6">
-        {isLoading && <SkeletonList />}
-        {error && (
-          <div className="pb-card p-4 text-sm text-danger">
-            Failed to load queues: {(error as Error).message}
+      <div className="flex-1 overflow-y-auto px-6 py-5">
+        <div className="mx-auto max-w-6xl space-y-5">
+          <ActivityChart data={activity} isLoading={activityLoading} />
+
+          <div className="pb-search w-full max-w-md">
+            <Search className="h-3.5 w-3.5 stroke-[1.75] text-fg-subtle" />
+            <input
+              type="search"
+              placeholder={`${data?.queues.length ?? 0} queues registered…`}
+              className="flex-1 bg-transparent text-sm placeholder:text-fg-subtle focus:outline-none"
+              disabled
+            />
           </div>
-        )}
-        {data && data.queues.length === 0 && <EmptyState />}
-        {data && data.queues.length > 0 && (
-          <div className="pb-card overflow-hidden">
-            <div className="grid grid-cols-[1fr_auto] items-center border-b border-border bg-bg px-4 py-2 text-2xs font-medium uppercase tracking-wider text-fg-subtle">
-              <span>Queue</span>
-              <span>Status</span>
+
+          {isLoading && <SkeletonList />}
+          {error && (
+            <div className="pb-card p-4 text-sm text-danger">
+              Failed to load queues: {(error as Error).message}
             </div>
-            <ul className="divide-y divide-border">
-              {data.queues.map((queue) => (
-                <QueueRow key={queue.name} queue={queue} />
-              ))}
-            </ul>
-          </div>
-        )}
+          )}
+          {data && data.queues.length === 0 && <EmptyState />}
+          {data && data.queues.length > 0 && (
+            <div className="pb-card overflow-hidden">
+              <ul className="divide-y divide-dashed divide-border">
+                {data.queues.map((queue) => (
+                  <QueueRow key={queue.name} queue={queue} />
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -53,24 +70,24 @@ function QueueRow({ queue }: { queue: QueueSummary }): React.ReactElement {
     <li>
       <Link
         href={`/queue/${encodeURIComponent(queue.name)}`}
-        className="group grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-3 transition-colors hover:bg-bg-muted/60"
+        className="group flex items-center gap-4 px-4 py-3 transition-colors hover:bg-bg-muted/40"
       >
-        <div className="flex min-w-0 items-center gap-2.5">
-          <span className="truncate text-sm font-medium">{queue.name}</span>
+        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+          <span className="truncate font-mono text-sm font-medium">{queue.name}</span>
           {queue.isPaused && (
-            <span className="pb-pill !text-warning">
+            <span className="pb-pill pb-pill-warning">
               <Pause className="h-2.5 w-2.5 stroke-[2.5]" />
               paused
             </span>
           )}
           <span className="text-2xs text-fg-subtle">{formatNumber(total)} total</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <StatusPill label="active" value={c.active} tone="active" />
-          <StatusPill label="waiting" value={c.waiting} tone="neutral" />
-          <StatusPill label="delayed" value={c.delayed} tone="muted" />
-          <StatusPill label="failed" value={c.failed} tone="danger" />
-          <StatusPill label="completed" value={c.completed} tone="success" />
+        <div className="flex items-center gap-1">
+          <CountPill label="active" value={c.active} tone="info" />
+          <CountPill label="waiting" value={c.waiting} tone="neutral" />
+          <CountPill label="delayed" value={c.delayed} tone="warning" />
+          <CountPill label="failed" value={c.failed} tone="danger" />
+          <CountPill label="completed" value={c.completed} tone="success" />
           <ChevronRight className="ml-1 h-3.5 w-3.5 text-fg-subtle transition-transform group-hover:translate-x-0.5" />
         </div>
       </Link>
@@ -81,7 +98,7 @@ function QueueRow({ queue }: { queue: QueueSummary }): React.ReactElement {
 function SkeletonList(): React.ReactElement {
   return (
     <div className="pb-card overflow-hidden">
-      <ul className="divide-y divide-border">
+      <ul className="divide-y divide-dashed divide-border">
         {Array.from({ length: 3 }).map((_, i) => (
           <li key={i} className="flex items-center justify-between px-4 py-3">
             <div className="h-3 w-32 animate-pulse rounded bg-bg-muted" />
