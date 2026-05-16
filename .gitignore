@@ -1,0 +1,23 @@
+node_modules
+dist
+.DS_Store
+
+# Local state
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+.pulseboard/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Editor
+.vscode
+.idea
+
+# Logs
+*.log
+pnpm-debug.log*
