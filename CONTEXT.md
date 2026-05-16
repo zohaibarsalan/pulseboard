@@ -18,21 +18,43 @@ Pulseboard is a local-first, self-hosted **BullMQ studio** distributed as an npm
 
 We are building **v0.1** per spec §19.
 
-| Component | Status |
-|---|---|
-| Package scaffold (pnpm + TS + ESM) | in progress |
-| CLI entry (`pulseboard --redis <url>`) | not started |
-| Config loader (CLI + env) | not started |
-| Fastify server + `/api/health` | not started |
-| Drizzle schema + WAL SQLite | not started |
-| BullMQ connection module | not started |
-| Queue registry + auto-discovery | not started |
-| `GET /api/instances/:instanceId/queues` | not started |
-| Minimal QueueEvents indexer | not started |
-| Vite + React + Coss UI scaffold | not started |
-| Docker image | not started |
+| Component | Status | Notes |
+|---|---|---|
+| Package scaffold (pnpm + TS + ESM) | done | Node ≥20 engines, ESM throughout |
+| CLI entry (`pulseboard --redis <url>`) | done | commander; redacts password in startup log |
+| Config loader (CLI + env) | done | zod-validated; CLI flags override env |
+| Fastify server + `/api/health` | done | Returns `{status, redis, sqlite, instanceId, uptimeSeconds}` |
+| Drizzle schema + WAL SQLite | done | All 5 tables; `instance_id` leading in every composite index; WAL/synchronous=NORMAL pragmas applied |
+| BullMQ connection module | done | ioredis; ping helper for health checks |
+| Queue registry + auto-discovery | done | `SCAN bull:*:meta`; refuses on Upstash/RedisCloud without `--force-discover` |
+| `GET /api/instances/:instanceId/queues` | done | Returns counts (waiting/active/completed/failed/delayed/paused/waiting-children) + `isPaused` |
+| `GET /api/instances` | done | Lists registered instances; v1 always just `default` |
+| Build pipeline (`pnpm build`) | done | tsc + sql migrations copy step; produces runnable `dist/cli.js` |
+| Smoke-tested end-to-end | done | tsx-dev and built binary both verified against local Redis + 3 seeded jobs |
+| FTS5 virtual table for failure text | **deferred** | Drizzle has no FTS5 helper; needs hand-written SQL migration before search lands |
+| Minimal QueueEvents indexer | not started | Next session — Step 5 in §25 |
+| Vite + React + Coss UI scaffold | not started | Step after indexer |
+| Docker image | not started | Step after UI |
 
 The implementation order is fixed in spec §25.
+
+### Verified working
+
+```bash
+pnpm install
+pnpm db:generate              # generates SQL migration from schema
+pnpm typecheck                # clean
+pnpm tsx src/cli.ts --redis redis://localhost:6379 --port 4547 --auto-discover
+# OR
+pnpm build && node dist/cli.js --redis redis://localhost:6379 --auto-discover
+
+curl http://127.0.0.1:4547/api/health
+curl http://127.0.0.1:4547/api/instances/default/queues
+```
+
+### Seed script for local testing
+
+`scripts/seed.ts` pushes a few jobs into a queue named `email`. Run with `pnpm tsx scripts/seed.ts`.
 
 ---
 
@@ -153,10 +175,15 @@ npx pulseboard --redis redis://localhost:6379
 
 ## Open questions / known gotchas
 
-- Coss UI is new (©2026); used in production by Cal.com but limited ecosystem docs. If you hit a wall, fall back to Base UI primitives directly rather than swapping the whole library.
-- BullMQ Cluster support is an explicit v1 non-goal (§5). Don't add it.
-- Concrete retention numbers (§14) are starting points, not commitments — easy to tune.
-- Operational guarantee thresholds (max Redis RPS, max DB growth/day) — measure once v0.1 runs; don't try to predict now.
+- **pnpm 10 build-script approval.** `better-sqlite3` (and `esbuild`, `msgpackr-extract`) need their install scripts to run. The approved list lives in `package.json` under `pnpm.onlyBuiltDependencies`. **`.npmrc` does NOT work for this in pnpm 10** — initially tried and silently failed. After editing `package.json`, you may need `pnpm install --force` or a manual `node-gyp rebuild` if the binding is missing (`node_modules/.pnpm/better-sqlite3@*/node_modules/better-sqlite3/build/Release/better_sqlite3.node`).
+- **Node 24 + better-sqlite3 has no prebuilt binary.** `prebuild-install` will fail and fall through to `node-gyp rebuild --release`. The first install takes ~30s while it compiles. Make sure Xcode CLI tools are present.
+- **Migrations are `.sql` files; tsc does not copy them to `dist/`.** The `build` script has a post-step that `cpSync`s `src/db/migrations/` to `dist/db/migrations/`. If you change the build pipeline, preserve this.
+- **Drizzle has no FTS5 helper.** The FTS5 virtual table on `failed_reason`/`stacktrace_preview`/`job_name` must be added via a hand-written SQL migration before search lands. Not blocking until v0.3-era search work.
+- **Coss UI** is new (©2026); used in production by Cal.com but limited ecosystem docs. If you hit a wall, fall back to Base UI primitives directly rather than swapping the whole library.
+- BullMQ Cluster support is an explicit v1 non-goal (spec §5). Don't add it.
+- Concrete retention numbers (spec §14) are starting points, not commitments — easy to tune.
+- Operational guarantee thresholds (max Redis RPS, max DB growth/day) — measure once the indexer is running; don't try to predict now.
+- **The dev Redis already has unrelated queues** (`clio-sync`, `clio-token-refresh`) from another project on this machine. Auto-discovery will surface them. Use `--queues email` to scope down during local testing.
 
 ---
 
