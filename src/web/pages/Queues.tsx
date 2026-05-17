@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import {
@@ -5,7 +6,6 @@ import {
   ChevronRight,
   Hourglass,
   Pause,
-  Search,
   TrendingUp,
   Zap,
 } from "lucide-react";
@@ -13,13 +13,26 @@ import { Topbar } from "../components/Topbar.js";
 import { CountPill } from "../components/CountPill.js";
 import { KpiCard } from "../components/KpiCard.js";
 import { ActivityChart } from "../components/ActivityChart.js";
+import { RangeSelector, rangeConfig, type Range } from "../components/RangeSelector.js";
+import { SearchInput } from "../components/SearchInput.js";
+import { SearchResults } from "../components/SearchResults.js";
 import { api, type QueueSummary } from "../lib/api.js";
 import { formatNumber } from "../lib/format.js";
 import { computeKpis, totalsByQueue } from "../lib/kpi.js";
 
 const INSTANCE_ID = "default";
+const RANGE_KEY = "pb-queues-range";
+
+function loadRange(): Range {
+  const stored = typeof localStorage !== "undefined" ? localStorage.getItem(RANGE_KEY) : null;
+  return stored === "24h" || stored === "7d" || stored === "30d" ? stored : "7d";
+}
 
 export function QueuesPage(): React.ReactElement {
+  const [range, setRange] = useState<Range>(loadRange);
+  const [search, setSearch] = useState("");
+  const cfg = rangeConfig(range);
+
   const { data, isLoading, error } = useQuery({
     queryKey: ["queues", INSTANCE_ID],
     queryFn: () => api.queues(INSTANCE_ID),
@@ -27,13 +40,19 @@ export function QueuesPage(): React.ReactElement {
   });
 
   const { data: activity, isLoading: activityLoading } = useQuery({
-    queryKey: ["activity", INSTANCE_ID, 7],
-    queryFn: () => api.activity(INSTANCE_ID, 7),
+    queryKey: ["activity", INSTANCE_ID, cfg.days, cfg.bucket],
+    queryFn: () => api.activity(INSTANCE_ID, cfg.days, undefined, cfg.bucket),
     refetchInterval: 15_000,
   });
 
+  const updateRange = (next: Range): void => {
+    setRange(next);
+    localStorage.setItem(RANGE_KEY, next);
+  };
+
   const kpis = computeKpis(activity);
   const queueTotals = totalsByQueue(data?.queues ?? []);
+  const searching = search.trim().length > 0;
 
   return (
     <div className="flex h-full flex-col">
@@ -45,17 +64,13 @@ export function QueuesPage(): React.ReactElement {
             <KpiCard
               label="Throughput"
               value={kpis.throughputPerHour.toLocaleString()}
-              subtext="jobs/hour avg · last 7d"
+              subtext={`jobs/hour avg · ${cfg.days === 1 ? "last 24h" : `last ${cfg.days}d`}`}
               icon={TrendingUp}
               spark={kpis.completedSpark}
               sparkTone="success"
               trend={
                 kpis.completedTrendPct !== null
-                  ? {
-                      direction: kpis.completedTrendPct >= 0 ? "up" : "down",
-                      percent: Math.abs(kpis.completedTrendPct),
-                      good: "up",
-                    }
+                  ? { direction: kpis.completedTrendPct >= 0 ? "up" : "down", percent: Math.abs(kpis.completedTrendPct), good: "up" }
                   : undefined
               }
             />
@@ -68,11 +83,7 @@ export function QueuesPage(): React.ReactElement {
               sparkTone="danger"
               trend={
                 kpis.failedTrendPct !== null
-                  ? {
-                      direction: kpis.failedTrendPct >= 0 ? "up" : "down",
-                      percent: Math.abs(kpis.failedTrendPct),
-                      good: "down",
-                    }
+                  ? { direction: kpis.failedTrendPct >= 0 ? "up" : "down", percent: Math.abs(kpis.failedTrendPct), good: "down" }
                   : undefined
               }
             />
@@ -90,35 +101,41 @@ export function QueuesPage(): React.ReactElement {
             />
           </div>
 
-          <ActivityChart data={activity} isLoading={activityLoading} />
+          <ActivityChart
+            data={activity}
+            isLoading={activityLoading}
+            bucket={cfg.bucket}
+            rangeControl={<RangeSelector value={range} onChange={updateRange} />}
+          />
 
-          <div className="flex items-center justify-between">
-            <div className="pb-search w-full max-w-md">
-              <Search className="h-3.5 w-3.5 stroke-[1.75] text-fg-subtle" />
-              <input
-                type="search"
-                placeholder={`${data?.queues.length ?? 0} queues registered…`}
-                className="flex-1 bg-transparent text-sm placeholder:text-fg-subtle focus:outline-none"
-                disabled
-              />
-            </div>
-          </div>
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Search jobs… try status:failed reason:timeout"
+            hint='Filters: status:, queue:, name:, id:, reason:, hash:, attempts:>N. Quote for spaces ("rate limit").'
+          />
 
-          {isLoading && <SkeletonList />}
-          {error && (
-            <div className="pb-card p-4 text-sm text-danger">
-              Failed to load queues: {(error as Error).message}
-            </div>
-          )}
-          {data && data.queues.length === 0 && <EmptyState />}
-          {data && data.queues.length > 0 && (
-            <div className="pb-card overflow-hidden">
-              <ul className="divide-y divide-border">
-                {data.queues.map((queue) => (
-                  <QueueRow key={queue.name} queue={queue} />
-                ))}
-              </ul>
-            </div>
+          {searching ? (
+            <SearchResults query={search} onClear={() => setSearch("")} />
+          ) : (
+            <>
+              {isLoading && <SkeletonList />}
+              {error && (
+                <div className="pb-card p-4 text-sm text-danger">
+                  Failed to load queues: {(error as Error).message}
+                </div>
+              )}
+              {data && data.queues.length === 0 && <EmptyState />}
+              {data && data.queues.length > 0 && (
+                <div className="pb-card overflow-hidden">
+                  <ul className="divide-y divide-border">
+                    {data.queues.map((queue) => (
+                      <QueueRow key={queue.name} queue={queue} />
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

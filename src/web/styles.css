@@ -178,3 +178,66 @@ body {
     border-width: 1px;
   }
 }
+
+/* cmdk command palette — cmdk renders semantic structure but applies no
+   styles of its own; we target its data attributes here. */
+[cmdk-root] {
+  font-size: 14px;
+}
+[cmdk-input] {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  outline: none;
+  font-size: 14px;
+  color: hsl(var(--fg));
+}
+[cmdk-input]::placeholder {
+  color: hsl(var(--fg-subtle));
+}
+[cmdk-list] {
+  scroll-padding-block: 4px;
+}
+[cmdk-group] {
+  padding: 2px 0;
+}
+[cmdk-group]:not(:first-child) {
+  margin-top: 4px;
+  border-top: 1px solid hsl(var(--border));
+  padding-top: 6px;
+}
+[cmdk-group-heading] {
+  display: block;
+  padding: 6px 10px 4px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: hsl(var(--fg-subtle));
+}
+[cmdk-item] {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  margin: 0 4px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: hsl(var(--fg-muted));
+  cursor: pointer;
+  user-select: none;
+}
+[cmdk-item][data-selected="true"] {
+  background: hsl(var(--bg-muted));
+  color: hsl(var(--fg));
+}
+[cmdk-item][data-disabled="true"] {
+  opacity: 0.4;
+  pointer-events: none;
+}
+[cmdk-empty] {
+  padding: 24px 12px;
+  text-align: center;
+  font-size: 12px;
+  color: hsl(var(--fg-subtle));
+}

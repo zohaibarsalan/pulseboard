@@ -15,6 +15,7 @@ import { errorGroupsRoute } from "./routes/error-groups.js";
 import { liveRoute } from "./routes/live.js";
 import { actionsRoute } from "./routes/actions.js";
 import { debugContextRoute } from "./routes/debug-context.js";
+import { searchRoute } from "./routes/search.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -48,6 +49,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
   await liveRoute(app, ctx);
   await actionsRoute(app, ctx);
   await debugContextRoute(app, ctx);
+  await searchRoute(app, ctx);
 
   const devProxyTarget = process.env.PULSEBOARD_DEV_PROXY;
   if (devProxyTarget) {

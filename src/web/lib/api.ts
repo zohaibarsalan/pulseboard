@@ -132,10 +132,12 @@ export const api = {
     get<{ events: JobEvent[]; nextBefore: number | null }>(
       `/api/instances/${instanceId}/queues/${queueName}/events?limit=${limit}`,
     ),
-  activity: (instanceId: string, days = 7, queue?: string) =>
-    get<Activity>(
-      `/api/instances/${instanceId}/activity?days=${days}${queue ? `&queue=${encodeURIComponent(queue)}` : ""}`,
-    ),
+  activity: (instanceId: string, days = 7, queue?: string, bucket?: "hour" | "day") => {
+    const params = new URLSearchParams({ days: String(days) });
+    if (queue) params.set("queue", queue);
+    if (bucket) params.set("bucket", bucket);
+    return get<Activity>(`/api/instances/${instanceId}/activity?${params.toString()}`);
+  },
   job: (instanceId: string, queueName: string, jobId: string) =>
     get<JobDetail>(
       `/api/instances/${instanceId}/queues/${queueName}/jobs/${encodeURIComponent(jobId)}`,
@@ -168,4 +170,29 @@ export const api = {
     getText(
       `/api/instances/${instanceId}/queues/${encodeURIComponent(queueName)}/jobs/${encodeURIComponent(jobId)}/debug-context`,
     ),
+
+  searchJobs: (instanceId: string, q: string, limit = 100) => {
+    const params = new URLSearchParams({ q, limit: String(limit) });
+    return get<SearchResponse>(`/api/instances/${instanceId}/jobs?${params.toString()}`);
+  },
+};
+
+export type ParsedQuerySerialized = {
+  status: string | null;
+  queue: string | null;
+  name: string | null;
+  id: string | null;
+  reasonContains: string | null;
+  errorHashPrefix: string | null;
+  attempts: { op: ">" | "<" | ">=" | "<=" | "="; value: number } | null;
+  freeText: string[];
+};
+
+export type SearchResponse = {
+  instanceId: string;
+  q: string;
+  parsed: ParsedQuerySerialized;
+  jobs: IndexedJob[];
+  nextBefore: number | null;
+  empty: boolean;
 };

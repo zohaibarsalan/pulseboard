@@ -1,17 +1,26 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { ArrowLeft, Pause, Play, Search } from "lucide-react";
+import { ArrowLeft, Pause, Play } from "lucide-react";
 import { Topbar } from "../components/Topbar.js";
 import { ActivityChart } from "../components/ActivityChart.js";
+import { RangeSelector, rangeConfig, type Range } from "../components/RangeSelector.js";
 import { StatusPill, statusTone } from "../components/StatusPill.js";
 import { JobDrawer } from "../components/JobDrawer.js";
+import { SearchInput } from "../components/SearchInput.js";
+import { SearchResults } from "../components/SearchResults.js";
 import { api, type JobEvent } from "../lib/api.js";
 import { formatRelativeTime } from "../lib/format.js";
 import { useLiveEvents, type LiveStatus } from "../lib/useLiveEvents.js";
 import { cn } from "../lib/cn.js";
 
 const INSTANCE_ID = "default";
+const RANGE_KEY = "pb-queue-detail-range";
+
+function loadRange(): Range {
+  const stored = typeof localStorage !== "undefined" ? localStorage.getItem(RANGE_KEY) : null;
+  return stored === "24h" || stored === "7d" || stored === "30d" ? stored : "24h";
+}
 
 type Props = {
   queueName: string;
@@ -19,10 +28,11 @@ type Props = {
 
 export function QueueDetailPage({ queueName }: Props): React.ReactElement {
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [range, setRange] = useState<Range>(loadRange);
+  const [search, setSearch] = useState("");
+  const cfg = rangeConfig(range);
   const queryClient = useQueryClient();
 
-  // SSE — invalidates events/queues/activity queries on each event (debounced).
-  // We drop the polling refetchInterval since the live stream handles it.
   const liveStatus = useLiveEvents(INSTANCE_ID, queueName);
 
   const { data: queues } = useQuery({
@@ -38,18 +48,23 @@ export function QueueDetailPage({ queueName }: Props): React.ReactElement {
   });
 
   const { data: activity, isLoading: activityLoading } = useQuery({
-    queryKey: ["activity", INSTANCE_ID, queueName, 7],
-    queryFn: () => api.activity(INSTANCE_ID, 7, queueName),
+    queryKey: ["activity", INSTANCE_ID, queueName, cfg.days, cfg.bucket],
+    queryFn: () => api.activity(INSTANCE_ID, cfg.days, queueName, cfg.bucket),
     refetchInterval: liveStatus === "live" ? false : 15_000,
   });
 
   const queue = queues?.queues.find((q) => q.name === queueName);
+  const searching = search.trim().length > 0;
+
+  const updateRange = (next: Range): void => {
+    setRange(next);
+    localStorage.setItem(RANGE_KEY, next);
+  };
 
   const pauseMutation = useMutation({
     mutationFn: () => api.pauseQueue(INSTANCE_ID, queueName),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["queues", INSTANCE_ID] }),
   });
-
   const resumeMutation = useMutation({
     mutationFn: () => api.resumeQueue(INSTANCE_ID, queueName),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["queues", INSTANCE_ID] }),
@@ -100,54 +115,59 @@ export function QueueDetailPage({ queueName }: Props): React.ReactElement {
             </div>
           </div>
 
-          <ActivityChart data={activity} isLoading={activityLoading} />
+          <ActivityChart
+            data={activity}
+            isLoading={activityLoading}
+            bucket={cfg.bucket}
+            rangeControl={<RangeSelector value={range} onChange={updateRange} />}
+          />
 
-          <div className="flex items-center justify-between">
-            <div className="pb-search w-full max-w-md">
-              <Search className="h-3.5 w-3.5 stroke-[1.75] text-fg-subtle" />
-              <input
-                type="search"
-                placeholder={`${events?.events.length ?? 0} recent events…`}
-                className="flex-1 bg-transparent text-sm placeholder:text-fg-subtle focus:outline-none"
-                disabled
-              />
-            </div>
-            <div className="text-2xs text-fg-subtle">
-              Showing latest indexed events. Older history may have been trimmed.
-            </div>
-          </div>
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder={`Search jobs in ${queueName}…`}
+            hint='Filters: status:, name:, id:, reason:, hash:, attempts:>N. Already scoped to this queue.'
+          />
 
-          <div className="pb-card overflow-hidden">
-            <table className="pb-table">
-              <thead>
-                <tr>
-                  <th>Event</th>
-                  <th>Job ID</th>
-                  <th className="hidden md:table-cell">Status</th>
-                  <th className="hidden md:table-cell">Time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading && (
+          {searching ? (
+            <SearchResults
+              query={search}
+              prefix={`queue:${queueName}`}
+              onClear={() => setSearch("")}
+            />
+          ) : (
+            <div className="pb-card overflow-hidden">
+              <table className="pb-table">
+                <thead>
                   <tr>
-                    <td colSpan={4} className="py-8 text-center text-xs text-fg-subtle">
-                      Loading events…
-                    </td>
+                    <th>Event</th>
+                    <th>Job ID</th>
+                    <th className="hidden md:table-cell">Status</th>
+                    <th className="hidden md:table-cell">Time</th>
                   </tr>
-                )}
-                {!isLoading && events?.events.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="py-8 text-center text-xs text-fg-subtle">
-                      No events indexed yet for this queue.
-                    </td>
-                  </tr>
-                )}
-                {events?.events.map((event) => (
-                  <EventRow key={event.id} event={event} onSelect={(id) => setSelectedJobId(id)} />
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {isLoading && (
+                    <tr>
+                      <td colSpan={4} className="py-8 text-center text-xs text-fg-subtle">
+                        Loading events…
+                      </td>
+                    </tr>
+                  )}
+                  {!isLoading && events?.events.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="py-8 text-center text-xs text-fg-subtle">
+                        No events indexed yet for this queue.
+                      </td>
+                    </tr>
+                  )}
+                  {events?.events.map((event) => (
+                    <EventRow key={event.id} event={event} onSelect={(id) => setSelectedJobId(id)} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 

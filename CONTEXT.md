@@ -61,6 +61,16 @@ We are building **v0.1** per spec §19.
 | Pause/Resume button in QueueDetail topbar | done | Toggles based on `queue.isPaused`; uses react-query mutations |
 | Retry + Remove buttons in JobDrawer | done | Retry: single click. Remove: `window.confirm()` gate. Both invalidate caches on success. |
 | Live badge in QueueDetail | done | Pulsing green dot when connected, warning dot when reconnecting |
+| Payload + return-value storage **default true** | done | Deviates from spec §14 ("off by default"). Rationale: this is a local dev tool, drawer is useless without them, and redaction masks common secrets. Startup warns if bound to non-localhost with payloads on. |
+| Redaction utility | done | `src/security/redaction.ts` — deep-walks JSON, masks keys whose lowercased name *contains* any token from the redact list. Handles circular refs. |
+| AI debug context endpoint | done | `GET /api/instances/:id/queues/:name/jobs/:jobId/debug-context` returns `text/markdown`. Includes status, attempts, failed reason, full stack, payload+return (redacted), 20-event timeline, repo cwd, suggested prompt stub. |
+| Copy AI debug context button | done | JobDrawer Sparkles button fetches markdown, writes to `navigator.clipboard`, flips label to "Copied!" for 1.8s |
+| Command palette (Cmd+K) | done | `cmdk` library. Groups: Pages, Go to queue, Queue actions (Pause/Resume), Preferences (theme). Cmd+K / Ctrl+K toggles globally, Esc closes. Topbar search bar is now a clickable trigger. |
+| Search syntax | done | `src/server/search/parse.ts` — tokenizer respecting quoted strings. Recognized fields: `status:`, `queue:`, `name:`, `id:`, `reason:`, `hash:`, `attempts:` with `>` `<` `>=` `<=` `=`. Free text matches `job_name OR failed_reason` via LIKE. Quoted strings preserve spaces. |
+| `GET /api/instances/:id/jobs?q=…` | done | Search endpoint. Returns matched rows + parsed filter (for UI chip rendering) + nextBefore cursor. |
+| Search UI on Queues + QueueDetail | done | Wired the previously-disabled inputs. 200ms debounce. Parsed-filter chips render under the input. QueueDetail auto-scopes with `queue:<name>` prefix. Click row → JobDrawer. |
+| Activity range selector (24h/7d/30d) | done | Segmented control on the chart header. Uses the new `bucket=hour\|day` param. Choice persists per page in localStorage. QueueDetail defaults to 24h, Queues to 7d. |
+| Hourly activity bucket | done | `?bucket=hour` returns 1h buckets, useful for 24h zoom. Auto-selected for `days<=2` if not specified. |
 
 The implementation order is fixed in spec §25.
 
@@ -275,6 +285,8 @@ npx pulseboard --redis redis://localhost:6379
 - Operational guarantee thresholds (max Redis RPS, max DB growth/day) — measure once the indexer is running; don't try to predict now.
 - **The user's default Redis (localhost:6379) hosts unrelated queues** (`clio-sync`, `clio-token-refresh`) from another project. Auto-discovery against it will surface them. **For exercising Pulseboard, use `pnpm demo:up` to bring up an isolated Redis on port 6390 instead** — the demo workload populates 5 realistic queues with mixed success/failure so all the UI surfaces have something to show.
 - **`resolveWebRoot()` requires BOTH `index.html` AND an `assets/` subdirectory.** Earlier it just checked for the folder, which made it pick up `src/web/` (the source) when running via `tsx src/cli.ts`. The browser then got raw `.tsx` files served as `application/octet-stream` and refused to execute them. Now the resolver only accepts directories that look like Vite's built output. `pnpm demo:pulseboard` therefore runs `pnpm build:web` first.
+- **Payload + return-value storage defaults differ from spec §14.** Spec says off-by-default for safety; we ship on-by-default for usefulness. Mitigations: (a) the redaction layer masks common secret-shaped keys (`password`, `secret`, `token`, etc. and any key whose name *contains* one of them — case-insensitive), and (b) the CLI prints a startup warning when bound to a non-localhost interface with payloads enabled. If you operate in genuinely sensitive environments, set `PULSEBOARD_STORE_PAYLOADS=false` and `PULSEBOARD_STORE_RETURN_VALUES=false`.
+- **Redaction is key-contains, not key-equals.** `apiKey`, `myApiKey`, `payload.apiKey` all get masked because they contain `apikey`. False positives are possible (a benign field named `token_used_at_step`) — accept this for v1; smarter rules can come later.
 - **Error hash v1 uses `normalized(reason) + first user-code frame` only.** An earlier version hashed top-5 frames from `stacktrace.join("\n")`, which was unstable across retries (BullMQ appends each attempt's stack to the array, so top-N frames shifted). Result was over-fragmentation — same job creating 3-4 distinct error_groups. Source-map-aware multi-frame hashing is a v0.3+ improvement; see `src/indexer/error-hash.ts`.
 
 ---

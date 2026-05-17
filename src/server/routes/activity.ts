@@ -2,8 +2,9 @@ import type { FastifyInstance } from "fastify";
 import type { AppContext } from "../context.js";
 
 type Params = { instanceId: string };
-type Query = { days?: string; queue?: string };
+type Query = { days?: string; queue?: string; bucket?: "hour" | "day" };
 
+const HOUR_MS = 3_600_000;
 const DAY_MS = 86_400_000;
 
 type Row = { bucket: number; type: string; n: number };
@@ -20,7 +21,10 @@ export async function activityRoute(app: FastifyInstance, ctx: AppContext): Prom
       const since = Date.now() - days * DAY_MS;
       const queueFilter = req.query.queue;
 
-      const bucketSize = DAY_MS;
+      // Pick bucket size: caller can force, otherwise auto — hourly for ≤2d
+      // windows (24-48 bars), daily for longer windows.
+      const bucketKind: "hour" | "day" = req.query.bucket ?? (days <= 2 ? "hour" : "day");
+      const bucketSize = bucketKind === "hour" ? HOUR_MS : DAY_MS;
       const params: (string | number)[] = [ctx.instanceId, since];
       const queueClause = queueFilter ? "and queue_name = ?" : "";
       if (queueFilter) params.push(queueFilter);
