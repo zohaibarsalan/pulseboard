@@ -14,6 +14,7 @@ import { jobRoute } from "./routes/jobs.js";
 import { errorGroupsRoute } from "./routes/error-groups.js";
 import { liveRoute } from "./routes/live.js";
 import { actionsRoute } from "./routes/actions.js";
+import { debugContextRoute } from "./routes/debug-context.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -46,6 +47,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
   await errorGroupsRoute(app, ctx);
   await liveRoute(app, ctx);
   await actionsRoute(app, ctx);
+  await debugContextRoute(app, ctx);
 
   const devProxyTarget = process.env.PULSEBOARD_DEV_PROXY;
   if (devProxyTarget) {

@@ -118,6 +118,12 @@ async function post<T>(path: string): Promise<T> {
   return (await res.json()) as T;
 }
 
+async function getText(path: string): Promise<string> {
+  const res = await fetch(path);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText} on ${path}`);
+  return res.text();
+}
+
 export const api = {
   health: () => get<Health>("/api/health"),
   queues: (instanceId: string) =>
@@ -156,5 +162,10 @@ export const api = {
   resumeQueue: (instanceId: string, queueName: string) =>
     post<{ ok: true; action: "resume"; queueName: string }>(
       `/api/instances/${instanceId}/queues/${encodeURIComponent(queueName)}/resume`,
+    ),
+
+  debugContext: (instanceId: string, queueName: string, jobId: string) =>
+    getText(
+      `/api/instances/${instanceId}/queues/${encodeURIComponent(queueName)}/jobs/${encodeURIComponent(jobId)}/debug-context`,
     ),
 };

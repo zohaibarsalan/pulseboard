@@ -41,6 +41,16 @@ async function start(opts: ConfigOverrides): Promise<void> {
   console.log(pc.dim(`  Redis: ${redactRedisUrl(config.redisUrl)}`));
   console.log(pc.dim(`  DB:    ${config.dbPath}`));
 
+  if (config.storePayloads && config.host !== "127.0.0.1" && config.host !== "localhost") {
+    console.warn(
+      pc.yellow(
+        `\n  ⚠  Binding to ${config.host} with payload storage enabled.\n` +
+          `     Job payloads may contain secrets. Set PULSEBOARD_STORE_PAYLOADS=false\n` +
+          `     or bind to 127.0.0.1 if you do not want them stored on disk.\n`,
+      ),
+    );
+  }
+
   const db = openDb(config.dbPath);
   runMigrations(db);
 

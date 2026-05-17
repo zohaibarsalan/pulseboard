@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, RefreshCw, Trash2, X, Copy as CopyIcon, Sparkles } from "lucide-react";
+import { Check, Copy, RefreshCw, Trash2, X, Copy as CopyIcon, Sparkles } from "lucide-react";
 import { api, type JobDetail } from "../lib/api.js";
 import { StatusPill, statusTone } from "./StatusPill.js";
 import { formatRelativeTime } from "../lib/format.js";
@@ -45,6 +45,22 @@ export function JobDrawer({ instanceId, queueName, jobId, onClose }: Props): Rea
     },
   });
 
+  const [copyState, setCopyState] = useState<"idle" | "copying" | "copied" | "error">("idle");
+  const copyDebugContext = async (): Promise<void> => {
+    if (!jobId) return;
+    setCopyState("copying");
+    try {
+      const text = await api.debugContext(instanceId, queueName, jobId);
+      await navigator.clipboard.writeText(text);
+      setCopyState("copied");
+      setTimeout(() => setCopyState("idle"), 1800);
+    } catch (err) {
+      console.error(err);
+      setCopyState("error");
+      setTimeout(() => setCopyState("idle"), 2500);
+    }
+  };
+
   if (!jobId) return null;
 
   const live = data?.live;
@@ -71,7 +87,20 @@ export function JobDrawer({ instanceId, queueName, jobId, onClose }: Props): Rea
         </div>
 
         <div className="flex items-center gap-1 border-b border-border bg-bg-subtle px-3 py-2">
-          <ActionButton icon={Sparkles} label="Copy AI debug context" disabled />
+          <ActionButton
+            icon={copyState === "copied" ? Check : Sparkles}
+            label={
+              copyState === "copying"
+                ? "Copying…"
+                : copyState === "copied"
+                  ? "Copied!"
+                  : copyState === "error"
+                    ? "Copy failed"
+                    : "Copy AI debug context"
+            }
+            disabled={copyState === "copying"}
+            onClick={() => void copyDebugContext()}
+          />
           <ActionButton
             icon={RefreshCw}
             label={retryMutation.isPending ? "Retrying…" : "Retry"}

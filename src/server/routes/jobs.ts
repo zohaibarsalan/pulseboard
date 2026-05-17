@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { and, desc, eq } from "drizzle-orm";
 import { jobs, jobEvents } from "../../db/schema.js";
+import { redact } from "../../security/redaction.js";
 import type { AppContext } from "../context.js";
 
 type Params = { instanceId: string; queueName: string; jobId: string };
@@ -57,8 +58,8 @@ export async function jobRoute(app: FastifyInstance, ctx: AppContext): Promise<v
         live: liveJob
           ? {
               name: liveJob.name,
-              data: storePayloads ? liveJob.data : null,
-              returnValue: storeReturnValues ? liveJob.returnvalue : null,
+              data: storePayloads ? redact(liveJob.data, ctx.config.redactKeys) : null,
+              returnValue: storeReturnValues ? redact(liveJob.returnvalue, ctx.config.redactKeys) : null,
               opts: liveJob.opts,
               attemptsMade: liveJob.attemptsMade,
               progress: liveJob.progress,

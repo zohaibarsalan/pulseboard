@@ -15,8 +15,14 @@ const RawConfigSchema = z.object({
   dbPath: z.string().default(resolve(homedir(), ".pulseboard", "pulseboard.db")),
   authPassword: z.string().optional(),
 
-  storePayloads: z.boolean().default(false),
-  storeReturnValues: z.boolean().default(false),
+  // Payload + return-value storage default to ON for developer ergonomics —
+  // this is a local-first dev tool, the debug-context bundle and job drawer
+  // are useless without them, and the redaction layer below masks common
+  // secret-shaped keys. Use --readonly + the env flags below to opt out in
+  // sensitive environments. A startup warning is printed if the server binds
+  // to a non-localhost interface with payloads enabled (see cli.ts).
+  storePayloads: z.boolean().default(true),
+  storeReturnValues: z.boolean().default(true),
   storeFullStacktraces: z.boolean().default(true),
   redactKeys: z
     .array(z.string())
