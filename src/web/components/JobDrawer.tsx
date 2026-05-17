@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy, RefreshCw, Trash2, X, Copy as CopyIcon, Sparkles } from "lucide-react";
 import { api, type JobDetail } from "../lib/api.js";
 import { StatusPill, statusTone } from "./StatusPill.js";
@@ -17,12 +17,32 @@ type Props = {
 
 export function JobDrawer({ instanceId, queueName, jobId, onClose }: Props): React.ReactElement | null {
   const [tab, setTab] = useState<Tab>("payload");
+  const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery<JobDetail>({
     queryKey: ["job", instanceId, queueName, jobId],
     queryFn: () => api.job(instanceId, queueName, jobId!),
     enabled: !!jobId,
     refetchInterval: 5_000,
+  });
+
+  const invalidateAll = (): void => {
+    if (jobId) void queryClient.invalidateQueries({ queryKey: ["job", instanceId, queueName, jobId] });
+    void queryClient.invalidateQueries({ queryKey: ["queues", instanceId] });
+    void queryClient.invalidateQueries({ queryKey: ["events", instanceId, queueName] });
+  };
+
+  const retryMutation = useMutation({
+    mutationFn: () => api.retryJob(instanceId, queueName, jobId!),
+    onSuccess: invalidateAll,
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: () => api.removeJob(instanceId, queueName, jobId!),
+    onSuccess: () => {
+      invalidateAll();
+      onClose();
+    },
   });
 
   if (!jobId) return null;
@@ -52,10 +72,31 @@ export function JobDrawer({ instanceId, queueName, jobId, onClose }: Props): Rea
 
         <div className="flex items-center gap-1 border-b border-border bg-bg-subtle px-3 py-2">
           <ActionButton icon={Sparkles} label="Copy AI debug context" disabled />
-          <ActionButton icon={RefreshCw} label="Retry" disabled />
+          <ActionButton
+            icon={RefreshCw}
+            label={retryMutation.isPending ? "Retrying…" : "Retry"}
+            disabled={retryMutation.isPending}
+            onClick={() => retryMutation.mutate()}
+          />
           <ActionButton icon={CopyIcon} label="Clone" disabled />
-          <ActionButton icon={Trash2} label="Remove" disabled tone="danger" />
+          <ActionButton
+            icon={Trash2}
+            label={removeMutation.isPending ? "Removing…" : "Remove"}
+            disabled={removeMutation.isPending}
+            tone="danger"
+            onClick={() => {
+              if (window.confirm(`Remove job ${jobId}? This is permanent.`)) {
+                removeMutation.mutate();
+              }
+            }}
+          />
         </div>
+
+        {(retryMutation.error || removeMutation.error) && (
+          <div className="border-b border-border bg-danger/5 px-5 py-2 text-xs text-danger">
+            {(retryMutation.error ?? removeMutation.error)?.message}
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto p-5">
           {isLoading && <div className="text-sm text-fg-subtle">Loading…</div>}
@@ -188,22 +229,27 @@ function ActionButton({
   label,
   disabled,
   tone,
+  onClick,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   disabled?: boolean;
   tone?: "danger";
+  onClick?: () => void;
 }): React.ReactElement {
   return (
     <button
       disabled={disabled}
-      title={disabled ? `${label} — coming soon` : label}
+      onClick={onClick}
+      title={disabled && !onClick ? `${label} — coming soon` : label}
       className={cn(
         "inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium transition-colors",
         tone === "danger" ? "text-danger" : "text-fg-muted",
         disabled
           ? "cursor-not-allowed opacity-50"
-          : "hover:bg-bg-muted hover:text-fg",
+          : tone === "danger"
+            ? "hover:bg-danger/10"
+            : "hover:bg-bg-muted hover:text-fg",
       )}
     >
       <Icon className="h-3 w-3" />

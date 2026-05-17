@@ -109,6 +109,15 @@ async function get<T>(path: string): Promise<T> {
   return (await res.json()) as T;
 }
 
+async function post<T>(path: string): Promise<T> {
+  const res = await fetch(path, { method: "POST", headers: { accept: "application/json" } });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`${res.status} ${res.statusText}: ${body}`);
+  }
+  return (await res.json()) as T;
+}
+
 export const api = {
   health: () => get<Health>("/api/health"),
   queues: (instanceId: string) =>
@@ -130,5 +139,22 @@ export const api = {
   errorGroupJobs: (instanceId: string, errorHash: string) =>
     get<{ instanceId: string; errorHash: string; jobs: IndexedJob[] }>(
       `/api/instances/${instanceId}/error-groups/${errorHash}/jobs`,
+    ),
+
+  retryJob: (instanceId: string, queueName: string, jobId: string) =>
+    post<{ ok: true; action: "retry"; jobId: string }>(
+      `/api/instances/${instanceId}/queues/${encodeURIComponent(queueName)}/jobs/${encodeURIComponent(jobId)}/retry`,
+    ),
+  removeJob: (instanceId: string, queueName: string, jobId: string) =>
+    post<{ ok: true; action: "remove"; jobId: string }>(
+      `/api/instances/${instanceId}/queues/${encodeURIComponent(queueName)}/jobs/${encodeURIComponent(jobId)}/remove`,
+    ),
+  pauseQueue: (instanceId: string, queueName: string) =>
+    post<{ ok: true; action: "pause"; queueName: string }>(
+      `/api/instances/${instanceId}/queues/${encodeURIComponent(queueName)}/pause`,
+    ),
+  resumeQueue: (instanceId: string, queueName: string) =>
+    post<{ ok: true; action: "resume"; queueName: string }>(
+      `/api/instances/${instanceId}/queues/${encodeURIComponent(queueName)}/resume`,
     ),
 };

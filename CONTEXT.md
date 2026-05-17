@@ -54,6 +54,13 @@ We are building **v0.1** per spec §19.
 | Failed Jobs page (error grouping) | done | Lists `error_groups` rows with count + first/last seen |
 | Dockerfile (multi-stage, Node 20 bookworm-slim) | done | Image: 613MB; pinned `pnpm@10.14.0` via `packageManager`; native better-sqlite3 build at install time; runtime stage strips dev deps |
 | Docker compose example | done | `docker/docker-compose.example.yml` — Pulseboard + Redis + named volume |
+| LiveEventBus (in-memory pub/sub) | done | `src/indexer/event-bus.ts` — single source for SSE clients; indexer publishes before buffering |
+| `GET /api/instances/:id/queues/:name/live` (SSE) | done | Per-client EventSource. Hello on connect, 15s heartbeat, auto-cleanup on close. |
+| Action endpoints (retry/remove/pause/resume) | done | `src/server/routes/actions.ts`. Writes `audit_logs` with actor/actor_source/client_ip/user_agent. Returns 403 in readonly mode. |
+| `useLiveEvents` hook | done | EventSource consumer with 400ms debounced invalidation of `events` + `queues` + `activity` queries. Drops polling intervals when status==="live". |
+| Pause/Resume button in QueueDetail topbar | done | Toggles based on `queue.isPaused`; uses react-query mutations |
+| Retry + Remove buttons in JobDrawer | done | Retry: single click. Remove: `window.confirm()` gate. Both invalidate caches on success. |
+| Live badge in QueueDetail | done | Pulsing green dot when connected, warning dot when reconnecting |
 
 The implementation order is fixed in spec §25.
 

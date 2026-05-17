@@ -7,6 +7,7 @@ import { runMigrations } from "./db/migrate.js";
 import { createRedisConnection, pingRedis } from "./bullmq/connection.js";
 import { QueueRegistry, discoverQueues } from "./bullmq/queue-registry.js";
 import { EventIndexer } from "./indexer/event-indexer.js";
+import { LiveEventBus } from "./indexer/event-bus.js";
 import { buildApp } from "./server/app.js";
 import { DEFAULT_INSTANCE_ID, type AppContext } from "./server/context.js";
 
@@ -52,9 +53,10 @@ async function start(opts: ConfigOverrides): Promise<void> {
   const registry = new QueueRegistry(redis);
   await resolveQueues(config, registry, redis);
 
+  const bus = new LiveEventBus();
   const indexer =
     registry.list().length > 0
-      ? new EventIndexer(db, registry, redis, { instanceId: DEFAULT_INSTANCE_ID })
+      ? new EventIndexer(db, registry, redis, { instanceId: DEFAULT_INSTANCE_ID, bus })
       : null;
 
   if (indexer) {
@@ -68,6 +70,7 @@ async function start(opts: ConfigOverrides): Promise<void> {
     redis,
     registry,
     indexer,
+    bus,
     instanceId: DEFAULT_INSTANCE_ID,
     startedAt: Date.now(),
   };
