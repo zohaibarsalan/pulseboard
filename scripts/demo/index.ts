@@ -177,6 +177,7 @@ async function main(): Promise<void> {
   let produced = 0;
   let succeeded = 0;
   let failed = 0;
+  let mode: "steady" | "burst" | "incident" = "steady";
 
   for (const w of workers) {
     w.on("completed", () => {
@@ -187,9 +188,8 @@ async function main(): Promise<void> {
     });
   }
 
-  const producer = setInterval(() => {
-    const batch = 1 + Math.floor(Math.random() * 4);
-    for (let i = 0; i < batch; i++) {
+  function emit(count: number): void {
+    for (let i = 0; i < count; i++) {
       const { queue, spec } = pickJob();
       const q = queues.get(queue);
       if (!q) continue;
@@ -206,20 +206,63 @@ async function main(): Promise<void> {
       });
       produced += 1;
     }
+  }
+
+  // Steady producer — varies rate with a sine wave (1× to 4×) so traffic
+  // breathes instead of being flat.
+  const startedAt = Date.now();
+  const producer = setInterval(() => {
+    const elapsed = (Date.now() - startedAt) / 1000;
+    const waveMultiplier = 1.5 + 1.5 * Math.sin(elapsed / 20); // 0–3 range
+    const base = 1 + Math.floor(Math.random() * 3);
+    const batch = Math.max(1, Math.round(base * waveMultiplier));
+    emit(batch);
   }, PRODUCER_INTERVAL_MS);
 
+  // Burst events: every 30–60s drop a spike of 15–40 jobs so backlog/active
+  // counts visibly jump in the UI.
+  const burstTimer = setInterval(
+    () => {
+      const spike = 15 + Math.floor(Math.random() * 25);
+      mode = "burst";
+      emit(spike);
+      setTimeout(() => {
+        mode = "steady";
+      }, 4_000);
+    },
+    30_000 + Math.floor(Math.random() * 30_000),
+  );
+
+  // Long-running "background" jobs so the active count never sits at 0.
+  // These take 20–40s each and trickle in every 8s, keeping at least a
+  // few active across the ai-pipeline queue.
+  const longRunner = setInterval(() => {
+    const q = queues.get("ai-pipeline");
+    if (!q) return;
+    void q.add(
+      "classify-document",
+      { documentId: `doc_long_${Date.now()}`, tokens: 4000 + Math.floor(Math.random() * 4000) },
+      { attempts: 1, removeOnComplete: { age: 3600, count: 1000 } },
+    );
+  }, 8_000);
+
   const stats = setInterval(() => {
+    const tag =
+      mode === "burst" ? pc.yellow(" BURST") : mode === "incident" ? pc.red(" INCIDENT") : "";
     process.stdout.write(
       `\r${pc.dim("produced")} ${pc.cyan(produced.toString().padStart(5))}  ` +
         `${pc.dim("ok")} ${pc.green(succeeded.toString().padStart(5))}  ` +
         `${pc.dim("failed")} ${pc.red(failed.toString().padStart(5))}  ` +
-        `${pc.dim("active")} ${(produced - succeeded - failed).toString().padStart(4)}`,
+        `${pc.dim("inflight")} ${(produced - succeeded - failed).toString().padStart(4)}` +
+        tag.padEnd(12),
     );
   }, 500);
 
   const shutdown = async (signal: string): Promise<void> => {
     console.log(pc.yellow(`\n[${signal}] shutting down…`));
     clearInterval(producer);
+    clearInterval(burstTimer);
+    clearInterval(longRunner);
     clearInterval(stats);
     await Promise.all(workers.map((w) => w.close()));
     await Promise.all(Array.from(queues.values()).map((q) => q.close()));
