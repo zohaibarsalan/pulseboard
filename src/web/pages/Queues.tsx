@@ -1,11 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { ChevronRight, Pause, Search } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronRight,
+  Hourglass,
+  Pause,
+  Search,
+  TrendingUp,
+  Zap,
+} from "lucide-react";
 import { Topbar } from "../components/Topbar.js";
 import { CountPill } from "../components/CountPill.js";
+import { KpiCard } from "../components/KpiCard.js";
 import { ActivityChart } from "../components/ActivityChart.js";
 import { api, type QueueSummary } from "../lib/api.js";
 import { formatNumber } from "../lib/format.js";
+import { computeKpis, totalsByQueue } from "../lib/kpi.js";
 
 const INSTANCE_ID = "default";
 
@@ -22,22 +32,76 @@ export function QueuesPage(): React.ReactElement {
     refetchInterval: 15_000,
   });
 
+  const kpis = computeKpis(activity);
+  const queueTotals = totalsByQueue(data?.queues ?? []);
+
   return (
     <div className="flex h-full flex-col">
       <Topbar title="Queues" />
 
       <div className="flex-1 overflow-y-auto px-6 py-5">
         <div className="mx-auto max-w-6xl space-y-5">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <KpiCard
+              label="Throughput"
+              value={kpis.throughputPerHour.toLocaleString()}
+              subtext="jobs/hour avg · last 7d"
+              icon={TrendingUp}
+              spark={kpis.completedSpark}
+              sparkTone="success"
+              trend={
+                kpis.completedTrendPct !== null
+                  ? {
+                      direction: kpis.completedTrendPct >= 0 ? "up" : "down",
+                      percent: Math.abs(kpis.completedTrendPct),
+                      good: "up",
+                    }
+                  : undefined
+              }
+            />
+            <KpiCard
+              label="Error rate"
+              value={`${kpis.errorRate.toFixed(1)}%`}
+              subtext={`${formatNumber(kpis.failedTotal)} failed of ${formatNumber(kpis.completedTotal + kpis.failedTotal)}`}
+              icon={AlertTriangle}
+              spark={kpis.failedSpark}
+              sparkTone="danger"
+              trend={
+                kpis.failedTrendPct !== null
+                  ? {
+                      direction: kpis.failedTrendPct >= 0 ? "up" : "down",
+                      percent: Math.abs(kpis.failedTrendPct),
+                      good: "down",
+                    }
+                  : undefined
+              }
+            />
+            <KpiCard
+              label="Active"
+              value={formatNumber(queueTotals.active)}
+              subtext={`${formatNumber(queueTotals.waiting)} waiting across queues`}
+              icon={Zap}
+            />
+            <KpiCard
+              label="Backlog"
+              value={formatNumber(queueTotals.waiting + queueTotals.delayed)}
+              subtext={`${formatNumber(queueTotals.delayed)} delayed`}
+              icon={Hourglass}
+            />
+          </div>
+
           <ActivityChart data={activity} isLoading={activityLoading} />
 
-          <div className="pb-search w-full max-w-md">
-            <Search className="h-3.5 w-3.5 stroke-[1.75] text-fg-subtle" />
-            <input
-              type="search"
-              placeholder={`${data?.queues.length ?? 0} queues registered…`}
-              className="flex-1 bg-transparent text-sm placeholder:text-fg-subtle focus:outline-none"
-              disabled
-            />
+          <div className="flex items-center justify-between">
+            <div className="pb-search w-full max-w-md">
+              <Search className="h-3.5 w-3.5 stroke-[1.75] text-fg-subtle" />
+              <input
+                type="search"
+                placeholder={`${data?.queues.length ?? 0} queues registered…`}
+                className="flex-1 bg-transparent text-sm placeholder:text-fg-subtle focus:outline-none"
+                disabled
+              />
+            </div>
           </div>
 
           {isLoading && <SkeletonList />}
@@ -49,7 +113,7 @@ export function QueuesPage(): React.ReactElement {
           {data && data.queues.length === 0 && <EmptyState />}
           {data && data.queues.length > 0 && (
             <div className="pb-card overflow-hidden">
-              <ul className="divide-y divide-dashed divide-border">
+              <ul className="divide-y divide-border">
                 {data.queues.map((queue) => (
                   <QueueRow key={queue.name} queue={queue} />
                 ))}
@@ -98,7 +162,7 @@ function QueueRow({ queue }: { queue: QueueSummary }): React.ReactElement {
 function SkeletonList(): React.ReactElement {
   return (
     <div className="pb-card overflow-hidden">
-      <ul className="divide-y divide-dashed divide-border">
+      <ul className="divide-y divide-border">
         {Array.from({ length: 3 }).map((_, i) => (
           <li key={i} className="flex items-center justify-between px-4 py-3">
             <div className="h-3 w-32 animate-pulse rounded bg-bg-muted" />

@@ -68,7 +68,7 @@ export function JobDrawer({ instanceId, queueName, jobId, onClose }: Props): Rea
                 </div>
               )}
 
-              <MetadataGrid jobId={jobId} queueName={queueName} live={live} indexed={indexed} />
+              <MetadataGrid jobId={jobId} queueName={queueName} live={live ?? null} indexed={indexed ?? null} />
 
               <div className="mt-5 flex items-center gap-1 border-b border-border">
                 <TabButton active={tab === "payload"} onClick={() => setTab("payload")}>
@@ -88,7 +88,7 @@ export function JobDrawer({ instanceId, queueName, jobId, onClose }: Props): Rea
               <div className="mt-4">
                 {tab === "payload" && <CodeBlock value={live?.data} fallback="Payload storage is disabled. Enable PULSEBOARD_STORE_PAYLOADS=true." />}
                 {tab === "output" && <CodeBlock value={live?.returnValue} fallback="Return-value storage is disabled. Enable PULSEBOARD_STORE_RETURN_VALUES=true." />}
-                {tab === "error" && <ErrorView live={live} indexed={indexed} />}
+                {tab === "error" && <ErrorView live={live ?? null} indexed={indexed ?? null} />}
                 {tab === "timeline" && <Timeline events={data.timeline} />}
               </div>
             </>

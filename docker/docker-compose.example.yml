@@ -1,0 +1,26 @@
+services:
+  pulseboard:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "4545:4545"
+    environment:
+      REDIS_URL: redis://redis:6379
+      PULSEBOARD_DB_PATH: /data/pulseboard.db
+      PULSEBOARD_AUTO_DISCOVER: "true"
+      # PULSEBOARD_QUEUES: email,imports,billing
+      # PULSEBOARD_READONLY: "true"
+      # PULSEBOARD_AUTH_PASSWORD: changeme
+    volumes:
+      - pulseboard-data:/data
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  pulseboard-data:

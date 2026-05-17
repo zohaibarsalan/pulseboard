@@ -53,6 +53,7 @@ export async function jobRoute(app: FastifyInstance, ctx: AppContext): Promise<v
         instanceId: ctx.instanceId,
         queueName: req.params.queueName,
         jobId: req.params.jobId,
+        indexed: indexedRow ?? null,
         live: liveJob
           ? {
               name: liveJob.name,
@@ -71,7 +72,6 @@ export async function jobRoute(app: FastifyInstance, ctx: AppContext): Promise<v
               parent: liveJob.parent,
             }
           : null,
-        indexed: indexedRow,
         timeline,
         removedFromRedis: !liveJob && !!indexedRow,
       };

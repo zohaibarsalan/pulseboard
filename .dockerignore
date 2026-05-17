@@ -1,0 +1,16 @@
+node_modules
+dist
+.git
+.DS_Store
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+.pulseboard
+.env
+.env.local
+.env.*.local
+*.log
+.vscode
+.idea
+docker

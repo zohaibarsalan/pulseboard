@@ -8,7 +8,7 @@ type Props = {
 export function PlaceholderPage({ title, description }: Props): React.ReactElement {
   return (
     <div className="flex h-full flex-col">
-      <Topbar title={title} description={description} />
+      <Topbar title={title} subtitle={description} />
       <div className="flex flex-1 items-center justify-center p-6">
         <div className="pb-card flex max-w-md flex-col gap-1.5 p-8 text-center">
           <h2 className="text-sm font-medium">Coming soon</h2>

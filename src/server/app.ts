@@ -27,10 +27,14 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
     disableRequestLogging: false,
   });
 
-  await app.register(cors, {
-    origin: process.env.NODE_ENV !== "production" ? true : false,
-    credentials: true,
-  });
+  // CORS is only needed when the UI and API live on different origins.
+  // In dev (Vite proxied through Fastify) and prod (static served by Fastify) they're
+  // same-origin, so we only enable CORS when there's no dev proxy AND we're not
+  // in production — i.e., when a developer is hitting the API from elsewhere.
+  // Registering it globally also collides with @fastify/http-proxy's OPTIONS handler.
+  if (!process.env.PULSEBOARD_DEV_PROXY && process.env.NODE_ENV !== "production") {
+    await app.register(cors, { origin: true, credentials: true });
+  }
 
   await healthRoute(app, ctx);
   await queuesRoute(app, ctx);
@@ -75,13 +79,19 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
 }
 
 function resolveWebRoot(): string | null {
+  // Only accept *built* web output — a directory containing both index.html
+  // and an `assets/` subdirectory (Vite's convention). This excludes
+  // `src/web/`, which contains the TS source and would cause the server
+  // to hand the browser raw `.tsx` files with octet-stream MIME.
   const candidates = [
-    resolve(__dirname, "../web"),
-    resolve(__dirname, "../../dist/web"),
+    resolve(__dirname, "../web"),       // running from dist/server → dist/web
+    resolve(__dirname, "../../dist/web"), // running from src/server (tsx) → ./dist/web
     resolve(process.cwd(), "dist/web"),
   ];
   for (const candidate of candidates) {
-    if (existsSync(candidate)) return candidate;
+    if (existsSync(resolve(candidate, "index.html")) && existsSync(resolve(candidate, "assets"))) {
+      return candidate;
+    }
   }
   return null;
 }

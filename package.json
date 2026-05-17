@@ -6,6 +6,7 @@
   "engines": {
     "node": ">=20"
   },
+  "packageManager": "pnpm@10.14.0",
   "bin": {
     "pulseboard": "./dist/cli.js"
   },
@@ -15,7 +16,8 @@
     "README.md"
   ],
   "scripts": {
-    "dev": "PULSEBOARD_DEV_PROXY=http://localhost:5173 tsx watch src/cli.ts --redis ${REDIS_URL:-redis://localhost:6379}",
+    "dev": "concurrently -k -n server,web -c blue,magenta \"pnpm dev:server\" \"pnpm dev:web\"",
+    "dev:server": "PULSEBOARD_DEV_PROXY=http://localhost:5173 tsx watch src/cli.ts --redis ${REDIS_URL:-redis://localhost:6379}",
     "dev:web": "vite",
     "build": "pnpm build:web && pnpm build:server",
     "build:server": "tsc -p tsconfig.build.json && node -e \"import('node:fs').then(fs=>fs.cpSync('src/db/migrations','dist/db/migrations',{recursive:true}))\"",
@@ -23,7 +25,11 @@
     "typecheck": "tsc --noEmit && tsc -p tsconfig.web.json --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
-    "start": "node dist/cli.js"
+    "start": "node dist/cli.js",
+    "demo:up": "docker compose -f docker/docker-compose.dev.yml up -d",
+    "demo:down": "docker compose -f docker/docker-compose.dev.yml down -v",
+    "demo:traffic": "REDIS_URL=redis://localhost:6390 tsx scripts/demo/index.ts",
+    "demo:pulseboard": "pnpm build:web && tsx src/cli.ts --redis redis://localhost:6390 --port 4547 --db .pulseboard/demo.db --auto-discover"
   },
   "dependencies": {
     "@fastify/cors": "^9.0.1",
@@ -54,6 +60,7 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.2",
     "autoprefixer": "^10.4.20",
+    "concurrently": "^9.2.1",
     "drizzle-kit": "^0.28.0",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.13",

@@ -38,7 +38,23 @@ function topFrames(stack: string | undefined, n: number): string {
 export function computeErrorHash(failedReason: string | null | undefined, stack: string | undefined): string | null {
   if (!failedReason && !stack) return null;
   const reason = normalize(failedReason ?? "");
-  const frames = topFrames(stack, 5);
-  if (!reason && !frames) return null;
-  return createHash("sha1").update(`${reason}|${frames}`).digest("hex").slice(0, 16);
+  // v1: hash on normalized reason + the single deepest user-code frame.
+  // Hashing the joined multi-attempt stacktrace was unstable across retries
+  // (BullMQ appends each attempt's stack to the array; top-N "at" lines
+  // depended on attempt count). Reason alone over-clusters distinct bugs
+  // that happen to throw the same message; one deepest frame is a cheap
+  // tie-breaker. Source-map-aware hashing is a v0.3+ improvement.
+  const deepestFrame = firstFrame(stack);
+  const key = deepestFrame ? `${reason}|${deepestFrame}` : reason;
+  if (!key) return null;
+  return createHash("sha1").update(key).digest("hex").slice(0, 16);
+}
+
+function firstFrame(stack: string | undefined): string {
+  if (!stack) return "";
+  const line = stack
+    .split("\n")
+    .map((l) => l.trim())
+    .find((l) => l.startsWith("at "));
+  return line ? normalize(line) : "";
 }

@@ -1,6 +1,8 @@
 import { Route, Switch } from "wouter";
 import { Sidebar } from "./components/Sidebar.js";
 import { QueuesPage } from "./pages/Queues.js";
+import { QueueDetailPage } from "./pages/QueueDetail.js";
+import { FailedJobsPage } from "./pages/FailedJobs.js";
 import { PlaceholderPage } from "./pages/Placeholder.js";
 
 export function App(): React.ReactElement {
@@ -11,19 +13,9 @@ export function App(): React.ReactElement {
         <Switch>
           <Route path="/" component={QueuesPage} />
           <Route path="/queue/:name">
-            {(params) => (
-              <PlaceholderPage
-                title={decodeURIComponent(params.name)}
-                description="Queue detail view — coming in v0.1 step 6."
-              />
-            )}
+            {(params) => <QueueDetailPage queueName={decodeURIComponent(params.name)} />}
           </Route>
-          <Route path="/failed">
-            <PlaceholderPage
-              title="Failed Jobs"
-              description="Failure clustering and one-click retry — coming in v0.3."
-            />
-          </Route>
+          <Route path="/failed" component={FailedJobsPage} />
           <Route path="/flows">
             <PlaceholderPage
               title="Flows"

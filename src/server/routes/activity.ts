@@ -21,27 +21,28 @@ export async function activityRoute(app: FastifyInstance, ctx: AppContext): Prom
       const queueFilter = req.query.queue;
 
       const bucketSize = DAY_MS;
-      const queueClause = queueFilter ? "and queue_name = @queue" : "";
+      const params: (string | number)[] = [ctx.instanceId, since];
+      const queueClause = queueFilter ? "and queue_name = ?" : "";
+      if (queueFilter) params.push(queueFilter);
+
+      // bucketSize is a fixed constant — inline it as a SQL literal so SQLite
+      // does INTEGER division. Bound `?` parameters bind JS numbers as REAL,
+      // which would make (created_at / ?) float division and break bucketing.
       const stmt = ctx.db.$client.prepare(`
         select
-          (created_at / @bucketSize) * @bucketSize as bucket,
+          (created_at / ${bucketSize}) * ${bucketSize} as bucket,
           event_type as type,
           count(*) as n
         from job_events
-        where instance_id = @instanceId
-          and created_at >= @since
+        where instance_id = ?
+          and created_at >= ?
           ${queueClause}
           and event_type in ('completed', 'failed')
         group by bucket, type
         order by bucket asc
       `);
 
-      const rows = stmt.all({
-        instanceId: ctx.instanceId,
-        since,
-        bucketSize,
-        ...(queueFilter ? { queue: queueFilter } : {}),
-      }) as Row[];
+      const rows = stmt.all(...params) as Row[];
 
       const byBucket = new Map<number, { completed: number; failed: number }>();
       const start = Math.floor(since / bucketSize) * bucketSize;

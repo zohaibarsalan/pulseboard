@@ -10,7 +10,6 @@ import {
   Moon,
   Settings,
   Sun,
-  Zap,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "../lib/cn.js";
@@ -31,26 +30,26 @@ export function Sidebar(): React.ReactElement {
   const { data: health } = useQuery({ queryKey: ["health"], queryFn: api.health, refetchInterval: 5_000 });
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col border-r border-border bg-bg-subtle">
-      <div className="flex h-12 items-center gap-2 border-b border-border px-4">
-        <div className="flex h-5 w-5 items-center justify-center rounded bg-fg text-bg">
-          <span className="text-2xs font-bold">P</span>
+    <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-bg-subtle">
+      <div className="flex h-14 items-center gap-2 px-3">
+        <div className="flex h-5 w-5 items-center justify-center rounded-md bg-fg text-bg">
+          <span className="text-[10px] font-bold leading-none">P</span>
         </div>
-        <span className="text-sm font-medium tracking-tight">Pulseboard</span>
-        <span className="ml-1 rounded border border-border px-1 py-0.5 text-2xs font-medium text-fg-subtle">
+        <span className="text-xs font-semibold tracking-tight">Pulseboard</span>
+        <span className="ml-auto rounded border border-border px-1 font-mono text-[10px] leading-4 text-fg-subtle">
           {health?.version ?? "0.1"}
         </span>
       </div>
 
-      <div className="px-3 pt-3 pb-1.5 text-2xs font-medium uppercase tracking-wider text-fg-subtle">
+      <div className="px-3 pb-1 pt-1 text-[10px] font-medium uppercase tracking-wider text-fg-subtle">
         Instance
       </div>
-      <div className="mx-3 mb-4 flex items-center justify-between rounded-md border border-border bg-bg px-2.5 py-1.5 text-sm">
+      <div className="mx-3 mb-3 flex items-center justify-between rounded-md border border-border bg-bg px-2 py-1 text-xs">
         <span className="font-medium">{health?.instanceId ?? "default"}</span>
         <span className={cn("pb-dot", health?.redis === "connected" ? "bg-success" : "bg-danger")} />
       </div>
 
-      <nav className="flex-1 space-y-0.5 px-2">
+      <nav className="flex-1 space-y-px px-2">
         {items.map((item) => {
           const isActive = item.match ? item.match(location) : location.startsWith(item.href);
           const Icon = item.icon;
@@ -59,25 +58,25 @@ export function Sidebar(): React.ReactElement {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-fg-muted transition-colors hover:bg-bg-muted hover:text-fg",
+                "flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-fg-muted transition-colors hover:bg-bg-muted hover:text-fg",
                 isActive && "bg-bg-muted text-fg",
               )}
             >
-              <Icon className="h-3.5 w-3.5 stroke-[1.75]" />
+              <Icon className="h-3.5 w-3.5 shrink-0 stroke-[1.75]" />
               <span>{item.label}</span>
             </Link>
           );
         })}
       </nav>
 
-      <div className="border-t border-border p-3">
+      <div className="border-t border-border p-2.5">
         <RedisInfo
           connected={health?.redis === "connected"}
           host={health?.redisHost ?? "—"}
           url={health?.redisUrl ?? ""}
         />
-        <div className="mt-2 flex items-center justify-between">
-          <span className="text-2xs text-fg-subtle">Theme</span>
+        <div className="mt-2 flex items-center justify-between px-1">
+          <span className="text-[10px] uppercase tracking-wider text-fg-subtle">Theme</span>
           <ThemeToggle />
         </div>
       </div>
@@ -99,18 +98,18 @@ function RedisInfo({
     <button
       type="button"
       onClick={() => setOpen((v) => !v)}
-      className="group flex w-full items-start gap-2 rounded-md px-1 py-1 text-left hover:bg-bg-muted/50"
+      className="group flex w-full items-start gap-1.5 rounded-md px-1 py-1 text-left hover:bg-bg-muted/50"
       title={url}
     >
-      <Database className="mt-0.5 h-3.5 w-3.5 shrink-0 stroke-[1.75] text-fg-subtle" />
+      <Database className="mt-0.5 h-3 w-3 shrink-0 stroke-[1.75] text-fg-subtle" />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <span className="text-2xs font-medium uppercase tracking-wider text-fg-subtle">Redis</span>
-          <span className={cn("pb-dot", connected ? "bg-success" : "bg-danger")} />
+          <span className="text-[10px] font-medium uppercase tracking-wider text-fg-subtle">Redis</span>
+          <span className={cn("pb-dot h-1 w-1", connected ? "bg-success" : "bg-danger")} />
         </div>
-        <div className="truncate font-mono text-2xs text-fg-muted">{host}</div>
+        <div className="truncate font-mono text-[11px] text-fg-muted">{host}</div>
         {open && url && (
-          <div className="mt-1 break-all rounded border border-border bg-bg p-1.5 font-mono text-2xs text-fg-subtle">
+          <div className="mt-1 break-all rounded border border-border bg-bg p-1.5 font-mono text-[10px] text-fg-subtle">
             {url}
           </div>
         )}
@@ -133,7 +132,7 @@ function ThemeToggle(): React.ReactElement {
     <button
       type="button"
       onClick={toggle}
-      className="flex h-6 w-6 items-center justify-center rounded-md border border-border text-fg-muted transition-colors hover:bg-bg-muted hover:text-fg"
+      className="flex h-5 w-5 items-center justify-center rounded text-fg-subtle transition-colors hover:bg-bg-muted hover:text-fg"
       aria-label="Toggle theme"
     >
       {isDark ? <Sun className="h-3 w-3 stroke-[1.75]" /> : <Moon className="h-3 w-3 stroke-[1.75]" />}

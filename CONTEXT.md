@@ -42,8 +42,18 @@ We are building **v0.1** per spec §19.
 | Fastify serves UI | done | `@fastify/static` for assets; SPA fallback via setNotFoundHandler reading index.html into memory at boot; `@fastify/http-proxy` to Vite in dev when `PULSEBOARD_DEV_PROXY` env is set |
 | End-to-end smoke test | done | Built binary serves UI + API + indexer; verified with worker processing 2 successes + 1 failure |
 | FTS5 virtual table for failure text | **deferred** | Drizzle has no FTS5 helper; needs hand-written SQL migration before search lands |
-| Docker image | not started | Next session |
-| Queue detail page (job table + drawer) | not started | Spec §10 — next session |
+| `/api/health` exposes redacted redis URL | done | Powers the sidebar Redis indicator so users know what's being monitored |
+| `/api/instances/:id/activity?days=N` | done | Daily-bucket counts of completed/failed from `job_events` — powers KPIs and the activity bar chart |
+| `/api/instances/:id/queues/:name/jobs/:jobId` | done | Merges live Redis state with indexed history + timeline; reports `removedFromRedis` when only the indexed row remains |
+| `/api/instances/:id/error-groups` + `:hash/jobs` | done | Failure clustering by normalized `errorHash` |
+| Error hash normalizer | done | `src/indexer/error-hash.ts` — strips paths/line numbers/UUIDs/hex IDs/timestamps/pnpm noise; hashes top 5 stack frames |
+| KPI card component | done | Tiny uppercase label, big tabular number, sub-text, mini sparkline, trend arrow + percent |
+| Activity bar chart | done | Pure SVG, no chart lib; daily buckets, hover tooltip, totals legend |
+| Sidebar redesign (Redis indicator + tighter density) | done | Wide labeled sidebar kept; Redis URL + connection dot pinned bottom; theme toggle moved out of topbar |
+| QueueDetail page with job table + drawer | done | Per-queue activity chart, events table, click row → JobDrawer with metadata grid + Payload/Output/Error/Timeline tabs |
+| Failed Jobs page (error grouping) | done | Lists `error_groups` rows with count + first/last seen |
+| Dockerfile (multi-stage, Node 20 bookworm-slim) | done | Image: 613MB; pinned `pnpm@10.14.0` via `packageManager`; native better-sqlite3 build at install time; runtime stage strips dev deps |
+| Docker compose example | done | `docker/docker-compose.example.yml` — Pulseboard + Redis + named volume |
 
 The implementation order is fixed in spec §25.
 
@@ -73,10 +83,32 @@ curl "http://127.0.0.1:4545/api/instances/default/queues/email/events?limit=20"
 
 ### Seed and worker scripts for local testing
 
-- `scripts/seed.ts` — pushes 3 jobs into queue `email` (2 immediate, 1 delayed 60s).
-- `scripts/worker.ts` — processes the `email` queue; intentionally fails `send-receipt` jobs to generate failure events.
+- `scripts/seed.ts` — pushes a handful of jobs into queue `email`.
+- `scripts/worker.ts` — processes the `email` queue; intentionally fails `send-receipt` jobs.
 
 Run with `pnpm tsx scripts/seed.ts` and `pnpm tsx scripts/worker.ts`.
+
+### Full demo workload (recommended for exploring features)
+
+`scripts/demo/index.ts` runs a long-running producer + workers across 5 realistic queues (`email`, `imports`, `invoices`, `webhooks`, `ai-pipeline`) with varied job names, weighted random scheduling, retry policies, delayed jobs, and a tuned mix of distinct failure messages so error grouping has something to cluster.
+
+It uses an **isolated dev Redis on port 6390** (separate from the user's existing local Redis on 6379) defined in `docker/docker-compose.dev.yml`.
+
+Three commands, three terminals:
+
+```bash
+pnpm demo:up           # start the isolated Redis container (port 6390)
+pnpm demo:traffic      # long-running producer + workers (Ctrl+C to stop)
+pnpm demo:pulseboard   # Pulseboard pointed at the dev Redis (port 4547)
+# Open http://127.0.0.1:4547
+
+pnpm demo:down         # tear down the Redis container + volume
+```
+
+Tunables:
+
+- `DEMO_INTERVAL=500 pnpm demo:traffic` — more aggressive job rate
+- `DEMO_CONCURRENCY=10 pnpm demo:traffic` — wider workers
 
 ---
 
@@ -228,10 +260,15 @@ npx pulseboard --redis redis://localhost:6379
 - **The `geist` npm package is Next.js-only** (it exports font helpers, not CSS). For non-Next projects use `@fontsource-variable/geist` and `@fontsource-variable/geist-mono` — the CSS-family variants. Initially tried `geist` and it broke the Vite build.
 - **Tailwind 3, not Tailwind 4.** Tailwind 4 changed the config story significantly (CSS-first, no `tailwind.config.ts`). Sticking with v3 for stability; revisit when the v4 ecosystem stabilizes.
 - **`@fastify/static` does not auto-serve `index.html` for `/` with `wildcard: false`.** Fixed by reading `index.html` into memory once at boot and serving it from the not-found handler for non-`/api/` paths. This also gives us SPA client-route fallback for free.
+- **better-sqlite3 binds JS numbers as REAL via `?` placeholders.** This silently broke the activity bucket query: `(created_at / ?) * ?` became float math, so each row got a unique fractional bucket instead of a clean day boundary. Fix: inline integer constants as SQL literals (or `CAST(? AS INTEGER)`) when you need integer arithmetic. See `src/server/routes/activity.ts`.
+- **pnpm 10 needs `packageManager: "pnpm@10.14.0"` in `package.json`** for Corepack inside Docker. Without it, corepack downloaded pnpm 11.1.2 which is incompatible with Node 20 (uses Node 22 builtins).
+- **Don't blindly copy reference dashboards.** User feedback: the wide labeled sidebar + solid borders should stay; *only* the KPI-card patterns, tinted status pills, and dense table styles should be lifted from references like the Midday/Cal dashboards.
 - BullMQ Cluster support is an explicit v1 non-goal (spec §5). Don't add it.
 - Concrete retention numbers (spec §14) are starting points, not commitments — easy to tune.
 - Operational guarantee thresholds (max Redis RPS, max DB growth/day) — measure once the indexer is running; don't try to predict now.
-- **The dev Redis already has unrelated queues** (`clio-sync`, `clio-token-refresh`) from another project on this machine. Auto-discovery will surface them. Use `--queues email` to scope down during local testing.
+- **The user's default Redis (localhost:6379) hosts unrelated queues** (`clio-sync`, `clio-token-refresh`) from another project. Auto-discovery against it will surface them. **For exercising Pulseboard, use `pnpm demo:up` to bring up an isolated Redis on port 6390 instead** — the demo workload populates 5 realistic queues with mixed success/failure so all the UI surfaces have something to show.
+- **`resolveWebRoot()` requires BOTH `index.html` AND an `assets/` subdirectory.** Earlier it just checked for the folder, which made it pick up `src/web/` (the source) when running via `tsx src/cli.ts`. The browser then got raw `.tsx` files served as `application/octet-stream` and refused to execute them. Now the resolver only accepts directories that look like Vite's built output. `pnpm demo:pulseboard` therefore runs `pnpm build:web` first.
+- **Error hash v1 uses `normalized(reason) + first user-code frame` only.** An earlier version hashed top-5 frames from `stacktrace.join("\n")`, which was unstable across retries (BullMQ appends each attempt's stack to the array, so top-N frames shifted). Result was over-fragmentation — same job creating 3-4 distinct error_groups. Source-map-aware multi-frame hashing is a v0.3+ improvement; see `src/indexer/error-hash.ts`.
 
 ---
 
