@@ -144,7 +144,7 @@ export function ProcessingTimeChart({ data }: Props): React.ReactElement {
           {/* Tooltip */}
           {hoveredBucket && hoverIdx !== null && (
             <div
-              className="pointer-events-none absolute top-0 z-10 rounded border border-border bg-bg-elevated px-2 py-1.5 text-xs shadow-lg"
+              className="pointer-events-none absolute top-0 z-10 rounded border border-border bg-bg px-3 py-2 text-xs shadow-lg"
               style={{
                 left: `${Math.min(Math.max(((hoverIdx / (buckets.length - 1)) * 100), 15), 85)}%`,
                 transform: "translateX(-50%)",

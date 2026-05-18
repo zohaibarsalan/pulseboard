@@ -181,11 +181,11 @@ export const api = {
     if (queue) params.set("queue", queue);
     return get<PerformanceStats>(`/api/instances/${instanceId}/analytics/performance?${params.toString()}`);
   },
-  analyticsSlowestJobs: (instanceId: string, days = 7, queue?: string) => {
+  analyticsSlowestJobTypes: (instanceId: string, days = 7, queue?: string) => {
     const params = new URLSearchParams({ days: String(days) });
     if (queue) params.set("queue", queue);
-    return get<{ instanceId: string; rangeDays: number; jobs: SlowestJob[] }>(
-      `/api/instances/${instanceId}/analytics/slowest-jobs?${params.toString()}`,
+    return get<{ instanceId: string; rangeDays: number; jobTypes: SlowestJobType[] }>(
+      `/api/instances/${instanceId}/analytics/slowest-job-types?${params.toString()}`,
     );
   },
   analyticsTopFailures: (instanceId: string, days = 7, queue?: string) => {
@@ -212,14 +212,12 @@ export type PerformanceStats = {
   p95ProcessingTimeMs: number | null;
 };
 
-export type SlowestJob = {
-  jobId: string;
+export type SlowestJobType = {
   queueName: string;
   jobName: string;
-  status: string;
-  processingTimeMs: number;
-  waitTimeMs: number | null;
-  finishedOn: number;
+  jobCount: number;
+  avgProcessingMs: number;
+  maxProcessingMs: number;
 };
 
 export type TopFailure = {

@@ -71,7 +71,7 @@ export async function analyticsRoutes(app: FastifyInstance, ctx: AppContext): Pr
   );
 
   app.get<{ Params: Params; Querystring: Query }>(
-    "/api/instances/:instanceId/analytics/slowest-jobs",
+    "/api/instances/:instanceId/analytics/slowest-job-types",
     async (req, reply) => {
       if (req.params.instanceId !== ctx.instanceId) {
         return reply.code(404).send({ error: "instance_not_found" });
@@ -87,44 +87,39 @@ export async function analyticsRoutes(app: FastifyInstance, ctx: AppContext): Pr
 
       const stmt = ctx.db.$client.prepare(`
         select
-          job_id,
           queue_name,
           job_name,
-          status,
-          processing_time_ms,
-          wait_time_ms,
-          finished_on
+          count(*) as job_count,
+          avg(processing_time_ms) as avg_processing_ms,
+          max(processing_time_ms) as max_processing_ms
         from jobs
         where instance_id = ?
           and finished_on >= ?
           ${queueClause}
           and status in ('completed', 'failed')
           and processing_time_ms is not null
-        order by processing_time_ms desc
+        group by queue_name, job_name
+        order by avg_processing_ms desc
         limit 10
       `);
 
       const rows = stmt.all(...params) as {
-        job_id: string;
         queue_name: string;
         job_name: string;
-        status: string;
-        processing_time_ms: number;
-        wait_time_ms: number | null;
-        finished_on: number;
+        job_count: number;
+        avg_processing_ms: number;
+        max_processing_ms: number;
       }[];
 
       return {
         instanceId: ctx.instanceId,
         rangeDays: days,
-        jobs: rows.map((r) => ({
-          jobId: r.job_id,
+        jobTypes: rows.map((r) => ({
           queueName: r.queue_name,
           jobName: r.job_name,
-          status: r.status,
-          processingTimeMs: r.processing_time_ms,
-          waitTimeMs: r.wait_time_ms,
-          finishedOn: r.finished_on,
+          jobCount: r.job_count,
+          avgProcessingMs: Math.round(r.avg_processing_ms),
+          maxProcessingMs: r.max_processing_ms,
         })),
       };
     },
