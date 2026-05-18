@@ -74,58 +74,48 @@ We are building **v0.1** per spec §19.
 
 The implementation order is fixed in spec §25.
 
-### Verified working
+### Running it
+
+Six scripts. That's it.
 
 ```bash
-# one-time setup
+# one-time
 pnpm install
-pnpm db:generate              # generates SQL migration from schema
-pnpm typecheck                # checks server + web (two tsconfigs)
+pnpm db:generate    # regenerate Drizzle migrations after schema changes
 
-# production-mode run (UI + API in one process)
-pnpm build                    # builds web bundle + server bundle, copies migrations
-node dist/cli.js --redis redis://localhost:6379 --auto-discover
-# Then open http://127.0.0.1:4545
+# dev (the only thing you usually need):
+#   - brings up an isolated Redis container on :6390
+#   - runs Vite on :5173 with HMR
+#   - runs Fastify on :4547 (proxies non-/api to Vite)
+#   - runs a continuous test BullMQ workload that produces + consumes jobs
+#     across 5 queues so the UI is never empty
+pnpm dev
+# Open http://localhost:4547
 
-# dev mode with HMR (two terminals)
-pnpm dev                      # Fastify, proxies non-/api to Vite
-pnpm dev:web                  # Vite on :5173
-# Open http://127.0.0.1:4545 — the proxy hides Vite from the user
+pnpm dev:stop       # tear down the dev Redis container + volume
+
+# prod
+pnpm build          # web bundle + server bundle + copy migrations
+pnpm start          # = node dist/cli.js
+
+pnpm typecheck      # server + web tsconfigs
 
 # manual smoke
-curl http://127.0.0.1:4545/api/health
-curl http://127.0.0.1:4545/api/instances/default/queues
-curl "http://127.0.0.1:4545/api/instances/default/queues/email/events?limit=20"
+curl http://localhost:4547/api/health
+curl http://localhost:4547/api/instances/default/queues
+curl "http://localhost:4547/api/instances/default/queues/email/events?limit=20"
 ```
 
-### Seed and worker scripts for local testing
+### Test workload
 
-- `scripts/seed.ts` — pushes a handful of jobs into queue `email`.
-- `scripts/worker.ts` — processes the `email` queue; intentionally fails `send-receipt` jobs.
+`scripts/dev-workload.ts` runs a long-running producer + workers across 5 realistic queues (`email`, `imports`, `invoices`, `webhooks`, `ai-pipeline`). Weighted random scheduling, retry policies, delayed jobs, a tuned mix of distinct failure messages so error grouping has something to cluster, periodic burst spikes, sine-wave traffic, long-running active jobs so the active count never sits at zero. Started automatically by `pnpm dev`.
 
-Run with `pnpm tsx scripts/seed.ts` and `pnpm tsx scripts/worker.ts`.
+Tunables (env vars):
 
-### Full demo workload (recommended for exploring features)
+- `DEMO_INTERVAL=500` — more aggressive job rate
+- `DEMO_CONCURRENCY=10` — wider workers
 
-`scripts/demo/index.ts` runs a long-running producer + workers across 5 realistic queues (`email`, `imports`, `invoices`, `webhooks`, `ai-pipeline`) with varied job names, weighted random scheduling, retry policies, delayed jobs, and a tuned mix of distinct failure messages so error grouping has something to cluster.
-
-It uses an **isolated dev Redis on port 6390** (separate from the user's existing local Redis on 6379) defined in `docker/docker-compose.dev.yml`.
-
-Three commands, three terminals:
-
-```bash
-pnpm demo:up           # start the isolated Redis container (port 6390)
-pnpm demo:traffic      # long-running producer + workers (Ctrl+C to stop)
-pnpm demo:pulseboard   # Pulseboard pointed at the dev Redis (port 4547)
-# Open http://127.0.0.1:4547
-
-pnpm demo:down         # tear down the Redis container + volume
-```
-
-Tunables:
-
-- `DEMO_INTERVAL=500 pnpm demo:traffic` — more aggressive job rate
-- `DEMO_CONCURRENCY=10 pnpm demo:traffic` — wider workers
+`scripts/seed.ts` and `scripts/worker.ts` are smaller one-shot helpers if you want to push jobs manually without the full workload running.
 
 ---
 
@@ -283,8 +273,8 @@ npx pulseboard --redis redis://localhost:6379
 - BullMQ Cluster support is an explicit v1 non-goal (spec §5). Don't add it.
 - Concrete retention numbers (spec §14) are starting points, not commitments — easy to tune.
 - Operational guarantee thresholds (max Redis RPS, max DB growth/day) — measure once the indexer is running; don't try to predict now.
-- **The user's default Redis (localhost:6379) hosts unrelated queues** (`clio-sync`, `clio-token-refresh`) from another project. Auto-discovery against it will surface them. **For exercising Pulseboard, use `pnpm demo:up` to bring up an isolated Redis on port 6390 instead** — the demo workload populates 5 realistic queues with mixed success/failure so all the UI surfaces have something to show.
-- **`resolveWebRoot()` requires BOTH `index.html` AND an `assets/` subdirectory.** Earlier it just checked for the folder, which made it pick up `src/web/` (the source) when running via `tsx src/cli.ts`. The browser then got raw `.tsx` files served as `application/octet-stream` and refused to execute them. Now the resolver only accepts directories that look like Vite's built output. `pnpm demo:pulseboard` therefore runs `pnpm build:web` first.
+- **The dev Redis is isolated on :6390, not :6379**, so it doesn't collide with whatever the user already has running locally. `pnpm dev` brings it up via Docker; data lives in a named volume that `pnpm dev:stop` blows away.
+- **`resolveWebRoot()` requires BOTH `index.html` AND an `assets/` subdirectory.** Earlier it just checked for the folder, which made it pick up `src/web/` (the source) when running via `tsx src/cli.ts`. The browser then got raw `.tsx` files served as `application/octet-stream` and refused to execute them. Now the resolver only accepts directories that look like Vite's built output. In dev mode this doesn't matter because we use Vite via the PULSEBOARD_DEV_PROXY route; in prod it picks up `dist/web/`.
 - **Payload + return-value storage defaults differ from spec §14.** Spec says off-by-default for safety; we ship on-by-default for usefulness. Mitigations: (a) the redaction layer masks common secret-shaped keys (`password`, `secret`, `token`, etc. and any key whose name *contains* one of them — case-insensitive), and (b) the CLI prints a startup warning when bound to a non-localhost interface with payloads enabled. If you operate in genuinely sensitive environments, set `PULSEBOARD_STORE_PAYLOADS=false` and `PULSEBOARD_STORE_RETURN_VALUES=false`.
 - **Redaction is key-contains, not key-equals.** `apiKey`, `myApiKey`, `payload.apiKey` all get masked because they contain `apikey`. False positives are possible (a benign field named `token_used_at_step`) — accept this for v1; smarter rules can come later.
 - **Error hash v1 uses `normalized(reason) + first user-code frame` only.** An earlier version hashed top-5 frames from `stacktrace.join("\n")`, which was unstable across retries (BullMQ appends each attempt's stack to the array, so top-N frames shifted). Result was over-fragmentation — same job creating 3-4 distinct error_groups. Source-map-aware multi-frame hashing is a v0.3+ improvement; see `src/indexer/error-hash.ts`.

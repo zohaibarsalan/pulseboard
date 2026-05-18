@@ -16,20 +16,12 @@
     "README.md"
   ],
   "scripts": {
-    "dev": "concurrently -k -n server,web -c blue,magenta \"pnpm dev:server\" \"pnpm dev:web\"",
-    "dev:server": "PULSEBOARD_DEV_PROXY=http://localhost:5173 tsx watch src/cli.ts --redis ${REDIS_URL:-redis://localhost:6379}",
-    "dev:web": "vite",
-    "build": "pnpm build:web && pnpm build:server",
-    "build:server": "tsc -p tsconfig.build.json && node -e \"import('node:fs').then(fs=>fs.cpSync('src/db/migrations','dist/db/migrations',{recursive:true}))\"",
-    "build:web": "vite build",
+    "dev": "docker compose -f docker/docker-compose.dev.yml up -d --wait && concurrently -k -n web,api,jobs -c magenta,blue,yellow \"vite\" \"PULSEBOARD_DEV_PROXY=http://localhost:5173 tsx watch src/cli.ts --redis redis://localhost:6390 --port 4547 --db .pulseboard/dev.db --auto-discover\" \"REDIS_URL=redis://localhost:6390 tsx scripts/dev-workload.ts\"",
+    "dev:stop": "docker compose -f docker/docker-compose.dev.yml down -v",
+    "build": "vite build && tsc -p tsconfig.build.json && node -e \"import('node:fs').then(fs=>fs.cpSync('src/db/migrations','dist/db/migrations',{recursive:true}))\"",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.web.json --noEmit",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx src/db/migrate.ts",
     "start": "node dist/cli.js",
-    "demo:up": "docker compose -f docker/docker-compose.dev.yml up -d",
-    "demo:down": "docker compose -f docker/docker-compose.dev.yml down -v",
-    "demo:traffic": "REDIS_URL=redis://localhost:6390 tsx scripts/demo/index.ts",
-    "demo:pulseboard": "pnpm build:web && tsx src/cli.ts --redis redis://localhost:6390 --port 4547 --db .pulseboard/demo.db --auto-discover"
+    "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
     "@fastify/cors": "^9.0.1",

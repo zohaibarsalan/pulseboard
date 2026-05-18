@@ -107,7 +107,11 @@ async function start(opts: ConfigOverrides): Promise<void> {
 
   await app.listen({ host: config.host, port: config.port });
 
-  console.log(pc.green(`\n  Pulseboard is running at http://${config.host}:${config.port}\n`));
+  // Print "localhost" instead of "127.0.0.1" / "0.0.0.0" — friendlier and
+  // pasteable into a browser. The bind address stays as configured.
+  const displayHost =
+    config.host === "127.0.0.1" || config.host === "0.0.0.0" || config.host === "::" ? "localhost" : config.host;
+  console.log(pc.green(`\n  Pulseboard is running at http://${displayHost}:${config.port}\n`));
   console.log(pc.dim(`  Instance: ${ctx.instanceId}`));
   console.log(pc.dim(`  Queues:   ${registry.list().map((q) => q.name).join(", ") || "(none registered)"}`));
 }
