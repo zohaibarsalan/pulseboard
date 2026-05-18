@@ -71,10 +71,12 @@ v0.1 complete. Now building **v0.2** (analytics + command surface) per spec §19
 | Search UI on Queues + QueueDetail | done | Wired the previously-disabled inputs. 200ms debounce. Parsed-filter chips render under the input. QueueDetail auto-scopes with `queue:<name>` prefix. Click row → JobDrawer. |
 | Activity range selector (24h/7d/30d) | done | Segmented control on the chart header. Uses the new `bucket=hour\|day` param. Choice persists per page in localStorage. QueueDetail defaults to 24h, Queues to 7d. |
 | Hourly activity bucket | done | `?bucket=hour` returns 1h buckets, useful for 24h zoom. Auto-selected for `days<=2` if not specified. |
-| Analytics page | done | KPIs (throughput, error rate, avg processing, avg wait), activity chart, slowest jobs table, top failures table |
+| Analytics page | done | Redesigned: 4 KPIs with sparklines, stacked area throughput chart, processing time bar chart, ranked slowest jobs + top failures lists |
 | `/api/instances/:id/analytics/performance` | done | Returns avg/p95 processing time and avg wait time for the period |
 | `/api/instances/:id/analytics/slowest-jobs` | done | Returns top 10 slowest jobs by processing time |
 | `/api/instances/:id/analytics/top-failures` | done | Returns top 10 job types by failure count |
+| `/api/instances/:id/analytics/processing-time` | done | Hourly/daily buckets of avg processing + wait time for the chart |
+| Historical data seed script | done | `scripts/seed-history.ts` generates 30 days of realistic job data in SQLite; runs automatically on `pnpm dev` |
 
 The implementation order is fixed in spec §25.
 
@@ -93,6 +95,7 @@ pnpm db:generate    # regenerate Drizzle migrations after schema changes
 #   - runs Fastify on :4547 (proxies non-/api to Vite)
 #   - runs a continuous test BullMQ workload that produces + consumes jobs
 #     across 5 queues so the UI is never empty
+#   - seeds 30 days of historical job data in SQLite (first run only)
 pnpm dev
 # Open http://localhost:4547
 

@@ -4,6 +4,7 @@ import type { AppContext } from "../context.js";
 type Params = { instanceId: string };
 type Query = { days?: string; queue?: string };
 
+const HOUR_MS = 3_600_000;
 const DAY_MS = 86_400_000;
 
 export async function analyticsRoutes(app: FastifyInstance, ctx: AppContext): Promise<void> {
@@ -176,6 +177,74 @@ export async function analyticsRoutes(app: FastifyInstance, ctx: AppContext): Pr
           failureCount: r.failure_count,
           lastFailure: r.last_failure,
         })),
+      };
+    },
+  );
+
+  app.get<{ Params: Params; Querystring: Query & { bucket?: "hour" | "day" } }>(
+    "/api/instances/:instanceId/analytics/processing-time",
+    async (req, reply) => {
+      if (req.params.instanceId !== ctx.instanceId) {
+        return reply.code(404).send({ error: "instance_not_found" });
+      }
+
+      const days = Math.min(30, Math.max(1, Number(req.query.days) || 1));
+      const since = Date.now() - days * DAY_MS;
+      const queueFilter = req.query.queue;
+
+      const bucketKind: "hour" | "day" = req.query.bucket ?? (days <= 2 ? "hour" : "day");
+      const bucketSize = bucketKind === "hour" ? HOUR_MS : DAY_MS;
+
+      const params: (string | number)[] = [ctx.instanceId, since];
+      const queueClause = queueFilter ? "and queue_name = ?" : "";
+      if (queueFilter) params.push(queueFilter);
+
+      const stmt = ctx.db.$client.prepare(`
+        select
+          (finished_on / ${bucketSize}) * ${bucketSize} as bucket,
+          avg(processing_time_ms) as avg_processing,
+          avg(wait_time_ms) as avg_wait,
+          count(*) as job_count
+        from jobs
+        where instance_id = ?
+          and finished_on >= ?
+          ${queueClause}
+          and status in ('completed', 'failed')
+          and processing_time_ms is not null
+        group by bucket
+        order by bucket asc
+      `);
+
+      const rows = stmt.all(...params) as {
+        bucket: number;
+        avg_processing: number | null;
+        avg_wait: number | null;
+        job_count: number;
+      }[];
+
+      const byBucket = new Map<number, { avgProcessingMs: number; avgWaitMs: number; jobCount: number }>();
+      const start = Math.floor(since / bucketSize) * bucketSize;
+      const end = Math.floor(Date.now() / bucketSize) * bucketSize;
+      for (let b = start; b <= end; b += bucketSize) {
+        byBucket.set(b, { avgProcessingMs: 0, avgWaitMs: 0, jobCount: 0 });
+      }
+      for (const row of rows) {
+        byBucket.set(row.bucket, {
+          avgProcessingMs: Math.round(row.avg_processing ?? 0),
+          avgWaitMs: Math.round(row.avg_wait ?? 0),
+          jobCount: row.job_count,
+        });
+      }
+
+      const buckets = Array.from(byBucket.entries())
+        .map(([ts, data]) => ({ ts, ...data }))
+        .sort((a, b) => a.ts - b.ts);
+
+      return {
+        instanceId: ctx.instanceId,
+        bucketSizeSeconds: bucketSize / 1000,
+        rangeDays: days,
+        buckets,
       };
     },
   );

@@ -3,7 +3,7 @@ import { useCommandPalette } from "../lib/useCommandPalette.js";
 
 type Props = {
   title: string;
-  subtitle?: string;
+  subtitle?: React.ReactNode;
 };
 
 export function Topbar({ title, subtitle }: Props): React.ReactElement {
@@ -11,10 +11,14 @@ export function Topbar({ title, subtitle }: Props): React.ReactElement {
 
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-bg px-6">
-      <div className="flex items-baseline gap-3">
+      <div className="flex items-center gap-3">
         <h1 className="text-lg font-medium tracking-tight">{title}</h1>
         {subtitle && (
-          <span className="font-mono text-xs text-fg-subtle">{subtitle}</span>
+          typeof subtitle === "string" ? (
+            <span className="font-mono text-xs text-fg-subtle">{subtitle}</span>
+          ) : (
+            subtitle
+          )
         )}
       </div>
       <div className="flex items-center gap-2">

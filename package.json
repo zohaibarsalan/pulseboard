@@ -16,8 +16,9 @@
     "README.md"
   ],
   "scripts": {
-    "dev": "docker compose -f docker/docker-compose.dev.yml up -d --wait && concurrently -k -n web,api,jobs -c magenta,blue,yellow \"vite\" \"PULSEBOARD_DEV_PROXY=http://localhost:5173 tsx watch src/cli.ts --redis redis://localhost:6390 --port 4547 --db .pulseboard/dev.db --auto-discover\" \"REDIS_URL=redis://localhost:6390 tsx scripts/dev-workload.ts\"",
+    "dev": "docker compose -f docker/docker-compose.dev.yml up -d --wait && (sleep 3 && tsx scripts/seed-history.ts &) && concurrently -k -n web,api,jobs -c magenta,blue,yellow \"vite\" \"PULSEBOARD_DEV_PROXY=http://localhost:5173 tsx watch src/cli.ts --redis redis://localhost:6390 --port 4547 --db .pulseboard/dev.db --auto-discover\" \"REDIS_URL=redis://localhost:6390 tsx scripts/dev-workload.ts\"",
     "dev:stop": "docker compose -f docker/docker-compose.dev.yml down -v",
+    "dev:seed": "tsx scripts/seed-history.ts",
     "build": "vite build && tsc -p tsconfig.build.json && node -e \"import('node:fs').then(fs=>fs.cpSync('src/db/migrations','dist/db/migrations',{recursive:true}))\"",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.web.json --noEmit",
     "start": "node dist/cli.js",

@@ -195,6 +195,12 @@ export const api = {
       `/api/instances/${instanceId}/analytics/top-failures?${params.toString()}`,
     );
   },
+  analyticsProcessingTime: (instanceId: string, days = 1, queue?: string, bucket?: "hour" | "day") => {
+    const params = new URLSearchParams({ days: String(days) });
+    if (queue) params.set("queue", queue);
+    if (bucket) params.set("bucket", bucket);
+    return get<ProcessingTimeData>(`/api/instances/${instanceId}/analytics/processing-time?${params.toString()}`);
+  },
 };
 
 export type PerformanceStats = {
@@ -221,6 +227,20 @@ export type TopFailure = {
   jobName: string;
   failureCount: number;
   lastFailure: number;
+};
+
+export type ProcessingTimeBucket = {
+  ts: number;
+  avgProcessingMs: number;
+  avgWaitMs: number;
+  jobCount: number;
+};
+
+export type ProcessingTimeData = {
+  instanceId: string;
+  bucketSizeSeconds: number;
+  rangeDays: number;
+  buckets: ProcessingTimeBucket[];
 };
 
 export type ParsedQuerySerialized = {
