@@ -194,6 +194,7 @@ export function ActivityChart({ data, isLoading, bucket = "day", rangeControl }:
             barCount={bars.length}
             bar={bars[hover]!}
             bucket={bucket}
+            max={max}
           />
         )}
       </div>
@@ -206,24 +207,41 @@ function TooltipOverlay({
   barCount,
   bar,
   bucket,
+  max,
 }: {
   index: number;
   barCount: number;
   bar: { ts: number; completed: number; failed: number; total: number };
   bucket: "hour" | "day";
+  max: number;
 }): React.ReactElement {
-  // Position as % of width so it tracks the bar regardless of viewport
+  // Position as % of width so it tracks the bar regardless of viewport.
+  // Position Y in pixels — viewBox height (140) matches the rendered height
+  // because the container is fixed at h-[140px], so SVG coords are pixels.
   const xPct = ((index + 0.5) / barCount) * 100;
+  const totalH = (bar.total / max) * PLOT_H;
+  const minH = bar.total > 0 ? 3 : 0;
+  const visibleH = Math.max(totalH, minH);
+  const barTopY = PADDING_T + (PLOT_H - visibleH);
+
   const ts = new Date(bar.ts);
   const label =
     bucket === "hour"
       ? `${ts.toLocaleDateString([], { month: "short", day: "numeric" })} · ${ts.getHours().toString().padStart(2, "0")}:00`
       : ts.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
 
+  // Flip the tooltip below the bar if the bar is near the top of the chart
+  // (otherwise it gets clipped by the chart's own header).
+  const flipBelow = barTopY < 32;
+
   return (
     <div
-      className="pointer-events-none absolute -top-2 z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md border border-border bg-bg px-2 py-1.5 text-2xs shadow-md"
-      style={{ left: `${xPct}%` }}
+      className="pointer-events-none absolute z-10 whitespace-nowrap rounded-md border border-border bg-bg px-2 py-1.5 text-2xs shadow-md"
+      style={{
+        left: `${xPct}%`,
+        top: `${flipBelow ? barTopY + (bar.total > 0 ? visibleH : 0) + 6 : barTopY - 6}px`,
+        transform: flipBelow ? "translate(-50%, 0)" : "translate(-50%, -100%)",
+      }}
     >
       <div className="font-medium text-fg">{label}</div>
       <div className="mt-0.5 flex items-center gap-1.5">

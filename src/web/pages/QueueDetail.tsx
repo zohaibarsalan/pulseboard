@@ -1,10 +1,10 @@
-import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { ArrowLeft, Pause, Play } from "lucide-react";
 import { Topbar } from "../components/Topbar.js";
 import { ActivityChart } from "../components/ActivityChart.js";
-import { RangeSelector, rangeConfig, type Range } from "../components/RangeSelector.js";
+import { RangeSelector, RANGES, rangeConfig, type Range } from "../components/RangeSelector.js";
 import { StatusPill, statusTone } from "../components/StatusPill.js";
 import { JobDrawer } from "../components/JobDrawer.js";
 import { SearchInput } from "../components/SearchInput.js";
@@ -47,11 +47,23 @@ export function QueueDetailPage({ queueName }: Props): React.ReactElement {
     refetchInterval: liveStatus === "live" ? false : 3_000,
   });
 
-  const { data: activity, isLoading: activityLoading } = useQuery({
+  const { data: activity } = useQuery({
     queryKey: ["activity", INSTANCE_ID, queueName, cfg.days, cfg.bucket],
     queryFn: () => api.activity(INSTANCE_ID, cfg.days, queueName, cfg.bucket),
     refetchInterval: liveStatus === "live" ? false : 15_000,
+    placeholderData: keepPreviousData,
   });
+
+  // Warm the other ranges so flipping the selector is a cache hit.
+  useEffect(() => {
+    for (const r of RANGES) {
+      void queryClient.prefetchQuery({
+        queryKey: ["activity", INSTANCE_ID, queueName, r.days, r.bucket],
+        queryFn: () => api.activity(INSTANCE_ID, r.days, queueName, r.bucket),
+        staleTime: 15_000,
+      });
+    }
+  }, [queryClient, queueName]);
 
   const queue = queues?.queues.find((q) => q.name === queueName);
   const searching = search.trim().length > 0;
@@ -117,7 +129,6 @@ export function QueueDetailPage({ queueName }: Props): React.ReactElement {
 
           <ActivityChart
             data={activity}
-            isLoading={activityLoading}
             bucket={cfg.bucket}
             rangeControl={<RangeSelector value={range} onChange={updateRange} />}
           />

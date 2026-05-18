@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import {
   AlertTriangle,
@@ -13,7 +13,7 @@ import { Topbar } from "../components/Topbar.js";
 import { CountPill } from "../components/CountPill.js";
 import { KpiCard } from "../components/KpiCard.js";
 import { ActivityChart } from "../components/ActivityChart.js";
-import { RangeSelector, rangeConfig, type Range } from "../components/RangeSelector.js";
+import { RangeSelector, RANGES, rangeConfig, type Range } from "../components/RangeSelector.js";
 import { SearchInput } from "../components/SearchInput.js";
 import { SearchResults } from "../components/SearchResults.js";
 import { api, type QueueSummary } from "../lib/api.js";
@@ -22,6 +22,11 @@ import { computeKpis, totalsByQueue } from "../lib/kpi.js";
 
 const INSTANCE_ID = "default";
 const RANGE_KEY = "pb-queues-range";
+
+// KPI cards always reflect a stable window so they don't shift when the user
+// toggles the chart range. 7 days is the "feels like the recent past" default.
+const KPI_DAYS = 7;
+const KPI_BUCKET: "day" = "day";
 
 function loadRange(): Range {
   const stored = typeof localStorage !== "undefined" ? localStorage.getItem(RANGE_KEY) : null;
@@ -32,6 +37,7 @@ export function QueuesPage(): React.ReactElement {
   const [range, setRange] = useState<Range>(loadRange);
   const [search, setSearch] = useState("");
   const cfg = rangeConfig(range);
+  const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["queues", INSTANCE_ID],
@@ -39,18 +45,43 @@ export function QueuesPage(): React.ReactElement {
     refetchInterval: 3_000,
   });
 
-  const { data: activity, isLoading: activityLoading } = useQuery({
+  // Chart activity — varies with selected range.
+  // placeholderData keeps the previous bars on screen during the cold-cache
+  // first switch; the prefetch effect below warms the other ranges so
+  // subsequent switches hit cache and feel instant.
+  const { data: activity } = useQuery({
     queryKey: ["activity", INSTANCE_ID, cfg.days, cfg.bucket],
     queryFn: () => api.activity(INSTANCE_ID, cfg.days, undefined, cfg.bucket),
     refetchInterval: 15_000,
+    placeholderData: keepPreviousData,
   });
+
+  // KPI activity — fixed window, independent of chart range, so the cards
+  // don't recompute when the user toggles 24h/7d/30d.
+  const { data: kpiActivity } = useQuery({
+    queryKey: ["activity", INSTANCE_ID, KPI_DAYS, KPI_BUCKET],
+    queryFn: () => api.activity(INSTANCE_ID, KPI_DAYS, undefined, KPI_BUCKET),
+    refetchInterval: 30_000,
+  });
+
+  // Background-warm the other two ranges on mount so flipping the selector
+  // is a cache hit. ~3 small JSON payloads, no perceptible cost.
+  useEffect(() => {
+    for (const r of RANGES) {
+      void queryClient.prefetchQuery({
+        queryKey: ["activity", INSTANCE_ID, r.days, r.bucket],
+        queryFn: () => api.activity(INSTANCE_ID, r.days, undefined, r.bucket),
+        staleTime: 15_000,
+      });
+    }
+  }, [queryClient]);
 
   const updateRange = (next: Range): void => {
     setRange(next);
     localStorage.setItem(RANGE_KEY, next);
   };
 
-  const kpis = computeKpis(activity);
+  const kpis = computeKpis(kpiActivity);
   const queueTotals = totalsByQueue(data?.queues ?? []);
   const searching = search.trim().length > 0;
 
@@ -64,7 +95,7 @@ export function QueuesPage(): React.ReactElement {
             <KpiCard
               label="Throughput"
               value={kpis.throughputPerHour.toLocaleString()}
-              subtext={`jobs/hour avg · ${cfg.days === 1 ? "last 24h" : `last ${cfg.days}d`}`}
+              subtext={`jobs/hour avg · last ${KPI_DAYS}d`}
               icon={TrendingUp}
               spark={kpis.completedSpark}
               sparkTone="success"
@@ -77,7 +108,7 @@ export function QueuesPage(): React.ReactElement {
             <KpiCard
               label="Error rate"
               value={`${kpis.errorRate.toFixed(1)}%`}
-              subtext={`${formatNumber(kpis.failedTotal)} failed of ${formatNumber(kpis.completedTotal + kpis.failedTotal)}`}
+              subtext={`${formatNumber(kpis.failedTotal)} failed of ${formatNumber(kpis.completedTotal + kpis.failedTotal)} · last ${KPI_DAYS}d`}
               icon={AlertTriangle}
               spark={kpis.failedSpark}
               sparkTone="danger"
@@ -103,7 +134,6 @@ export function QueuesPage(): React.ReactElement {
 
           <ActivityChart
             data={activity}
-            isLoading={activityLoading}
             bucket={cfg.bucket}
             rangeControl={<RangeSelector value={range} onChange={updateRange} />}
           />
