@@ -6,6 +6,7 @@ import { CommandPaletteContext } from "./lib/useCommandPalette.js";
 import { QueuesPage } from "./pages/Queues.js";
 import { QueueDetailPage } from "./pages/QueueDetail.js";
 import { FailedJobsPage } from "./pages/FailedJobs.js";
+import { AnalyticsPage } from "./pages/Analytics.js";
 import { PlaceholderPage } from "./pages/Placeholder.js";
 
 export function App(): React.ReactElement {
@@ -44,12 +45,7 @@ export function App(): React.ReactElement {
                 description="Interactive workflow graphs — coming in v0.4."
               />
             </Route>
-            <Route path="/analytics">
-              <PlaceholderPage
-                title="Analytics"
-                description="Throughput, error rate, processing time — coming in v0.2."
-              />
-            </Route>
+            <Route path="/analytics" component={AnalyticsPage} />
             <Route path="/settings">
               <PlaceholderPage
                 title="Settings"

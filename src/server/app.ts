@@ -16,6 +16,7 @@ import { liveRoute } from "./routes/live.js";
 import { actionsRoute } from "./routes/actions.js";
 import { debugContextRoute } from "./routes/debug-context.js";
 import { searchRoute } from "./routes/search.js";
+import { analyticsRoutes } from "./routes/analytics.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -50,6 +51,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
   await actionsRoute(app, ctx);
   await debugContextRoute(app, ctx);
   await searchRoute(app, ctx);
+  await analyticsRoutes(app, ctx);
 
   const devProxyTarget = process.env.PULSEBOARD_DEV_PROXY;
   if (devProxyTarget) {

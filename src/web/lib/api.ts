@@ -175,6 +175,52 @@ export const api = {
     const params = new URLSearchParams({ q, limit: String(limit) });
     return get<SearchResponse>(`/api/instances/${instanceId}/jobs?${params.toString()}`);
   },
+
+  analyticsPerformance: (instanceId: string, days = 7, queue?: string) => {
+    const params = new URLSearchParams({ days: String(days) });
+    if (queue) params.set("queue", queue);
+    return get<PerformanceStats>(`/api/instances/${instanceId}/analytics/performance?${params.toString()}`);
+  },
+  analyticsSlowestJobs: (instanceId: string, days = 7, queue?: string) => {
+    const params = new URLSearchParams({ days: String(days) });
+    if (queue) params.set("queue", queue);
+    return get<{ instanceId: string; rangeDays: number; jobs: SlowestJob[] }>(
+      `/api/instances/${instanceId}/analytics/slowest-jobs?${params.toString()}`,
+    );
+  },
+  analyticsTopFailures: (instanceId: string, days = 7, queue?: string) => {
+    const params = new URLSearchParams({ days: String(days) });
+    if (queue) params.set("queue", queue);
+    return get<{ instanceId: string; rangeDays: number; failures: TopFailure[] }>(
+      `/api/instances/${instanceId}/analytics/top-failures?${params.toString()}`,
+    );
+  },
+};
+
+export type PerformanceStats = {
+  instanceId: string;
+  rangeDays: number;
+  totalJobs: number;
+  avgProcessingTimeMs: number | null;
+  avgWaitTimeMs: number | null;
+  p95ProcessingTimeMs: number | null;
+};
+
+export type SlowestJob = {
+  jobId: string;
+  queueName: string;
+  jobName: string;
+  status: string;
+  processingTimeMs: number;
+  waitTimeMs: number | null;
+  finishedOn: number;
+};
+
+export type TopFailure = {
+  queueName: string;
+  jobName: string;
+  failureCount: number;
+  lastFailure: number;
 };
 
 export type ParsedQuerySerialized = {
