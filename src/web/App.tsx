@@ -7,6 +7,7 @@ import { QueuesPage } from "./pages/Queues.js";
 import { QueueDetailPage } from "./pages/QueueDetail.js";
 import { FailedJobsPage } from "./pages/FailedJobs.js";
 import { AnalyticsPage } from "./pages/Analytics.js";
+import { SettingsPage } from "./pages/Settings.js";
 import { PlaceholderPage } from "./pages/Placeholder.js";
 
 export function App(): React.ReactElement {
@@ -46,12 +47,7 @@ export function App(): React.ReactElement {
               />
             </Route>
             <Route path="/analytics" component={AnalyticsPage} />
-            <Route path="/settings">
-              <PlaceholderPage
-                title="Settings"
-                description="Connection, retention, redaction, theme — coming in v0.1 polish."
-              />
-            </Route>
+            <Route path="/settings" component={SettingsPage} />
             <Route>
               <PlaceholderPage title="Not found" description="That route doesn't exist." />
             </Route>

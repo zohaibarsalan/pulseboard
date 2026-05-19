@@ -38,7 +38,8 @@ v0.1 complete. Now building **v0.2** (analytics + command surface) per spec §19
 | Vite + React + Tailwind scaffold | done | Tailwind 3 with custom Vercel/Linear tokens; class-based dark mode; Geist Variable + Geist Mono Variable via `@fontsource-variable` |
 | App shell (sidebar + topbar) | done | 240px sidebar (Queues, Failed Jobs, Flows, Analytics, Settings); topbar with connection badge + last-indexed indicator + theme toggle |
 | Queues page | done | Operational dashboard: status summary bar, queue list with health dots, filter buttons (all/has-failures/has-backlog/paused), global search |
-| Placeholder pages | done | Failed Jobs / Flows / Analytics / Settings / queue detail all stubbed with "coming soon" |
+| Placeholder pages | done | Only Flows remains as placeholder (v0.4); all other pages implemented |
+| Settings page | done | Connection info, instance details, read-only mode indicator, system health status cards |
 | Fastify serves UI | done | `@fastify/static` for assets; SPA fallback via setNotFoundHandler reading index.html into memory at boot; `@fastify/http-proxy` to Vite in dev when `PULSEBOARD_DEV_PROXY` env is set |
 | End-to-end smoke test | done | Built binary serves UI + API + indexer; verified with worker processing 2 successes + 1 failure |
 | FTS5 virtual table for failure text | **deferred** | Drizzle has no FTS5 helper; needs hand-written SQL migration before search lands |
