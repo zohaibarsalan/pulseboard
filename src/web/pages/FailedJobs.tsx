@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertCircle, ArrowLeft, ChevronRight } from "lucide-react";
+import { AlertCircle, AlertTriangle, ArrowLeft, ChevronRight, RefreshCw } from "lucide-react";
 import { Topbar } from "../components/Topbar.js";
 import { StatusPill, statusTone } from "../components/StatusPill.js";
 import { JobDrawer } from "../components/JobDrawer.js";
 import { api, type ErrorGroup, type IndexedJob } from "../lib/api.js";
 import { formatRelativeTime, formatNumber } from "../lib/format.js";
+import { cn } from "../lib/cn.js";
 
 const INSTANCE_ID = "default";
 
@@ -54,7 +55,7 @@ export function FailedJobsPage(): React.ReactElement {
 }
 
 function GroupsList({ onSelect }: { onSelect: (group: ErrorGroup) => void }): React.ReactElement {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch, isFetching } = useQuery({
     queryKey: ["error-groups", INSTANCE_ID],
     queryFn: () => api.errorGroups(INSTANCE_ID),
     refetchInterval: 5_000,
@@ -76,15 +77,53 @@ function GroupsList({ onSelect }: { onSelect: (group: ErrorGroup) => void }): Re
   }
 
   const total = data?.groups.reduce((acc, g) => acc + g.count, 0) ?? 0;
+  const mostRecent = data?.groups && data.groups.length > 0
+    ? data.groups.reduce((latest, g) => g.lastSeenAt > latest.lastSeenAt ? g : latest)
+    : null;
 
   return (
     <>
+      {/* Summary bar */}
+      <div className="flex items-center justify-between rounded-lg border border-danger/30 bg-danger/5 px-4 py-3">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-danger" />
+            <span className="text-sm font-semibold text-danger">{formatNumber(total)}</span>
+            <span className="text-sm text-fg-muted">total failures</span>
+          </div>
+          <span className="text-fg-subtle">·</span>
+          <div className="text-sm text-fg-muted">
+            <span className="font-medium">{data?.groups.length}</span> distinct error types
+          </div>
+          {mostRecent && (
+            <>
+              <span className="text-fg-subtle">·</span>
+              <div className="text-sm text-fg-muted">
+                last failure {formatRelativeTime(mostRecent.lastSeenAt)}
+              </div>
+            </>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          disabled={isFetching}
+          className={cn(
+            "inline-flex items-center gap-1.5 text-xs text-fg-muted hover:text-fg",
+            isFetching && "cursor-wait opacity-50"
+          )}
+        >
+          <RefreshCw className={cn("h-3 w-3", isFetching && "animate-spin")} />
+          Refresh
+        </button>
+      </div>
+
       <div className="flex items-baseline justify-between">
         <h2 className="text-xs font-medium uppercase tracking-wider text-fg-subtle">
-          {data?.groups.length ?? 0} error group{data?.groups.length === 1 ? "" : "s"}
+          Error groups
         </h2>
         <span className="text-2xs text-fg-subtle">
-          {formatNumber(total)} total failures · click a row to drill in
+          click a row to see affected jobs
         </span>
       </div>
 

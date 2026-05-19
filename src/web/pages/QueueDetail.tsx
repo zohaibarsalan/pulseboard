@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { ArrowLeft, Pause, Play } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Clock, Hourglass, Pause, Play, TrendingUp, Zap } from "lucide-react";
 import { Topbar } from "../components/Topbar.js";
 import { ActivityChart } from "../components/ActivityChart.js";
 import { RangeSelector, RANGES, rangeConfig, type Range } from "../components/RangeSelector.js";
@@ -9,8 +9,8 @@ import { StatusPill, statusTone } from "../components/StatusPill.js";
 import { JobDrawer } from "../components/JobDrawer.js";
 import { SearchInput } from "../components/SearchInput.js";
 import { SearchResults } from "../components/SearchResults.js";
-import { api, type JobEvent } from "../lib/api.js";
-import { formatRelativeTime } from "../lib/format.js";
+import { api, type JobEvent, type QueueCounts } from "../lib/api.js";
+import { formatRelativeTime, formatDuration, formatNumber } from "../lib/format.js";
 import { useLiveEvents, type LiveStatus } from "../lib/useLiveEvents.js";
 import { cn } from "../lib/cn.js";
 
@@ -54,6 +54,12 @@ export function QueueDetailPage({ queueName }: Props): React.ReactElement {
     placeholderData: keepPreviousData,
   });
 
+  const { data: perf } = useQuery({
+    queryKey: ["analytics-perf", INSTANCE_ID, cfg.days, queueName],
+    queryFn: () => api.analyticsPerformance(INSTANCE_ID, cfg.days, queueName),
+    refetchInterval: 30_000,
+  });
+
   // Warm the other ranges so flipping the selector is a cache hit.
   useEffect(() => {
     for (const r of RANGES) {
@@ -87,12 +93,19 @@ export function QueueDetailPage({ queueName }: Props): React.ReactElement {
     else pauseMutation.mutate();
   };
 
+  // Compute metrics from activity data
+  const totals = activity?.totals ?? { completed: 0, failed: 0 };
+  const total = totals.completed + totals.failed;
+  const errorRate = total === 0 ? 0 : (totals.failed / total) * 100;
+  const throughputPerHour = total > 0 && activity ? Math.round(total / (cfg.days * 24)) : 0;
+
   return (
     <div className="flex h-full flex-col">
-      <Topbar title={queueName} subtitle={queue ? `${totalCount(queue.counts)} jobs across all states` : undefined} />
+      <Topbar title={queueName} subtitle={queue?.isPaused ? "Paused" : undefined} />
 
       <div className="flex-1 overflow-y-auto px-6 py-5">
         <div className="mx-auto max-w-6xl space-y-5">
+          {/* Header row */}
           <div className="flex items-center justify-between">
             <Link href="/" className="inline-flex items-center gap-1 text-2xs text-fg-subtle hover:text-fg">
               <ArrowLeft className="h-3 w-3" />
@@ -115,31 +128,49 @@ export function QueueDetailPage({ queueName }: Props): React.ReactElement {
                 {queue?.isPaused ? (
                   <>
                     <Play className="h-3 w-3 stroke-[2]" />
-                    Resume queue
+                    Resume
                   </>
                 ) : (
                   <>
                     <Pause className="h-3 w-3 stroke-[2]" />
-                    Pause queue
+                    Pause
                   </>
                 )}
               </button>
             </div>
           </div>
 
+          {/* Stats cards */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+            {/* Current state */}
+            {queue && <StatCard icon={Zap} label="Active" value={queue.counts.active} tone="info" />}
+            {queue && <StatCard icon={Clock} label="Waiting" value={queue.counts.waiting} tone="neutral" />}
+            {queue && <StatCard icon={Hourglass} label="Delayed" value={queue.counts.delayed} tone="warning" />}
+            {queue && <StatCard icon={AlertTriangle} label="Failed" value={queue.counts.failed} tone="danger" />}
+
+            {/* Performance metrics */}
+            <StatCard icon={TrendingUp} label="Throughput" value={`${throughputPerHour}/h`} />
+            <StatCard icon={AlertTriangle} label="Error rate" value={`${errorRate.toFixed(1)}%`} tone={errorRate > 5 ? "danger" : undefined} />
+            <StatCard icon={Clock} label="Avg time" value={perf?.avgProcessingTimeMs ? formatDuration(perf.avgProcessingTimeMs) : "—"} />
+            <StatCard icon={Clock} label="p95 time" value={perf?.p95ProcessingTimeMs ? formatDuration(perf.p95ProcessingTimeMs) : "—"} />
+          </div>
+
+          {/* Activity chart */}
           <ActivityChart
             data={activity}
             bucket={cfg.bucket}
             rangeControl={<RangeSelector value={range} onChange={updateRange} />}
           />
 
+          {/* Search */}
           <SearchInput
             value={search}
             onChange={setSearch}
             placeholder={`Search jobs in ${queueName}…`}
-            hint='Filters: status:, name:, id:, reason:, hash:, attempts:>N. Already scoped to this queue.'
+            hint='status:, name:, id:, reason:, attempts:>N'
           />
 
+          {/* Events table */}
           {searching ? (
             <SearchResults
               query={search}
@@ -192,6 +223,38 @@ export function QueueDetailPage({ queueName }: Props): React.ReactElement {
   );
 }
 
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: typeof Zap;
+  label: string;
+  value: number | string;
+  tone?: "info" | "neutral" | "warning" | "danger";
+}): React.ReactElement {
+  const colors = {
+    info: "text-info",
+    neutral: "text-fg-muted",
+    warning: "text-warning",
+    danger: "text-danger",
+  };
+  const valueColor = tone ? colors[tone] : "text-fg";
+
+  return (
+    <div className="rounded-lg border border-border bg-bg-muted/30 px-3 py-2.5">
+      <div className="flex items-center gap-1.5 text-2xs text-fg-subtle">
+        <Icon className="h-3 w-3" />
+        {label}
+      </div>
+      <div className={cn("mt-0.5 text-lg font-semibold tabular-nums", valueColor)}>
+        {typeof value === "number" ? formatNumber(value) : value}
+      </div>
+    </div>
+  );
+}
+
 function LiveBadge({ status }: { status: LiveStatus }): React.ReactElement {
   const cfg =
     status === "live"
@@ -223,8 +286,4 @@ function EventRow({ event, onSelect }: { event: JobEvent; onSelect: (jobId: stri
       </td>
     </tr>
   );
-}
-
-function totalCount(c: { waiting: number; active: number; completed: number; failed: number; delayed: number }): string {
-  return (c.waiting + c.active + c.completed + c.failed + c.delayed).toLocaleString();
 }

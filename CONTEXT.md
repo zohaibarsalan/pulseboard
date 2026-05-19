@@ -50,8 +50,8 @@ v0.1 complete. Now building **v0.2** (analytics + command surface) per spec §19
 | KPI card component | done | Tiny uppercase label, big tabular number, sub-text, mini sparkline, trend arrow + percent |
 | Activity bar chart | done | Pure SVG, no chart lib; daily buckets, hover tooltip, totals legend |
 | Sidebar redesign (Redis indicator + tighter density) | done | Wide labeled sidebar kept; Redis URL + connection dot pinned bottom; theme toggle moved out of topbar |
-| QueueDetail page with job table + drawer | done | Per-queue activity chart, events table, click row → JobDrawer with metadata grid + Payload/Output/Error/Timeline tabs |
-| Failed Jobs page (error grouping) | done | Lists `error_groups` rows with count + first/last seen |
+| QueueDetail page with job table + drawer | done | Stats cards (active/waiting/delayed/failed + throughput/error rate/avg time/p95), activity chart, events table, JobDrawer |
+| Failed Jobs page (error grouping) | done | Summary bar with total failures + last failure time, error groups table with drill-in, refresh button |
 | Dockerfile (multi-stage, Node 20 bookworm-slim) | done | Image: 613MB; pinned `pnpm@10.14.0` via `packageManager`; native better-sqlite3 build at install time; runtime stage strips dev deps |
 | Docker compose example | done | `docker/docker-compose.example.yml` — Pulseboard + Redis + named volume |
 | LiveEventBus (in-memory pub/sub) | done | `src/indexer/event-bus.ts` — single source for SSE clients; indexer publishes before buffering |
