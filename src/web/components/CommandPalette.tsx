@@ -1,24 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Command } from "cmdk";
-import {
-  Activity,
-  AlertCircle,
-  ChevronRight,
-  GitBranch,
-  LayoutGrid,
-  Moon,
-  Pause,
-  Play,
-  Search,
-  Settings,
-  Sun,
-  type LucideIcon,
-} from "lucide-react";
-import { api, type QueueSummary } from "../lib/api.js";
-
-const INSTANCE_ID = "default";
+import { Moon, Search, Settings, Sun, Trash2, Webhook, type LucideIcon } from "lucide-react";
+import { api } from "../lib/api.js";
 
 type Props = {
   open: boolean;
@@ -30,13 +15,6 @@ export function CommandPalette({ open, onClose }: Props): React.ReactElement | n
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
 
-  const { data: queues } = useQuery({
-    queryKey: ["queues", INSTANCE_ID],
-    queryFn: () => api.queues(INSTANCE_ID),
-    enabled: open,
-  });
-
-  // Reset search on open
   useEffect(() => {
     if (open) setSearch("");
   }, [open]);
@@ -46,13 +24,12 @@ export function CommandPalette({ open, onClose }: Props): React.ReactElement | n
     onClose();
   };
 
-  const pauseMutation = useMutation({
-    mutationFn: (name: string) => api.pauseQueue(INSTANCE_ID, name),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["queues", INSTANCE_ID] }),
-  });
-  const resumeMutation = useMutation({
-    mutationFn: (name: string) => api.resumeQueue(INSTANCE_ID, name),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["queues", INSTANCE_ID] }),
+  const clearMutation = useMutation({
+    mutationFn: () => api.clear(),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["webhooks"] });
+      void queryClient.invalidateQueries({ queryKey: ["webhook-stats"] });
+    },
   });
 
   const toggleTheme = (): void => {
@@ -63,11 +40,6 @@ export function CommandPalette({ open, onClose }: Props): React.ReactElement | n
   };
 
   const isDark = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
-
-  const sortedQueues = useMemo<QueueSummary[]>(
-    () => (queues?.queues ?? []).slice().sort((a, b) => a.name.localeCompare(b.name)),
-    [queues],
-  );
 
   if (!open) return null;
 
@@ -86,7 +58,7 @@ export function CommandPalette({ open, onClose }: Props): React.ReactElement | n
             <Command.Input
               value={search}
               onValueChange={setSearch}
-              placeholder="Search queues, jobs, actions…"
+              placeholder="Search pages, actions…"
               autoFocus
               className="h-11 flex-1 bg-transparent text-sm text-fg placeholder:text-fg-subtle focus:outline-none"
             />
@@ -94,59 +66,23 @@ export function CommandPalette({ open, onClose }: Props): React.ReactElement | n
           </div>
 
           <Command.List className="max-h-[420px] overflow-y-auto p-1.5">
-            <Command.Empty className="p-6 text-center text-xs text-fg-subtle">
-              No matches.
-            </Command.Empty>
+            <Command.Empty className="p-6 text-center text-xs text-fg-subtle">No matches.</Command.Empty>
 
             <Command.Group heading="Pages">
-              <PaletteItem icon={LayoutGrid} label="Queues" onSelect={() => go("/")} />
-              <PaletteItem icon={AlertCircle} label="Failed Jobs" onSelect={() => go("/failed")} />
-              <PaletteItem icon={GitBranch} label="Flows" onSelect={() => go("/flows")} />
-              <PaletteItem icon={Activity} label="Analytics" onSelect={() => go("/analytics")} />
+              <PaletteItem icon={Webhook} label="Webhooks" onSelect={() => go("/")} />
               <PaletteItem icon={Settings} label="Settings" onSelect={() => go("/settings")} />
             </Command.Group>
 
-            {sortedQueues.length > 0 && (
-              <Command.Group heading="Go to queue">
-                {sortedQueues.map((q) => (
-                  <PaletteItem
-                    key={`open-${q.name}`}
-                    icon={ChevronRight}
-                    label={q.name}
-                    hint={`${q.counts.active}A · ${q.counts.waiting}W · ${q.counts.failed}F`}
-                    onSelect={() => go(`/queue/${encodeURIComponent(q.name)}`)}
-                  />
-                ))}
-              </Command.Group>
-            )}
-
-            {sortedQueues.length > 0 && (
-              <Command.Group heading="Queue actions">
-                {sortedQueues.map((q) =>
-                  q.isPaused ? (
-                    <PaletteItem
-                      key={`resume-${q.name}`}
-                      icon={Play}
-                      label={`Resume ${q.name}`}
-                      onSelect={() => {
-                        resumeMutation.mutate(q.name);
-                        onClose();
-                      }}
-                    />
-                  ) : (
-                    <PaletteItem
-                      key={`pause-${q.name}`}
-                      icon={Pause}
-                      label={`Pause ${q.name}`}
-                      onSelect={() => {
-                        pauseMutation.mutate(q.name);
-                        onClose();
-                      }}
-                    />
-                  ),
-                )}
-              </Command.Group>
-            )}
+            <Command.Group heading="Actions">
+              <PaletteItem
+                icon={Trash2}
+                label="Clear all webhooks"
+                onSelect={() => {
+                  clearMutation.mutate();
+                  onClose();
+                }}
+              />
+            </Command.Group>
 
             <Command.Group heading="Preferences">
               <PaletteItem
@@ -179,12 +115,10 @@ export function CommandPalette({ open, onClose }: Props): React.ReactElement | n
 function PaletteItem({
   icon: Icon,
   label,
-  hint,
   onSelect,
 }: {
   icon: LucideIcon;
   label: string;
-  hint?: string;
   onSelect: () => void;
 }): React.ReactElement {
   return (
@@ -195,7 +129,6 @@ function PaletteItem({
     >
       <Icon className="h-3.5 w-3.5 shrink-0 stroke-[1.75]" />
       <span className="flex-1 truncate">{label}</span>
-      {hint && <span className="text-2xs text-fg-subtle">{hint}</span>}
     </Command.Item>
   );
 }

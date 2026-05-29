@@ -3,24 +3,22 @@ import { useQueryClient } from "@tanstack/react-query";
 
 export type LiveStatus = "connecting" | "live" | "error";
 
-export function useLiveEvents(instanceId: string, queueName: string): LiveStatus {
+export function useLiveEvents(): LiveStatus {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<LiveStatus>("connecting");
 
   useEffect(() => {
-    const url = `/api/instances/${instanceId}/queues/${encodeURIComponent(queueName)}/live`;
-    const source = new EventSource(url);
+    const source = new EventSource("/api/live");
     let pending: ReturnType<typeof setTimeout> | null = null;
 
     const invalidate = (): void => {
-      // Debounce — under heavy burst this would otherwise fire dozens of times
-      // per second. 400ms gives us "live" feel without thrashing the API.
+      // Debounce — under burst this would otherwise fire dozens of times/sec.
       if (pending) return;
       pending = setTimeout(() => {
         pending = null;
-        void queryClient.invalidateQueries({ queryKey: ["events", instanceId, queueName] });
-        void queryClient.invalidateQueries({ queryKey: ["queues", instanceId] });
-        void queryClient.invalidateQueries({ queryKey: ["activity", instanceId, queueName] });
+        void queryClient.invalidateQueries({ queryKey: ["webhooks"] });
+        void queryClient.invalidateQueries({ queryKey: ["webhook-stats"] });
+        void queryClient.invalidateQueries({ queryKey: ["webhook-sources"] });
       }, 400);
     };
 
@@ -33,7 +31,7 @@ export function useLiveEvents(instanceId: string, queueName: string): LiveStatus
       source.close();
       setStatus("connecting");
     };
-  }, [instanceId, queueName, queryClient]);
+  }, [queryClient]);
 
   return status;
 }

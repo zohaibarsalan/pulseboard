@@ -1,0 +1,91 @@
+import type { FastifyInstance, FastifyRequest } from "fastify";
+import { nanoid } from "nanoid";
+import type { AppContext } from "../context.js";
+import { webhooks, type NewWebhook } from "../../db/schema.js";
+import { detectSource } from "../../capture/detector.js";
+import { forwardWebhook } from "../../capture/forwarder.js";
+import { rowToWebhook } from "../serialize.js";
+
+// Webhooks are captured under /hook/*. Everything after /hook is treated as the
+// "real" path: it's recorded and replayed onto the forward target. This keeps
+// webhook ingress cleanly separated from the UI (served at /) and API (/api/*).
+const HOOK_PREFIX = "/hook";
+
+function normalizeHeaders(raw: FastifyRequest["headers"]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (value === undefined) continue;
+    out[key.toLowerCase()] = Array.isArray(value) ? value.join(", ") : String(value);
+  }
+  return out;
+}
+
+export async function captureRoute(app: FastifyInstance, ctx: AppContext): Promise<void> {
+  app.all(`${HOOK_PREFIX}/*`, async (req, reply) => {
+    const headers = normalizeHeaders(req.headers);
+    const rawBody = typeof req.body === "string" ? req.body : null;
+
+    // Strip the /hook prefix so the recorded path matches what the user's app expects.
+    const fullPath = req.url.split("?")[0] ?? req.url;
+    const path = fullPath.slice(HOOK_PREFIX.length) || "/";
+    const queryIndex = req.url.indexOf("?");
+    const queryParams = queryIndex >= 0 ? req.url.slice(queryIndex + 1) : null;
+
+    const detected = detectSource(headers, rawBody);
+    const now = Date.now();
+
+    const record: NewWebhook = {
+      id: nanoid(),
+      method: req.method,
+      path,
+      headersJson: JSON.stringify(headers),
+      body: rawBody,
+      queryParams,
+      contentType: headers["content-type"] ?? null,
+      contentLength: rawBody ? Buffer.byteLength(rawBody) : 0,
+      sourceIp: req.ip,
+      receivedAt: now,
+      source: detected.source,
+      eventType: detected.eventType ?? null,
+      forwardedTo: null,
+      forwardStatus: null,
+      forwardDurationMs: null,
+      forwardError: null,
+      replayCount: 0,
+      lastReplayedAt: null,
+      replayOf: null,
+    };
+
+    // Forward first (if configured) so we can record the result in one insert.
+    if (ctx.config.forwardTo) {
+      const result = await forwardWebhook({
+        forwardTo: ctx.config.forwardTo,
+        method: req.method,
+        path,
+        queryParams,
+        headers,
+        body: rawBody,
+        timeoutMs: ctx.config.forwardTimeoutMs,
+      });
+      record.forwardedTo = ctx.config.forwardTo;
+      record.forwardStatus = result.status;
+      record.forwardDurationMs = result.durationMs;
+      record.forwardError = result.error;
+    }
+
+    ctx.db.insert(webhooks).values(record).run();
+    ctx.lastCapturedAt.value = now;
+
+    const stored = ctx.db.$client
+      .prepare("SELECT * FROM webhooks WHERE id = ?")
+      .get(record.id) as Record<string, unknown>;
+    ctx.bus.publish(rowToWebhook(stored));
+
+    // Respond to the provider. If forwarding succeeded, mirror that status so the
+    // provider sees the user app's real response. Otherwise acknowledge with 200.
+    if (record.forwardStatus != null) {
+      return reply.code(record.forwardStatus).send({ ok: true, captured: record.id });
+    }
+    return reply.code(200).send({ ok: true, captured: record.id });
+  });
+}

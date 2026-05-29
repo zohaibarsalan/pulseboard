@@ -1,27 +1,14 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Activity,
-  AlertCircle,
-  Database,
-  GitBranch,
-  LayoutGrid,
-  Moon,
-  Settings,
-  Sun,
-  type LucideIcon,
-} from "lucide-react";
+import { ArrowRight, Moon, Settings, Sun, Webhook, type LucideIcon } from "lucide-react";
 import { cn } from "../lib/cn.js";
 import { api } from "../lib/api.js";
 
 type NavItem = { href: string; label: string; icon: LucideIcon; match?: (loc: string) => boolean };
 
 const items: NavItem[] = [
-  { href: "/", label: "Queues", icon: LayoutGrid, match: (l) => l === "/" || l.startsWith("/queue/") },
-  { href: "/failed", label: "Failed Jobs", icon: AlertCircle },
-  { href: "/flows", label: "Flows", icon: GitBranch },
-  { href: "/analytics", label: "Analytics", icon: Activity },
+  { href: "/", label: "Webhooks", icon: Webhook, match: (l) => l === "/" },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -33,23 +20,15 @@ export function Sidebar(): React.ReactElement {
     <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-bg-subtle">
       <div className="flex h-14 items-center gap-2 px-3">
         <div className="flex h-5 w-5 items-center justify-center rounded-md bg-fg text-bg">
-          <span className="text-[10px] font-bold leading-none">P</span>
+          <Webhook className="h-3 w-3" />
         </div>
-        <span className="text-xs font-semibold tracking-tight">Pulseboard</span>
+        <span className="text-xs font-semibold tracking-tight">Webhook Studio</span>
         <span className="ml-auto rounded border border-border px-1 font-mono text-[10px] leading-4 text-fg-subtle">
           {health?.version ?? "0.1"}
         </span>
       </div>
 
-      <div className="px-3 pb-1 pt-1 text-[10px] font-medium uppercase tracking-wider text-fg-subtle">
-        Instance
-      </div>
-      <div className="mx-3 mb-3 flex items-center justify-between rounded-md border border-border bg-bg px-2 py-1 text-xs">
-        <span className="font-medium">{health?.instanceId ?? "default"}</span>
-        <span className={cn("pb-dot", health?.redis === "connected" ? "bg-success" : "bg-danger")} />
-      </div>
-
-      <nav className="flex-1 space-y-px px-2">
+      <nav className="flex-1 space-y-px px-2 pt-2">
         {items.map((item) => {
           const isActive = item.match ? item.match(location) : location.startsWith(item.href);
           const Icon = item.icon;
@@ -70,11 +49,7 @@ export function Sidebar(): React.ReactElement {
       </nav>
 
       <div className="border-t border-border p-2.5">
-        <RedisInfo
-          connected={health?.redis === "connected"}
-          host={health?.redisHost ?? "—"}
-          url={health?.redisUrl ?? ""}
-        />
+        <ForwardInfo forwardTo={health?.forwardTo ?? null} />
         <div className="mt-2 flex items-center justify-between px-1">
           <span className="text-[10px] uppercase tracking-wider text-fg-subtle">Theme</span>
           <ThemeToggle />
@@ -84,37 +59,20 @@ export function Sidebar(): React.ReactElement {
   );
 }
 
-function RedisInfo({
-  connected,
-  host,
-  url,
-}: {
-  connected: boolean;
-  host: string;
-  url: string;
-}): React.ReactElement {
-  const [open, setOpen] = useState(false);
+function ForwardInfo({ forwardTo }: { forwardTo: string | null }): React.ReactElement {
   return (
-    <button
-      type="button"
-      onClick={() => setOpen((v) => !v)}
-      className="group flex w-full items-start gap-1.5 rounded-md px-1 py-1 text-left hover:bg-bg-muted/50"
-      title={url}
-    >
-      <Database className="mt-0.5 h-3 w-3 shrink-0 stroke-[1.75] text-fg-subtle" />
+    <div className="flex items-start gap-1.5 rounded-md px-1 py-1">
+      <ArrowRight className="mt-0.5 h-3 w-3 shrink-0 stroke-[1.75] text-fg-subtle" />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] font-medium uppercase tracking-wider text-fg-subtle">Redis</span>
-          <span className={cn("pb-dot h-1 w-1", connected ? "bg-success" : "bg-danger")} />
+          <span className="text-[10px] font-medium uppercase tracking-wider text-fg-subtle">Forwarding</span>
+          <span className={cn("pb-dot h-1 w-1", forwardTo ? "bg-success" : "bg-fg-subtle")} />
         </div>
-        <div className="truncate font-mono text-[11px] text-fg-muted">{host}</div>
-        {open && url && (
-          <div className="mt-1 break-all rounded border border-border bg-bg p-1.5 font-mono text-[10px] text-fg-subtle">
-            {url}
-          </div>
-        )}
+        <div className="truncate font-mono text-[11px] text-fg-muted">
+          {forwardTo ?? "capture-only"}
+        </div>
       </div>
-    </button>
+    </div>
   );
 }
 

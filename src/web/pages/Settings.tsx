@@ -1,17 +1,20 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Database, Server, Clock, Shield, Activity } from "lucide-react";
+import { ArrowRight, Check, Copy, Database, Server, Shield } from "lucide-react";
 import { Topbar } from "../components/Topbar.js";
-import { api, type Health } from "../lib/api.js";
+import { api } from "../lib/api.js";
 import { formatRelativeTime } from "../lib/format.js";
 
-const INSTANCE_ID = "default";
-
 export function SettingsPage(): React.ReactElement {
-  const { data: health } = useQuery({
-    queryKey: ["health"],
-    queryFn: () => api.health(),
-    refetchInterval: 5_000,
-  });
+  const { data: health } = useQuery({ queryKey: ["health"], queryFn: api.health, refetchInterval: 5_000 });
+  const [copied, setCopied] = useState(false);
+
+  const copyCaptureUrl = (): void => {
+    if (!health?.captureUrl) return;
+    void navigator.clipboard.writeText(`${health.captureUrl}/...`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
 
   return (
     <div className="flex h-full flex-col">
@@ -19,38 +22,63 @@ export function SettingsPage(): React.ReactElement {
 
       <div className="flex-1 overflow-y-auto px-6 py-5">
         <div className="mx-auto max-w-3xl space-y-6">
-          {/* Connection */}
-          <Section title="Connection" icon={Server}>
-            <InfoRow label="Redis URL" value={health?.redisUrl ?? "—"} mono />
+          {/* Capture URL */}
+          <Section title="Capture URL" icon={Server}>
+            <p className="mb-2 text-sm text-fg-muted">
+              Point your webhook provider (or tunnel) at this URL. Everything after{" "}
+              <code className="font-mono text-fg">/hook</code> is captured and forwarded.
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 break-all rounded-lg bg-bg-muted px-3 py-2 font-mono text-sm">
+                {health?.captureUrl ?? "—"}/...
+              </code>
+              <button
+                type="button"
+                onClick={copyCaptureUrl}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-2 text-xs hover:bg-bg-muted"
+              >
+                {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+              </button>
+            </div>
+            <p className="mt-2 text-xs text-fg-subtle">
+              Example with ngrok: <code className="font-mono">https://xxx.ngrok.io/hook/stripe</code>
+            </p>
+          </Section>
+
+          {/* Forwarding */}
+          <Section title="Forwarding" icon={ArrowRight}>
             <InfoRow
-              label="Redis status"
+              label="Forward target"
               value={
-                <span className={health?.redis === "connected" ? "text-success" : "text-danger"}>
-                  {health?.redis ?? "—"}
-                </span>
+                health?.forwardTo ? (
+                  <span className="font-mono text-sm">{health.forwardTo}</span>
+                ) : (
+                  <span className="text-fg-muted">Capture-only mode</span>
+                )
               }
             />
+            <p className="mt-2 text-xs text-fg-subtle">
+              {health?.forwardTo
+                ? "Captured webhooks are proxied to this target with the original raw body preserved."
+                : "Webhooks are captured but not forwarded. Start with --forward <url> to proxy them."}
+            </p>
+          </Section>
+
+          {/* Instance */}
+          <Section title="System" icon={Database}>
+            <InfoRow label="Version" value={health?.version ?? "—"} />
             <InfoRow
-              label="SQLite status"
+              label="SQLite"
               value={
                 <span className={health?.sqlite === "open" ? "text-success" : "text-danger"}>
                   {health?.sqlite ?? "—"}
                 </span>
               }
             />
-          </Section>
-
-          {/* Instance */}
-          <Section title="Instance" icon={Database}>
-            <InfoRow label="Instance ID" value={health?.instanceId ?? "—"} mono />
-            <InfoRow label="Version" value={health?.version ?? "—"} />
+            <InfoRow label="Uptime" value={health?.uptimeSeconds ? formatUptime(health.uptimeSeconds) : "—"} />
             <InfoRow
-              label="Uptime"
-              value={health?.uptimeSeconds ? formatUptime(health.uptimeSeconds) : "—"}
-            />
-            <InfoRow
-              label="Last indexed"
-              value={health?.lastIndexedAt ? formatRelativeTime(health.lastIndexedAt) : "never"}
+              label="Last captured"
+              value={health?.lastCapturedAt ? formatRelativeTime(health.lastCapturedAt) : "never"}
             />
           </Section>
 
@@ -65,49 +93,8 @@ export function SettingsPage(): React.ReactElement {
               }
             />
             <p className="mt-2 text-xs text-fg-subtle">
-              In read-only mode, actions like retry, remove, pause, and resume are disabled.
-              Set <code className="font-mono text-fg-muted">PULSEBOARD_READONLY=true</code> to enable.
-            </p>
-          </Section>
-
-          {/* Status */}
-          <Section title="System Status" icon={Activity}>
-            <div className="grid grid-cols-2 gap-4">
-              <StatusCard
-                label="API"
-                status={health?.status === "ok" ? "healthy" : "degraded"}
-              />
-              <StatusCard
-                label="Redis"
-                status={health?.redis === "connected" ? "healthy" : "error"}
-              />
-              <StatusCard
-                label="SQLite"
-                status={health?.sqlite === "open" ? "healthy" : "error"}
-              />
-              <StatusCard
-                label="Indexer"
-                status={health?.lastIndexedAt && Date.now() - health.lastIndexedAt < 60_000 ? "healthy" : "idle"}
-              />
-            </div>
-          </Section>
-
-          {/* About */}
-          <Section title="About" icon={Clock}>
-            <p className="text-sm text-fg-muted">
-              Pulseboard is a local-first, self-hosted BullMQ studio for monitoring, searching,
-              debugging, and understanding background jobs.
-            </p>
-            <p className="mt-2 text-xs text-fg-subtle">
-              Documentation and source code at{" "}
-              <a
-                href="https://github.com/pulseboard/pulseboard"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-fg-muted hover:underline"
-              >
-                github.com/pulseboard/pulseboard
-              </a>
+              In read-only mode, replay and clear actions are disabled. Set{" "}
+              <code className="font-mono text-fg-muted">WEBHOOK_STUDIO_READONLY=true</code> to enable.
             </p>
           </Section>
         </div>
@@ -131,53 +118,16 @@ function Section({
         <Icon className="h-4 w-4 text-fg-subtle" />
         <h2 className="text-sm font-medium">{title}</h2>
       </div>
-      <div className="space-y-2">{children}</div>
+      {children}
     </div>
   );
 }
 
-function InfoRow({
-  label,
-  value,
-  mono,
-}: {
-  label: string;
-  value: React.ReactNode;
-  mono?: boolean;
-}): React.ReactElement {
+function InfoRow({ label, value }: { label: string; value: React.ReactNode }): React.ReactElement {
   return (
     <div className="flex items-center justify-between py-1">
       <span className="text-sm text-fg-subtle">{label}</span>
-      <span className={`text-sm ${mono ? "font-mono" : ""}`}>{value}</span>
-    </div>
-  );
-}
-
-function StatusCard({
-  label,
-  status,
-}: {
-  label: string;
-  status: "healthy" | "degraded" | "error" | "idle";
-}): React.ReactElement {
-  const colors = {
-    healthy: "bg-success/10 text-success border-success/30",
-    degraded: "bg-warning/10 text-warning border-warning/30",
-    error: "bg-danger/10 text-danger border-danger/30",
-    idle: "bg-fg-subtle/10 text-fg-muted border-border",
-  };
-
-  const labels = {
-    healthy: "Healthy",
-    degraded: "Degraded",
-    error: "Error",
-    idle: "Idle",
-  };
-
-  return (
-    <div className={`rounded-lg border px-3 py-2 ${colors[status]}`}>
-      <div className="text-xs font-medium">{label}</div>
-      <div className="mt-0.5 text-sm font-semibold">{labels[status]}</div>
+      <span className="text-sm">{value}</span>
     </div>
   );
 }

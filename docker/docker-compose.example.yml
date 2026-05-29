@@ -1,26 +1,19 @@
 services:
-  pulseboard:
+  webhook-studio:
     build:
       context: ..
       dockerfile: docker/Dockerfile
     ports:
-      - "4545:4545"
+      - "4500:4500"
     environment:
-      REDIS_URL: redis://redis:6379
-      PULSEBOARD_DB_PATH: /data/pulseboard.db
-      PULSEBOARD_AUTO_DISCOVER: "true"
-      # PULSEBOARD_QUEUES: email,imports,billing
-      # PULSEBOARD_READONLY: "true"
-      # PULSEBOARD_AUTH_PASSWORD: changeme
+      WEBHOOK_STUDIO_HOST: 0.0.0.0
+      WEBHOOK_STUDIO_DB_PATH: /data/webhook-studio.db
+      # Forward captured webhooks to your app (use the compose service name):
+      WEBHOOK_STUDIO_FORWARD: http://your-app:3000
+      # WEBHOOK_STUDIO_READONLY: "true"
+      # WEBHOOK_STUDIO_AUTH_PASSWORD: changeme
     volumes:
-      - pulseboard-data:/data
-    depends_on:
-      - redis
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
+      - webhook-studio-data:/data
 
 volumes:
-  pulseboard-data:
+  webhook-studio-data:

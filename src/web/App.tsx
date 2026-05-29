@@ -3,10 +3,7 @@ import { Route, Switch } from "wouter";
 import { Sidebar } from "./components/Sidebar.js";
 import { CommandPalette } from "./components/CommandPalette.js";
 import { CommandPaletteContext } from "./lib/useCommandPalette.js";
-import { QueuesPage } from "./pages/Queues.js";
-import { QueueDetailPage } from "./pages/QueueDetail.js";
-import { FailedJobsPage } from "./pages/FailedJobs.js";
-import { AnalyticsPage } from "./pages/Analytics.js";
+import { WebhooksPage } from "./pages/Webhooks.js";
 import { SettingsPage } from "./pages/Settings.js";
 import { PlaceholderPage } from "./pages/Placeholder.js";
 
@@ -35,18 +32,7 @@ export function App(): React.ReactElement {
         <Sidebar />
         <main className="flex min-w-0 flex-1 flex-col">
           <Switch>
-            <Route path="/" component={QueuesPage} />
-            <Route path="/queue/:name">
-              {(params) => <QueueDetailPage queueName={decodeURIComponent(params.name)} />}
-            </Route>
-            <Route path="/failed" component={FailedJobsPage} />
-            <Route path="/flows">
-              <PlaceholderPage
-                title="Flows"
-                description="Interactive workflow graphs — coming in v0.4."
-              />
-            </Route>
-            <Route path="/analytics" component={AnalyticsPage} />
+            <Route path="/" component={WebhooksPage} />
             <Route path="/settings" component={SettingsPage} />
             <Route>
               <PlaceholderPage title="Not found" description="That route doesn't exist." />

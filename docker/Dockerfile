@@ -31,9 +31,9 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
 # ---------- runtime ----------
 FROM node:20-bookworm-slim AS runtime
 ENV NODE_ENV=production
-ENV PULSEBOARD_DB_PATH=/data/pulseboard.db
-ENV PULSEBOARD_HOST=0.0.0.0
-ENV PULSEBOARD_PORT=4545
+ENV WEBHOOK_STUDIO_DB_PATH=/data/webhook-studio.db
+ENV WEBHOOK_STUDIO_HOST=0.0.0.0
+ENV WEBHOOK_STUDIO_PORT=4500
 
 WORKDIR /app
 
@@ -49,7 +49,7 @@ COPY --from=builder /app/dist ./dist
 RUN mkdir -p /data && chown -R node:node /data
 USER node
 
-EXPOSE 4545
+EXPOSE 4500
 VOLUME ["/data"]
 
 ENTRYPOINT ["node", "dist/cli.js"]
