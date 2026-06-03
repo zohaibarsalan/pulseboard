@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, RefreshCw, Terminal } from "lucide-react";
+import { Check, Copy, Pencil, Plus, RefreshCw, Send, Terminal, X } from "lucide-react";
 import { api, type Webhook } from "../lib/api.js";
 import { formatRelativeTime, formatDuration } from "../lib/format.js";
 import { SourceBadge } from "./SourceBadge.js";
@@ -8,6 +8,20 @@ import { SignatureBadge } from "./SignatureBadge.js";
 import { cn } from "../lib/cn.js";
 
 type Tab = "body" | "headers" | "forward";
+
+type HeaderRow = { id: number; key: string; value: string };
+
+let headerRowCounter = 0;
+const toRows = (headers: Record<string, string>): HeaderRow[] =>
+  Object.entries(headers).map(([key, value]) => ({ id: ++headerRowCounter, key, value }));
+const fromRows = (rows: HeaderRow[]): Record<string, string> => {
+  const out: Record<string, string> = {};
+  for (const r of rows) {
+    const k = r.key.trim();
+    if (k) out[k] = r.value;
+  }
+  return out;
+};
 
 export function WebhookDetail({
   webhook,
@@ -18,17 +32,62 @@ export function WebhookDetail({
 }): React.ReactElement {
   const [tab, setTab] = useState<Tab>("body");
   const [copied, setCopied] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editedBody, setEditedBody] = useState<string>("");
+  const [editedHeaders, setEditedHeaders] = useState<HeaderRow[]>([]);
   const queryClient = useQueryClient();
 
+  const originalHeaders = JSON.parse(webhook.headersJson) as Record<string, string>;
+
+  // Reset edit state whenever the inspected webhook changes.
+  useEffect(() => {
+    setEditing(false);
+    setEditedBody(webhook.body ?? "");
+    setEditedHeaders(toRows(originalHeaders));
+    setTab("body");
+    // Re-running this when headersJson changes covers replays/new captures.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [webhook.id]);
+
   const replay = useMutation({
-    mutationFn: () => api.replay(webhook.id),
+    mutationFn: (overrides?: { body?: string; headers?: Record<string, string> }) =>
+      api.replay(webhook.id, overrides),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["webhooks"] });
       void queryClient.invalidateQueries({ queryKey: ["webhook-stats"] });
     },
   });
 
-  const headers = JSON.parse(webhook.headersJson) as Record<string, string>;
+  const sendEdited = (): void => {
+    const headers = fromRows(editedHeaders);
+    // Only include keys that actually changed or were added — but for v1 we
+    // just send everything edited. The server merges into the original, so
+    // unchanged keys are still preserved if we don't send them. Keep it simple
+    // by sending all current rows: the user's intent is "these are the headers".
+    replay.mutate(
+      { body: editedBody, headers },
+      {
+        onSuccess: () => {
+          setEditing(false);
+        },
+      },
+    );
+  };
+
+  const cancelEdit = (): void => {
+    setEditing(false);
+    setEditedBody(webhook.body ?? "");
+    setEditedHeaders(toRows(originalHeaders));
+    replay.reset();
+  };
+
+  const startEdit = (): void => {
+    setEditing(true);
+    setEditedBody(webhook.body ?? "");
+    setEditedHeaders(toRows(originalHeaders));
+    if (tab === "forward") setTab("body");
+    replay.reset();
+  };
 
   const copy = (text: string, key: string): void => {
     void navigator.clipboard.writeText(text);
@@ -36,7 +95,7 @@ export function WebhookDetail({
     setTimeout(() => setCopied(null), 1500);
   };
 
-  const asCurl = buildCurl(webhook, headers);
+  const asCurl = buildCurl(webhook, originalHeaders);
 
   return (
     <div className="flex h-full flex-col">
@@ -58,37 +117,80 @@ export function WebhookDetail({
           <SignatureBadge status={webhook.signatureStatus} notes={webhook.signatureNotes} />
           <span className="text-2xs text-fg-subtle">{formatRelativeTime(webhook.receivedAt)}</span>
           {webhook.replayOf && (
-            <span className="rounded bg-info/15 px-1.5 py-0.5 text-2xs text-info">replay</span>
+            <span className="rounded bg-info/15 px-1.5 py-0.5 text-2xs text-info">
+              {webhook.sourceIp === "replay-edited" ? "edited replay" : "replay"}
+            </span>
           )}
         </div>
 
         {/* Actions */}
         <div className="mt-3 flex items-center gap-2">
-          {!readonly && (
-            <button
-              type="button"
-              onClick={() => replay.mutate()}
-              disabled={replay.isPending}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium transition-colors hover:bg-bg-muted",
-                replay.isPending && "cursor-wait opacity-50",
+          {editing ? (
+            <>
+              <button
+                type="button"
+                onClick={sendEdited}
+                disabled={replay.isPending}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-md bg-fg px-3 py-1 text-xs font-medium text-bg transition-colors hover:bg-fg/90",
+                  replay.isPending && "cursor-wait opacity-50",
+                )}
+              >
+                <Send className={cn("h-3 w-3", replay.isPending && "animate-pulse")} />
+                {replay.isPending ? "Sending…" : "Send edited"}
+              </button>
+              <button
+                type="button"
+                onClick={cancelEdit}
+                disabled={replay.isPending}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium hover:bg-bg-muted"
+              >
+                <X className="h-3 w-3" />
+                Cancel
+              </button>
+              <span className="ml-1 text-2xs text-fg-subtle">
+                Editing — signature will be marked invalid
+              </span>
+            </>
+          ) : (
+            <>
+              {!readonly && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => replay.mutate(undefined)}
+                    disabled={replay.isPending}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium transition-colors hover:bg-bg-muted",
+                      replay.isPending && "cursor-wait opacity-50",
+                    )}
+                  >
+                    <RefreshCw className={cn("h-3 w-3", replay.isPending && "animate-spin")} />
+                    Replay
+                  </button>
+                  <button
+                    type="button"
+                    onClick={startEdit}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium transition-colors hover:bg-bg-muted"
+                  >
+                    <Pencil className="h-3 w-3" />
+                    Edit & Replay
+                  </button>
+                </>
               )}
-            >
-              <RefreshCw className={cn("h-3 w-3", replay.isPending && "animate-spin")} />
-              Replay
-            </button>
+              <button
+                type="button"
+                onClick={() => copy(asCurl, "curl")}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium transition-colors hover:bg-bg-muted"
+              >
+                {copied === "curl" ? <Check className="h-3 w-3 text-success" /> : <Terminal className="h-3 w-3" />}
+                {copied === "curl" ? "Copied!" : "Copy as cURL"}
+              </button>
+            </>
           )}
-          <button
-            type="button"
-            onClick={() => copy(asCurl, "curl")}
-            className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium transition-colors hover:bg-bg-muted"
-          >
-            {copied === "curl" ? <Check className="h-3 w-3 text-success" /> : <Terminal className="h-3 w-3" />}
-            {copied === "curl" ? "Copied!" : "Copy as cURL"}
-          </button>
         </div>
 
-        {replay.data && (
+        {replay.data && !editing && (
           <div className="mt-2 text-xs">
             {replay.data.result.error ? (
               <span className="text-danger">Replay failed: {replay.data.result.error}</span>
@@ -103,21 +205,38 @@ export function WebhookDetail({
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-border px-5">
-        <TabButton active={tab === "body"} onClick={() => setTab("body")}>Body</TabButton>
-        <TabButton active={tab === "headers"} onClick={() => setTab("headers")}>
-          Headers <span className="text-fg-subtle">({Object.keys(headers).length})</span>
+        <TabButton active={tab === "body"} onClick={() => setTab("body")}>
+          Body {editing && <EditedDot />}
         </TabButton>
-        <TabButton active={tab === "forward"} onClick={() => setTab("forward")}>Forwarding</TabButton>
+        <TabButton active={tab === "headers"} onClick={() => setTab("headers")}>
+          Headers <span className="text-fg-subtle">({editing ? editedHeaders.length : Object.keys(originalHeaders).length})</span>
+          {editing && <EditedDot />}
+        </TabButton>
+        {!editing && (
+          <TabButton active={tab === "forward"} onClick={() => setTab("forward")}>Forwarding</TabButton>
+        )}
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-5">
-        {tab === "body" && <BodyView body={webhook.body} contentType={webhook.contentType} onCopy={copy} copied={copied} />}
-        {tab === "headers" && <HeadersView headers={headers} />}
-        {tab === "forward" && <ForwardView webhook={webhook} />}
+        {tab === "body" && (editing ? (
+          <BodyEditor body={editedBody} onChange={setEditedBody} />
+        ) : (
+          <BodyView body={webhook.body} contentType={webhook.contentType} onCopy={copy} copied={copied} />
+        ))}
+        {tab === "headers" && (editing ? (
+          <HeadersEditor rows={editedHeaders} onChange={setEditedHeaders} />
+        ) : (
+          <HeadersView headers={originalHeaders} />
+        ))}
+        {tab === "forward" && !editing && <ForwardView webhook={webhook} />}
       </div>
     </div>
   );
+}
+
+function EditedDot(): React.ReactElement {
+  return <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-warning" title="Editable" />;
 }
 
 function TabButton({
@@ -154,9 +273,7 @@ function BodyView({
   onCopy: (text: string, key: string) => void;
   copied: string | null;
 }): React.ReactElement {
-  if (!body) {
-    return <div className="text-sm text-fg-subtle">No body</div>;
-  }
+  if (!body) return <div className="text-sm text-fg-subtle">No body</div>;
 
   const isJson = contentType?.includes("json") ?? false;
   let display = body;
@@ -184,6 +301,74 @@ function BodyView({
   );
 }
 
+function BodyEditor({
+  body,
+  onChange,
+}: {
+  body: string;
+  onChange: (next: string) => void;
+}): React.ReactElement {
+  const [parseError, setParseError] = useState<string | null>(null);
+
+  const format = (): void => {
+    try {
+      const parsed = JSON.parse(body);
+      onChange(JSON.stringify(parsed, null, 2));
+      setParseError(null);
+    } catch (err) {
+      setParseError(err instanceof Error ? err.message : "Invalid JSON");
+    }
+  };
+
+  const minify = (): void => {
+    try {
+      const parsed = JSON.parse(body);
+      onChange(JSON.stringify(parsed));
+      setParseError(null);
+    } catch (err) {
+      setParseError(err instanceof Error ? err.message : "Invalid JSON");
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={format}
+          className="rounded border border-border px-2 py-0.5 text-2xs text-fg-muted hover:bg-bg-muted"
+        >
+          Format JSON
+        </button>
+        <button
+          type="button"
+          onClick={minify}
+          className="rounded border border-border px-2 py-0.5 text-2xs text-fg-muted hover:bg-bg-muted"
+        >
+          Minify
+        </button>
+        <span className="ml-auto text-2xs text-fg-subtle">{body.length} chars</span>
+      </div>
+      {parseError && (
+        <div className="rounded border border-danger/30 bg-danger/5 px-2 py-1 text-2xs text-danger">
+          {parseError}
+        </div>
+      )}
+      <textarea
+        value={body}
+        onChange={(e) => {
+          onChange(e.target.value);
+          if (parseError) setParseError(null);
+        }}
+        rows={20}
+        spellCheck={false}
+        className="w-full resize-y rounded-lg border border-border bg-bg-muted/40 p-3 font-mono text-xs leading-relaxed focus:border-fg focus:outline-none"
+        placeholder="Body (raw)"
+      />
+    </div>
+  );
+}
+
 function HeadersView({ headers }: { headers: Record<string, string> }): React.ReactElement {
   return (
     <div className="space-y-1">
@@ -193,6 +378,63 @@ function HeadersView({ headers }: { headers: Record<string, string> }): React.Re
           <span className="break-all font-mono text-fg">{value}</span>
         </div>
       ))}
+    </div>
+  );
+}
+
+function HeadersEditor({
+  rows,
+  onChange,
+}: {
+  rows: HeaderRow[];
+  onChange: (next: HeaderRow[]) => void;
+}): React.ReactElement {
+  const update = (id: number, patch: Partial<HeaderRow>): void => {
+    onChange(rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  };
+  const remove = (id: number): void => {
+    onChange(rows.filter((r) => r.id !== id));
+  };
+  const add = (): void => {
+    onChange([...rows, { id: ++headerRowCounter, key: "", value: "" }]);
+  };
+
+  return (
+    <div className="space-y-1.5">
+      {rows.map((row) => (
+        <div key={row.id} className="flex items-center gap-2">
+          <input
+            type="text"
+            value={row.key}
+            onChange={(e) => update(row.id, { key: e.target.value })}
+            placeholder="header name"
+            className="w-48 shrink-0 rounded border border-border bg-bg px-2 py-1 font-mono text-xs focus:border-fg focus:outline-none"
+          />
+          <input
+            type="text"
+            value={row.value}
+            onChange={(e) => update(row.id, { value: e.target.value })}
+            placeholder="value"
+            className="flex-1 rounded border border-border bg-bg px-2 py-1 font-mono text-xs focus:border-fg focus:outline-none"
+          />
+          <button
+            type="button"
+            onClick={() => remove(row.id)}
+            className="text-fg-subtle hover:text-danger"
+            aria-label="Remove header"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={add}
+        className="mt-2 inline-flex items-center gap-1 rounded border border-dashed border-border px-2 py-1 text-2xs text-fg-muted hover:bg-bg-muted"
+      >
+        <Plus className="h-3 w-3" />
+        Add header
+      </button>
     </div>
   );
 }

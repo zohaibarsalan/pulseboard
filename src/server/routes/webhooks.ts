@@ -105,10 +105,22 @@ export async function webhooksRoutes(app: FastifyInstance, ctx: AppContext): Pro
       if (!originalRow) return reply.code(404).send({ error: "not_found" });
       const original = rowToWebhook(originalRow);
 
+      // Replay accepts three optional overrides: forwardTo, body, and headers.
+      // headers is merged into the original (override matching keys, keep others)
+      // so callers can tweak one header without resending all of them.
       let overrideTarget: string | undefined;
+      let overrideBody: string | undefined;
+      let overrideHeaders: Record<string, string> | undefined;
       if (typeof req.body === "string" && req.body.length > 0) {
         try {
-          overrideTarget = (JSON.parse(req.body) as { forwardTo?: string }).forwardTo;
+          const parsed = JSON.parse(req.body) as {
+            forwardTo?: string;
+            body?: string;
+            headers?: Record<string, string>;
+          };
+          overrideTarget = parsed.forwardTo;
+          overrideBody = parsed.body;
+          overrideHeaders = parsed.headers;
         } catch {
           // ignore malformed override
         }
@@ -118,30 +130,37 @@ export async function webhooksRoutes(app: FastifyInstance, ctx: AppContext): Pro
         return reply.code(400).send({ error: "no_forward_target" });
       }
 
-      const headers = JSON.parse(original.headersJson) as Record<string, string>;
+      const originalHeaders = JSON.parse(original.headersJson) as Record<string, string>;
+      const headers = overrideHeaders
+        ? { ...originalHeaders, ...overrideHeaders }
+        : originalHeaders;
+      const body = overrideBody !== undefined ? overrideBody : original.body;
+      const wasEdited = overrideBody !== undefined || overrideHeaders !== undefined;
+
       const result = await forwardWebhook({
         forwardTo: target,
         method: original.method,
         path: original.path,
         queryParams: original.queryParams,
         headers,
-        body: original.body,
+        body,
         timeoutMs: ctx.config.forwardTimeoutMs,
       });
 
       const now = Date.now();
 
-      // Record the replay as a new webhook row so the timeline stays honest.
+      // Record what was actually sent — not the original payload — so the
+      // replay row reflects reality (you can inspect the edited body later).
       const replayRecord: NewWebhook = {
         id: nanoid(),
         method: original.method,
         path: original.path,
-        headersJson: original.headersJson,
-        body: original.body,
+        headersJson: JSON.stringify(headers),
+        body,
         queryParams: original.queryParams,
-        contentType: original.contentType,
-        contentLength: original.contentLength,
-        sourceIp: "replay",
+        contentType: headers["content-type"] ?? original.contentType,
+        contentLength: body ? Buffer.byteLength(body) : 0,
+        sourceIp: wasEdited ? "replay-edited" : "replay",
         receivedAt: now,
         source: original.source,
         eventType: original.eventType,
@@ -152,8 +171,10 @@ export async function webhooksRoutes(app: FastifyInstance, ctx: AppContext): Pro
         replayCount: 0,
         lastReplayedAt: null,
         replayOf: original.id,
-        signatureStatus: original.signatureStatus,
-        signatureNotes: original.signatureNotes,
+        // Edited payloads break HMACs by definition — never carry over a "valid"
+        // status from the original onto an edited replay, that would be a lie.
+        signatureStatus: wasEdited ? "not_applicable" : original.signatureStatus,
+        signatureNotes: wasEdited ? "Edited replay — original signature no longer applies" : original.signatureNotes,
       };
       ctx.db.insert(webhooks).values(replayRecord).run();
 

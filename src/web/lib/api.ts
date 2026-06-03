@@ -94,10 +94,13 @@ export const api = {
 
   stats: () => get<WebhookStats>("/api/webhooks/stats"),
 
-  replay: (id: string, forwardTo?: string) =>
+  replay: (
+    id: string,
+    overrides?: { forwardTo?: string; body?: string; headers?: Record<string, string> },
+  ) =>
     post<{ ok: true; replayId: string; result: { status: number | null; durationMs: number; error: string | null } }>(
       `/api/webhooks/${id}/replay`,
-      forwardTo ? { forwardTo } : undefined,
+      overrides && Object.keys(overrides).length > 0 ? overrides : undefined,
     ),
 
   clear: () => post<{ ok: true }>("/api/webhooks/clear"),

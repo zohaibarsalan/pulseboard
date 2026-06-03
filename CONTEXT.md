@@ -66,15 +66,15 @@ Building **v0.1**.
 
 ## Roadmap (next features)
 
-Prioritized list of what's next, biggest differentiators first.
+Prioritized list. Done items kept here for product context.
 
-| # | Feature | Why it matters |
-|---|---|---|
-| 1 | **Signature verification** | Show whether each webhook's HMAC signature is valid for the given provider. The "you couldn't get this elsewhere" feature — ngrok/webhook.site don't do this. Requires: secrets storage + per-provider verifiers (Stripe, GitHub, Shopify, Slack, Clerk, etc.) + UI badge. |
-| 2 | **Replay with edits** | Edit the payload before replaying. Lets devs test how their app handles malformed bodies, missing fields, edge cases. |
-| 3 | **Analytics page** | Throughput over time, error rate trends, per-provider success rates. Repurpose the chart components from the Pulseboard era. |
-| 4 | **Built-in webhook sender** | Compose + send webhooks manually (Postman-style). Test handlers without setting up a real provider account. |
-| 5 | **Onboarding / first-run** | When empty, show the capture URL huge with a copyable curl example. Most important moment in the UX. |
+| # | Feature | Status | Notes |
+|---|---|---|---|
+| 1 | Signature verification | ✅ done | HMAC verifiers for 9 providers, `webhook_secrets` table, masked Settings UI, badge in detail + list rows |
+| 2 | Replay with edits | ✅ done | Replay endpoint accepts body + headers overrides (merged with original). Inline edit mode in WebhookDetail with JSON formatter and editable header rows. Edited replays tagged `replay-edited`; signature marked `not_applicable` since HMAC no longer matches |
+| 3 | Analytics page | pending | Throughput over time, error rate trends, per-provider success rates. Repurpose chart components from the Pulseboard era. |
+| 4 | Built-in webhook sender | pending | Compose + send webhooks manually (Postman-style). Test handlers without setting up a real provider account. |
+| 5 | Onboarding / first-run | pending | When empty, show the capture URL huge with a copyable curl example. Most important moment in the UX. |
 
 ---
 
