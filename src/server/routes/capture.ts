@@ -1,9 +1,10 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { nanoid } from "nanoid";
 import type { AppContext } from "../context.js";
-import { webhooks, type NewWebhook } from "../../db/schema.js";
+import { webhooks, webhookSecrets, type NewWebhook } from "../../db/schema.js";
 import { detectSource } from "../../capture/detector.js";
 import { forwardWebhook } from "../../capture/forwarder.js";
+import { verifySignature } from "../../capture/signature.js";
 import { rowToWebhook } from "../serialize.js";
 
 // Webhooks are captured under /hook/*. Everything after /hook is treated as the
@@ -32,6 +33,18 @@ export async function captureRoute(app: FastifyInstance, ctx: AppContext): Promi
     const queryParams = queryIndex >= 0 ? req.url.slice(queryIndex + 1) : null;
 
     const detected = detectSource(headers, rawBody);
+
+    // Look up the signing secret (if any) for this source and verify.
+    const secretRow = ctx.db.$client
+      .prepare("SELECT secret FROM webhook_secrets WHERE source = ?")
+      .get(detected.source) as { secret: string } | undefined;
+    const signature = verifySignature({
+      source: detected.source,
+      headers,
+      body: rawBody,
+      secret: secretRow?.secret ?? null,
+    });
+
     const now = Date.now();
 
     const record: NewWebhook = {
@@ -54,6 +67,8 @@ export async function captureRoute(app: FastifyInstance, ctx: AppContext): Promi
       replayCount: 0,
       lastReplayedAt: null,
       replayOf: null,
+      signatureStatus: signature.status,
+      signatureNotes: signature.notes ?? null,
     };
 
     // Forward first (if configured) so we can record the result in one insert.

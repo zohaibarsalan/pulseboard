@@ -26,5 +26,7 @@ export function rowToWebhook(row: Row): Webhook {
     replayCount: row.replay_count as number,
     lastReplayedAt: (row.last_replayed_at as number | null) ?? null,
     replayOf: (row.replay_of as string | null) ?? null,
+    signatureStatus: row.signature_status as string,
+    signatureNotes: (row.signature_notes as string | null) ?? null,
   };
 }

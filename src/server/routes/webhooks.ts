@@ -152,6 +152,8 @@ export async function webhooksRoutes(app: FastifyInstance, ctx: AppContext): Pro
         replayCount: 0,
         lastReplayedAt: null,
         replayOf: original.id,
+        signatureStatus: original.signatureStatus,
+        signatureNotes: original.signatureNotes,
       };
       ctx.db.insert(webhooks).values(replayRecord).run();
 

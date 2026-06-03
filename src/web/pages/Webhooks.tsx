@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Inbox, Trash2, Webhook as WebhookIcon } from "lucide-react";
 import { Topbar } from "../components/Topbar.js";
 import { SourceBadge } from "../components/SourceBadge.js";
+import { SignatureBadge } from "../components/SignatureBadge.js";
 import { WebhookDetail } from "../components/WebhookDetail.js";
 import { SearchInput } from "../components/SearchInput.js";
 import { api, type Webhook, type WebhookFilter } from "../lib/api.js";
@@ -188,6 +189,7 @@ function WebhookRow({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <SourceBadge source={webhook.source} />
+          <SignatureBadge status={webhook.signatureStatus} notes={webhook.signatureNotes} size="sm" />
           {webhook.eventType && (
             <span className="truncate font-mono text-xs text-fg">{webhook.eventType}</span>
           )}

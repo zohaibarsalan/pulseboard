@@ -29,6 +29,17 @@ export type Webhook = {
   replayCount: number;
   lastReplayedAt: number | null;
   replayOf: string | null;
+  signatureStatus: SignatureStatus;
+  signatureNotes: string | null;
+};
+
+export type SignatureStatus = "valid" | "invalid" | "no_secret" | "unverifiable" | "not_applicable";
+
+export type SecretInfo = {
+  source: string;
+  configured: boolean;
+  masked: string | null;
+  updatedAt: number | null;
 };
 
 export type WebhookStats = {
@@ -90,4 +101,13 @@ export const api = {
     ),
 
   clear: () => post<{ ok: true }>("/api/webhooks/clear"),
+
+  secrets: () => get<{ secrets: SecretInfo[] }>("/api/secrets"),
+  setSecret: (source: string, secret: string) =>
+    post<{ ok: true; source: string }>(`/api/secrets/${source}`, { secret }),
+  deleteSecret: async (source: string) => {
+    const res = await fetch(`/api/secrets/${source}`, { method: "DELETE" });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    return (await res.json()) as { ok: true };
+  },
 };

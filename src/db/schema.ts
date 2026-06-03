@@ -31,6 +31,11 @@ export const webhooks = sqliteTable(
     replayCount: integer("replay_count").notNull().default(0),
     lastReplayedAt: integer("last_replayed_at"),
     replayOf: text("replay_of"),
+
+    // Signature verification
+    // Status values: 'valid' | 'invalid' | 'no_secret' | 'unverifiable' | 'not_applicable'
+    signatureStatus: text("signature_status").notNull().default("not_applicable"),
+    signatureNotes: text("signature_notes"),
   },
   (t) => ({
     webhooksReceivedIdx: index("webhooks_received_idx").on(sql`${t.receivedAt} DESC`),
@@ -41,3 +46,16 @@ export const webhooks = sqliteTable(
 
 export type Webhook = typeof webhooks.$inferSelect;
 export type NewWebhook = typeof webhooks.$inferInsert;
+
+// Per-provider signing secrets. Stored locally because Studio is a local-first
+// dev tool — the secrets are already on the user's machine. The API never
+// returns the raw secret, only a masked preview.
+export const webhookSecrets = sqliteTable("webhook_secrets", {
+  source: text("source").primaryKey(),
+  secret: text("secret").notNull(),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+});
+
+export type WebhookSecret = typeof webhookSecrets.$inferSelect;
+export type NewWebhookSecret = typeof webhookSecrets.$inferInsert;

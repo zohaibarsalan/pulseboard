@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Check, Copy, Database, Server, Shield } from "lucide-react";
+import { ArrowRight, Check, Copy, Database, Server, Shield, ShieldCheck } from "lucide-react";
 import { Topbar } from "../components/Topbar.js";
+import { SecretsManager } from "../components/SecretsManager.js";
 import { api } from "../lib/api.js";
 import { formatRelativeTime } from "../lib/format.js";
 
@@ -43,6 +44,11 @@ export function SettingsPage(): React.ReactElement {
             <p className="mt-2 text-xs text-fg-subtle">
               Example with ngrok: <code className="font-mono">https://xxx.ngrok.io/hook/stripe</code>
             </p>
+          </Section>
+
+          {/* Signing secrets */}
+          <Section title="Signing Secrets" icon={ShieldCheck}>
+            <SecretsManager />
           </Section>
 
           {/* Forwarding */}

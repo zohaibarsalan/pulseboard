@@ -4,6 +4,7 @@ import { Check, Copy, RefreshCw, Terminal } from "lucide-react";
 import { api, type Webhook } from "../lib/api.js";
 import { formatRelativeTime, formatDuration } from "../lib/format.js";
 import { SourceBadge } from "./SourceBadge.js";
+import { SignatureBadge } from "./SignatureBadge.js";
 import { cn } from "../lib/cn.js";
 
 type Tab = "body" | "headers" | "forward";
@@ -54,6 +55,7 @@ export function WebhookDetail({
               {webhook.eventType}
             </span>
           )}
+          <SignatureBadge status={webhook.signatureStatus} notes={webhook.signatureNotes} />
           <span className="text-2xs text-fg-subtle">{formatRelativeTime(webhook.receivedAt)}</span>
           {webhook.replayOf && (
             <span className="rounded bg-info/15 px-1.5 py-0.5 text-2xs text-info">replay</span>

@@ -8,6 +8,13 @@
       "when": 1780050840497,
       "tag": "0000_famous_moondragon",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1780477991095,
+      "tag": "0001_new_rocket_racer",
+      "breakpoints": true
     }
   ]
 }

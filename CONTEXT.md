@@ -64,6 +64,20 @@ Building **v0.1**.
 
 ---
 
+## Roadmap (next features)
+
+Prioritized list of what's next, biggest differentiators first.
+
+| # | Feature | Why it matters |
+|---|---|---|
+| 1 | **Signature verification** | Show whether each webhook's HMAC signature is valid for the given provider. The "you couldn't get this elsewhere" feature — ngrok/webhook.site don't do this. Requires: secrets storage + per-provider verifiers (Stripe, GitHub, Shopify, Slack, Clerk, etc.) + UI badge. |
+| 2 | **Replay with edits** | Edit the payload before replaying. Lets devs test how their app handles malformed bodies, missing fields, edge cases. |
+| 3 | **Analytics page** | Throughput over time, error rate trends, per-provider success rates. Repurpose the chart components from the Pulseboard era. |
+| 4 | **Built-in webhook sender** | Compose + send webhooks manually (Postman-style). Test handlers without setting up a real provider account. |
+| 5 | **Onboarding / first-run** | When empty, show the capture URL huge with a copyable curl example. Most important moment in the UX. |
+
+---
+
 ## Running it
 
 ```bash
