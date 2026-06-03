@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Command } from "cmdk";
-import { Moon, Search, Settings, Sun, Trash2, Webhook, type LucideIcon } from "lucide-react";
+import { Activity, Moon, Search, Settings, Sun, Trash2, Webhook, type LucideIcon } from "lucide-react";
 import { api } from "../lib/api.js";
 
 type Props = {
@@ -70,6 +70,7 @@ export function CommandPalette({ open, onClose }: Props): React.ReactElement | n
 
             <Command.Group heading="Pages">
               <PaletteItem icon={Webhook} label="Webhooks" onSelect={() => go("/")} />
+              <PaletteItem icon={Activity} label="Analytics" onSelect={() => go("/analytics")} />
               <PaletteItem icon={Settings} label="Settings" onSelect={() => go("/settings")} />
             </Command.Group>
 

@@ -11,6 +11,7 @@ import { webhooksRoutes } from "./routes/webhooks.js";
 import { liveRoute } from "./routes/live.js";
 import { captureRoute } from "./routes/capture.js";
 import { secretsRoutes } from "./routes/secrets.js";
+import { analyticsRoutes } from "./routes/analytics.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -43,6 +44,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
   await healthRoute(app, ctx);
   await webhooksRoutes(app, ctx);
   await secretsRoutes(app, ctx);
+  await analyticsRoutes(app, ctx);
   await liveRoute(app, ctx);
   await captureRoute(app, ctx);
 

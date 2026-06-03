@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Moon, Settings, Sun, Webhook, type LucideIcon } from "lucide-react";
+import { Activity, ArrowRight, Moon, Settings, Sun, Webhook, type LucideIcon } from "lucide-react";
 import { cn } from "../lib/cn.js";
 import { api } from "../lib/api.js";
 
@@ -9,6 +9,7 @@ type NavItem = { href: string; label: string; icon: LucideIcon; match?: (loc: st
 
 const items: NavItem[] = [
   { href: "/", label: "Webhooks", icon: Webhook, match: (l) => l === "/" },
+  { href: "/analytics", label: "Analytics", icon: Activity },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

@@ -42,6 +42,61 @@ export type SecretInfo = {
   updatedAt: number | null;
 };
 
+export type AnalyticsFilter = {
+  days?: number;
+  source?: string;
+  status?: "success" | "failed" | "pending";
+  signature?: "valid" | "invalid" | "no_secret" | "unverifiable" | "not_applicable";
+};
+
+export type AnalyticsSummary = {
+  rangeDays: number;
+  current: {
+    total: number;
+    succeeded: number;
+    failed: number;
+    pending: number;
+    avgForwardMs: number | null;
+    validSignatures: number;
+    verifiableTotal: number;
+  };
+  previous: AnalyticsSummary["current"];
+  derived: {
+    successRate: number;
+    signatureValidRate: number;
+    totalTrendPct: number | null;
+    successRateTrendPct: number | null;
+    avgForwardTrendPct: number | null;
+    signatureValidTrendPct: number | null;
+  };
+};
+
+export type AnalyticsTimeseries = {
+  bucketSizeSeconds: number;
+  rangeDays: number;
+  buckets: {
+    ts: number;
+    succeeded: number;
+    failed: number;
+    pending: number;
+    avgForwardMs: number | null;
+  }[];
+};
+
+export type AnalyticsBreakdownItem = {
+  key: string;
+  total: number;
+  succeeded: number;
+  failed: number;
+  successRate: number;
+};
+
+export type AnalyticsBreakdown = {
+  rangeDays: number;
+  by: "source" | "event_type" | "path";
+  items: AnalyticsBreakdownItem[];
+};
+
 export type WebhookStats = {
   total: number;
   succeeded: number;
@@ -56,6 +111,15 @@ export type WebhookFilter = {
   status?: "success" | "failed" | "pending";
   q?: string;
 };
+
+function buildAnalyticsParams(filter: AnalyticsFilter): string {
+  const params = new URLSearchParams();
+  if (filter.days != null) params.set("days", String(filter.days));
+  if (filter.source) params.set("source", filter.source);
+  if (filter.status) params.set("status", filter.status);
+  if (filter.signature) params.set("signature", filter.signature);
+  return params.toString();
+}
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(path, { headers: { accept: "application/json" } });
@@ -104,6 +168,20 @@ export const api = {
     ),
 
   clear: () => post<{ ok: true }>("/api/webhooks/clear"),
+
+  analyticsSummary: (filter: AnalyticsFilter = {}) =>
+    get<AnalyticsSummary>(`/api/analytics/summary?${buildAnalyticsParams(filter)}`),
+  analyticsTimeseries: (filter: AnalyticsFilter = {}, bucket?: "hour" | "day") => {
+    const params = new URLSearchParams(buildAnalyticsParams(filter));
+    if (bucket) params.set("bucket", bucket);
+    return get<AnalyticsTimeseries>(`/api/analytics/timeseries?${params.toString()}`);
+  },
+  analyticsBreakdown: (by: "source" | "event_type" | "path", filter: AnalyticsFilter = {}, limit = 10) => {
+    const params = new URLSearchParams(buildAnalyticsParams(filter));
+    params.set("by", by);
+    params.set("limit", String(limit));
+    return get<AnalyticsBreakdown>(`/api/analytics/breakdown?${params.toString()}`);
+  },
 
   secrets: () => get<{ secrets: SecretInfo[] }>("/api/secrets"),
   setSecret: (source: string, secret: string) =>

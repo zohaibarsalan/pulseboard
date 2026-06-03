@@ -72,7 +72,7 @@ Prioritized list. Done items kept here for product context.
 |---|---|---|---|
 | 1 | Signature verification | ✅ done | HMAC verifiers for 9 providers, `webhook_secrets` table, masked Settings UI, badge in detail + list rows |
 | 2 | Replay with edits | ✅ done | Replay endpoint accepts body + headers overrides (merged with original). Inline edit mode in WebhookDetail with JSON formatter and editable header rows. Edited replays tagged `replay-edited`; signature marked `not_applicable` since HMAC no longer matches |
-| 3 | Analytics page | pending | Throughput over time, error rate trends, per-provider success rates. Repurpose chart components from the Pulseboard era. |
+| 3 | Analytics page | ✅ done | Filter bar (source pills + status + signature), 4 KPIs with vs-prev-period trends, stacked-area throughput chart, forwarding-latency line chart, breakdowns by source and event_type with success-rate bars. Endpoints under `/api/analytics/{summary,timeseries,breakdown}`. |
 | 4 | Built-in webhook sender | pending | Compose + send webhooks manually (Postman-style). Test handlers without setting up a real provider account. |
 | 5 | Onboarding / first-run | pending | When empty, show the capture URL huge with a copyable curl example. Most important moment in the UX. |
 
