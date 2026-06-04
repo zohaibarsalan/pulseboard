@@ -183,6 +183,22 @@ export const api = {
     return get<AnalyticsBreakdown>(`/api/analytics/breakdown?${params.toString()}`);
   },
 
+  send: (input: {
+    method: string;
+    path: string;
+    target?: string;
+    headers: Record<string, string>;
+    body: string;
+    source: string;
+    autoSign: boolean;
+  }) =>
+    post<{
+      ok: true;
+      id: string;
+      result: { status: number | null; durationMs: number; error: string | null };
+      signedWith: string | null;
+    }>("/api/sender/send", input),
+
   secrets: () => get<{ secrets: SecretInfo[] }>("/api/secrets"),
   setSecret: (source: string, secret: string) =>
     post<{ ok: true; source: string }>(`/api/secrets/${source}`, { secret }),

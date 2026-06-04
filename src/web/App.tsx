@@ -4,6 +4,7 @@ import { Sidebar } from "./components/Sidebar.js";
 import { CommandPalette } from "./components/CommandPalette.js";
 import { CommandPaletteContext } from "./lib/useCommandPalette.js";
 import { WebhooksPage } from "./pages/Webhooks.js";
+import { ComposePage } from "./pages/Compose.js";
 import { AnalyticsPage } from "./pages/Analytics.js";
 import { SettingsPage } from "./pages/Settings.js";
 import { PlaceholderPage } from "./pages/Placeholder.js";
@@ -34,6 +35,7 @@ export function App(): React.ReactElement {
         <main className="flex min-w-0 flex-1 flex-col">
           <Switch>
             <Route path="/" component={WebhooksPage} />
+            <Route path="/compose" component={ComposePage} />
             <Route path="/analytics" component={AnalyticsPage} />
             <Route path="/settings" component={SettingsPage} />
             <Route>
