@@ -21,6 +21,7 @@ import {
 } from "../lib/api.js";
 import { formatDuration, formatNumber } from "../lib/format.js";
 import { cn } from "../lib/cn.js";
+import { Button, Card } from "../components/coss-ui/index.js";
 
 type Range = "24h" | "7d" | "30d";
 const RANGES: { id: Range; label: string; days: number; bucket: "hour" | "day" }[] = [
@@ -82,17 +83,15 @@ export function AnalyticsPage(): React.ReactElement {
         subtitle={
           <div className="flex items-center gap-1">
             {RANGES.map((r) => (
-              <button
+              <Button
                 key={r.id}
-                type="button"
                 onClick={() => setRange(r.id)}
-                className={cn(
-                  "rounded px-2 py-0.5 text-xs font-medium transition-colors",
-                  range === r.id ? "bg-fg/10 text-fg" : "text-fg-muted hover:bg-bg-muted",
-                )}
+                variant="pill"
+                size="xs"
+                active={range === r.id}
               >
                 {r.label}
-              </button>
+              </Button>
             ))}
           </div>
         }
@@ -278,16 +277,15 @@ function FilterPill({
   const activeClass =
     tone === "success" ? "bg-success/15 text-success" : tone === "danger" ? "bg-danger/15 text-danger" : "bg-fg/10 text-fg";
   return (
-    <button
-      type="button"
+    <Button
       onClick={onClick}
-      className={cn(
-        "rounded px-2 py-0.5 text-xs font-medium transition-colors",
-        active ? activeClass : "text-fg-muted hover:bg-bg-muted",
-      )}
+      variant="pill"
+      size="xs"
+      active={active}
+      className={active ? activeClass : undefined}
     >
       {children}
-    </button>
+    </Button>
   );
 }
 
@@ -307,7 +305,7 @@ function BreakdownList({
   const max = items.length > 0 ? items[0]!.total : 1;
 
   return (
-    <div className="pb-card overflow-hidden">
+    <Card className="overflow-hidden p-0">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <h3 className="text-sm font-medium">{title}</h3>
         <span className="text-2xs text-fg-subtle">top {items.length}</span>
@@ -322,16 +320,16 @@ function BreakdownList({
             const isCurrent = currentKey === item.key;
             const Wrapper = ({ children }: { children: React.ReactNode }): React.ReactElement =>
               onItemClick ? (
-                <button
-                  type="button"
+                <Button
                   onClick={() => onItemClick(item.key)}
+                  variant="ghost"
                   className={cn(
                     "block w-full text-left transition-colors hover:bg-bg-muted/40",
                     isCurrent && "bg-bg-muted/60",
                   )}
                 >
                   {children}
-                </button>
+                </Button>
               ) : (
                 <div>{children}</div>
               );
@@ -381,6 +379,6 @@ function BreakdownList({
           Filtered by {currentKey}. <Link href="/" className="hover:underline">View in feed →</Link>
         </div>
       )}
-    </div>
+    </Card>
   );
 }

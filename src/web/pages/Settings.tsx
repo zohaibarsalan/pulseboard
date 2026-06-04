@@ -5,6 +5,7 @@ import { Topbar } from "../components/Topbar.js";
 import { SecretsManager } from "../components/SecretsManager.js";
 import { api } from "../lib/api.js";
 import { formatRelativeTime } from "../lib/format.js";
+import { Button, Card, CardHeader } from "../components/coss-ui/index.js";
 
 export function SettingsPage(): React.ReactElement {
   const { data: health } = useQuery({ queryKey: ["health"], queryFn: api.health, refetchInterval: 5_000 });
@@ -33,13 +34,13 @@ export function SettingsPage(): React.ReactElement {
               <code className="flex-1 break-all rounded-lg bg-bg-muted px-3 py-2 font-mono text-sm">
                 {health?.captureUrl ?? "—"}/...
               </code>
-              <button
-                type="button"
+              <Button
                 onClick={copyCaptureUrl}
-                className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-2 text-xs hover:bg-bg-muted"
+                size="icon"
+                aria-label="Copy capture URL"
               >
                 {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
-              </button>
+              </Button>
             </div>
             <p className="mt-2 text-xs text-fg-subtle">
               Example with ngrok: <code className="font-mono">https://xxx.ngrok.io/hook/stripe</code>
@@ -100,7 +101,7 @@ export function SettingsPage(): React.ReactElement {
             />
             <p className="mt-2 text-xs text-fg-subtle">
               In read-only mode, replay and clear actions are disabled. Set{" "}
-              <code className="font-mono text-fg-muted">WEBHOOK_STUDIO_READONLY=true</code> to enable.
+              <code className="font-mono text-fg-muted">PULSEBOARD_READONLY=true</code> to enable.
             </p>
           </Section>
         </div>
@@ -119,13 +120,13 @@ function Section({
   children: React.ReactNode;
 }): React.ReactElement {
   return (
-    <div className="pb-card p-4">
-      <div className="mb-3 flex items-center gap-2">
+    <Card>
+      <CardHeader>
         <Icon className="h-4 w-4 text-fg-subtle" />
         <h2 className="text-sm font-medium">{title}</h2>
-      </div>
+      </CardHeader>
       {children}
-    </div>
+    </Card>
   );
 }
 

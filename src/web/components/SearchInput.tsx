@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
+import { Button, Input } from "./coss-ui/index.js";
 
 type Props = {
   value: string;
@@ -25,27 +26,28 @@ export function SearchInput({ value, onChange, placeholder, hint, autoFocus }: P
     <div className="space-y-1.5">
       <div className="pb-search w-full max-w-2xl">
         <Search className="h-3.5 w-3.5 stroke-[1.75] text-fg-subtle" />
-        <input
+        <Input
           type="search"
           value={local}
           onChange={(e) => flush(e.target.value)}
           placeholder={placeholder ?? "Search jobs…"}
           autoFocus={autoFocus}
-          className="flex-1 bg-transparent text-sm placeholder:text-fg-subtle focus:outline-none"
+          className="h-auto flex-1 border-0 bg-transparent px-0 text-sm focus:ring-0"
         />
         {local && (
-          <button
-            type="button"
+          <Button
             onClick={() => {
               flush("");
               if (debounceRef.current) clearTimeout(debounceRef.current);
               onChange("");
             }}
-            className="text-fg-subtle hover:text-fg"
+            variant="ghost"
+            size="icon"
+            className="h-5 w-5"
             aria-label="Clear search"
           >
             <X className="h-3 w-3" />
-          </button>
+          </Button>
         )}
       </div>
       {hint && <p className="ml-1 text-2xs text-fg-subtle">{hint}</p>}

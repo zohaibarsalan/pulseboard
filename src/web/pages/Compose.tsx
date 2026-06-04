@@ -8,6 +8,7 @@ import { api } from "../lib/api.js";
 import { formatDuration } from "../lib/format.js";
 import { PRESETS, findPreset, type Preset } from "../lib/presets.js";
 import { cn } from "../lib/cn.js";
+import { Button, Card, Checkbox, Input, Select, Textarea } from "../components/coss-ui/index.js";
 
 type HeaderRow = { id: number; key: string; value: string };
 let headerRowCounter = 0;
@@ -130,24 +131,24 @@ export function ComposePage(): React.ReactElement {
         <div className="mx-auto max-w-3xl space-y-5">
           {readonly && (
             <div className="rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning">
-              Studio is running in read-only mode — sending is disabled.
+              Pulseboard is running in read-only mode — sending is disabled.
             </div>
           )}
 
           {/* Preset */}
           <Section title="Preset">
-            <select
+            <Select
               value={presetId}
               onChange={(e) => {
                 const preset = findPreset(e.target.value);
                 if (preset) applyPreset(preset);
               }}
-              className="w-full rounded-md border border-border bg-bg px-2 py-1.5 text-sm focus:border-fg focus:outline-none"
+              className="w-full"
             >
               {PRESETS.map((p) => (
                 <option key={p.id} value={p.id}>{p.label}</option>
               ))}
-            </select>
+            </Select>
             <p className="mt-1.5 text-2xs text-fg-subtle">
               Picks a sample body, default path, and the right source for auto-signing.
             </p>
@@ -156,30 +157,30 @@ export function ComposePage(): React.ReactElement {
           {/* Request line */}
           <Section title="Request">
             <div className="flex items-center gap-2">
-              <select
+              <Select
                 value={method}
                 onChange={(e) => setMethod(e.target.value)}
                 className="rounded-md border border-border bg-bg px-2 py-1.5 font-mono text-xs focus:border-fg focus:outline-none"
               >
                 {METHODS.map((m) => <option key={m}>{m}</option>)}
-              </select>
-              <input
+              </Select>
+              <Input
                 type="text"
                 value={path}
                 onChange={(e) => setPath(e.target.value)}
                 placeholder="/path"
-                className="flex-1 rounded-md border border-border bg-bg px-2 py-1.5 font-mono text-sm focus:border-fg focus:outline-none"
+                className="flex-1 font-mono"
               />
             </div>
 
             <div className="mt-2">
               <label className="block text-2xs font-medium uppercase tracking-wider text-fg-subtle">Target</label>
-              <input
+              <Input
                 type="text"
                 value={target}
                 onChange={(e) => setTarget(e.target.value)}
                 placeholder={targetPlaceholder}
-                className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-1.5 font-mono text-xs focus:border-fg focus:outline-none"
+                className="mt-1 w-full font-mono text-xs"
               />
               <p className="mt-1 text-2xs text-fg-subtle">
                 Leave empty to use the configured forward target. Sender will POST to{" "}
@@ -193,21 +194,19 @@ export function ComposePage(): React.ReactElement {
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
                 <SourceBadge source={source} />
-                <select
+                <Select
                   value={source}
                   onChange={(e) => setSource(e.target.value)}
-                  className="rounded-md border border-border bg-bg px-2 py-1 text-xs focus:border-fg focus:outline-none"
+                  className="text-xs"
                 >
                   {SOURCE_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
+                </Select>
               </div>
 
               <label className="ml-auto inline-flex cursor-pointer items-center gap-2 text-xs">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={autoSign}
                   onChange={(e) => setAutoSign(e.target.checked)}
-                  className="h-3.5 w-3.5"
                 />
                 <span>Auto-sign with stored secret</span>
               </label>
@@ -226,38 +225,40 @@ export function ComposePage(): React.ReactElement {
             <div className="space-y-1.5">
               {headers.map((row) => (
                 <div key={row.id} className="flex items-center gap-2">
-                  <input
+                  <Input
                     type="text"
                     value={row.key}
                     onChange={(e) => updateHeader(row.id, { key: e.target.value })}
                     placeholder="header name"
-                    className="w-48 shrink-0 rounded border border-border bg-bg px-2 py-1 font-mono text-xs focus:border-fg focus:outline-none"
+                    className="w-48 shrink-0 font-mono text-xs"
                   />
-                  <input
+                  <Input
                     type="text"
                     value={row.value}
                     onChange={(e) => updateHeader(row.id, { value: e.target.value })}
                     placeholder="value"
-                    className="flex-1 rounded border border-border bg-bg px-2 py-1 font-mono text-xs focus:border-fg focus:outline-none"
+                    className="flex-1 font-mono text-xs"
                   />
-                  <button
-                    type="button"
+                  <Button
                     onClick={() => removeHeader(row.id)}
-                    className="text-fg-subtle hover:text-danger"
+                    variant="danger"
+                    size="icon"
+                    className="h-7 w-7"
                     aria-label="Remove header"
                   >
                     <X className="h-3.5 w-3.5" />
-                  </button>
+                  </Button>
                 </div>
               ))}
-              <button
-                type="button"
+              <Button
                 onClick={addHeader}
-                className="mt-1 inline-flex items-center gap-1 rounded border border-dashed border-border px-2 py-1 text-2xs text-fg-muted hover:bg-bg-muted"
+                variant="outline"
+                size="xs"
+                className="mt-1 border-dashed"
               >
                 <Plus className="h-3 w-3" />
                 Add header
-              </button>
+              </Button>
             </div>
             <p className="mt-2 text-2xs text-fg-subtle">
               Signature headers are added automatically when auto-sign is on.
@@ -267,20 +268,20 @@ export function ComposePage(): React.ReactElement {
           {/* Body */}
           <Section title="Body">
             <div className="mb-2 flex items-center gap-2">
-              <button
-                type="button"
+              <Button
                 onClick={formatJson}
-                className="rounded border border-border px-2 py-0.5 text-2xs text-fg-muted hover:bg-bg-muted"
+                variant="outline"
+                size="xs"
               >
                 Format JSON
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
                 onClick={minifyJson}
-                className="rounded border border-border px-2 py-0.5 text-2xs text-fg-muted hover:bg-bg-muted"
+                variant="outline"
+                size="xs"
               >
                 Minify
-              </button>
+              </Button>
               <span className="ml-auto text-2xs text-fg-subtle">{body.length} chars</span>
             </div>
             {parseError && (
@@ -288,7 +289,7 @@ export function ComposePage(): React.ReactElement {
                 {parseError}
               </div>
             )}
-            <textarea
+            <Textarea
               value={body}
               onChange={(e) => {
                 setBody(e.target.value);
@@ -296,25 +297,22 @@ export function ComposePage(): React.ReactElement {
               }}
               rows={14}
               spellCheck={false}
-              className="w-full resize-y rounded-lg border border-border bg-bg-muted/40 p-3 font-mono text-xs leading-relaxed focus:border-fg focus:outline-none"
+              className="font-mono text-xs leading-relaxed"
               placeholder="Request body"
             />
           </Section>
 
           {/* Send */}
           <div className="flex items-center gap-3">
-            <button
-              type="button"
+            <Button
               onClick={() => send.mutate()}
               disabled={!canSend || readonly}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-md bg-fg px-4 py-2 text-sm font-medium text-bg transition-colors hover:bg-fg/90",
-                (!canSend || readonly) && "cursor-not-allowed opacity-50",
-              )}
+              variant="default"
+              size="md"
             >
               <Send className={cn("h-3.5 w-3.5", send.isPending && "animate-pulse")} />
               {send.isPending ? "Sending…" : "Send"}
-            </button>
+            </Button>
             {!health?.forwardTo && !target.trim() && (
               <span className="text-xs text-warning">Set a target or configure --forward to send.</span>
             )}
@@ -344,10 +342,10 @@ export function ComposePage(): React.ReactElement {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }): React.ReactElement {
   return (
-    <div className="pb-card p-4">
+    <Card>
       <h2 className="mb-3 text-2xs font-medium uppercase tracking-wider text-fg-subtle">{title}</h2>
       {children}
-    </div>
+    </Card>
   );
 }
 
@@ -394,13 +392,13 @@ function ResultPanel({
             </span>
           )}
         </div>
-        <button
-          type="button"
+        <Button
           onClick={onInspect}
-          className="text-xs text-fg-muted hover:underline"
+          variant="ghost"
+          size="sm"
         >
           Inspect in feed →
-        </button>
+        </Button>
       </div>
       {error && (
         <div className="mt-2 rounded border border-danger/20 bg-bg p-2 font-mono text-2xs text-danger">{error}</div>

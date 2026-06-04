@@ -11,6 +11,7 @@ import { formatRelativeTime, formatDuration } from "../lib/format.js";
 import { useLiveEvents } from "../lib/useLiveEvents.js";
 import { cn } from "../lib/cn.js";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button } from "../components/coss-ui/index.js";
 
 type StatusFilter = "all" | "success" | "failed" | "pending";
 
@@ -69,15 +70,16 @@ export function WebhooksPage(): React.ReactElement {
             <span className="text-success"><span className="font-semibold tabular-nums">{stats?.succeeded ?? 0}</span> ok</span>
             <span className="text-danger"><span className="font-semibold tabular-nums">{stats?.failed ?? 0}</span> failed</span>
             {stats && stats.total > 0 && (
-              <button
-                type="button"
+              <Button
                 onClick={() => clearMutation.mutate()}
                 disabled={clearMutation.isPending || health?.readonly}
-                className="ml-auto inline-flex items-center gap-1 text-fg-subtle hover:text-danger disabled:opacity-40"
+                variant="danger"
+                size="icon"
+                className="ml-auto h-6 w-6"
                 title={health?.readonly ? "Read-only mode" : "Clear all"}
               >
                 <Trash2 className="h-3 w-3" />
-              </button>
+              </Button>
             )}
           </div>
 
@@ -89,45 +91,41 @@ export function WebhooksPage(): React.ReactElement {
           {/* Status filter */}
           <div className="flex gap-1 border-b border-border px-2 py-2">
             {(["all", "success", "failed", "pending"] as StatusFilter[]).map((s) => (
-              <button
+              <Button
                 key={s}
-                type="button"
                 onClick={() => setStatusFilter(s)}
-                className={cn(
-                  "rounded px-2 py-1 text-xs font-medium capitalize transition-colors",
-                  statusFilter === s ? "bg-fg/10 text-fg" : "text-fg-muted hover:bg-bg-muted",
-                )}
+                variant="pill"
+                size="sm"
+                active={statusFilter === s}
+                className="capitalize"
               >
                 {s}
-              </button>
+              </Button>
             ))}
           </div>
 
           {/* Source filter */}
           {sources && sources.sources.length > 0 && (
             <div className="flex flex-wrap gap-1.5 border-b border-border px-3 py-2">
-              <button
-                type="button"
+              <Button
                 onClick={() => setSourceFilter(null)}
-                className={cn(
-                  "rounded px-1.5 py-0.5 text-2xs font-medium transition-colors",
-                  sourceFilter === null ? "bg-fg/10 text-fg" : "text-fg-subtle hover:bg-bg-muted",
-                )}
+                variant="pill"
+                size="xs"
+                active={sourceFilter === null}
               >
                 all sources
-              </button>
+              </Button>
               {sources.sources.map((s) => (
-                <button
+                <Button
                   key={s.source}
-                  type="button"
                   onClick={() => setSourceFilter(s.source === sourceFilter ? null : s.source)}
-                  className={cn(
-                    "rounded px-1.5 py-0.5 text-2xs capitalize transition-colors",
-                    sourceFilter === s.source ? "bg-fg/10 text-fg" : "text-fg-subtle hover:bg-bg-muted",
-                  )}
+                  variant="pill"
+                  size="xs"
+                  active={sourceFilter === s.source}
+                  className="capitalize"
                 >
                   {s.source} {s.count}
-                </button>
+                </Button>
               ))}
             </div>
           )}
@@ -177,9 +175,9 @@ function WebhookRow({
         : "bg-fg-subtle";
 
   return (
-    <button
-      type="button"
+    <Button
       onClick={onClick}
+      variant="ghost"
       className={cn(
         "flex w-full items-center gap-3 border-b border-border/50 px-4 py-3 text-left transition-colors hover:bg-bg-muted/40",
         selected && "bg-bg-muted/60",
@@ -204,7 +202,7 @@ function WebhookRow({
           <div className="text-2xs text-fg-subtle">{formatDuration(webhook.forwardDurationMs)}</div>
         )}
       </div>
-    </button>
+    </Button>
   );
 }
 

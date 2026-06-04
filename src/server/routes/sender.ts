@@ -62,7 +62,7 @@ export async function senderRoutes(app: FastifyInstance, ctx: AppContext): Promi
     const headers: Record<string, string> = {
       // Sensible defaults the user can override.
       "content-type": "application/json",
-      "user-agent": "webhook-studio-sender",
+      "user-agent": "pulseboard-sender",
       ...baseHeaders,
       ...signedHeaders,
     };

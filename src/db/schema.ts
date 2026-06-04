@@ -47,7 +47,7 @@ export const webhooks = sqliteTable(
 export type Webhook = typeof webhooks.$inferSelect;
 export type NewWebhook = typeof webhooks.$inferInsert;
 
-// Per-provider signing secrets. Stored locally because Studio is a local-first
+// Per-provider signing secrets. Stored locally because Pulseboard is a local-first
 // dev tool — the secrets are already on the user's machine. The API never
 // returns the raw secret, only a masked preview.
 export const webhookSecrets = sqliteTable("webhook_secrets", {

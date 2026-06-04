@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Eye, EyeOff, Key, Save, Trash2, X } from "lucide-react";
 import { api, type SecretInfo } from "../lib/api.js";
 import { SourceBadge } from "./SourceBadge.js";
-import { cn } from "../lib/cn.js";
+import { Button, Input } from "./coss-ui/index.js";
 
 export function SecretsManager(): React.ReactElement {
   const { data } = useQuery({ queryKey: ["secrets"], queryFn: api.secrets });
@@ -11,7 +11,7 @@ export function SecretsManager(): React.ReactElement {
   return (
     <div className="space-y-1.5">
       <p className="mb-3 text-xs text-fg-subtle">
-        Add the signing secret for each provider you want Studio to verify. Secrets are stored
+        Add the signing secret for each provider you want Pulseboard to verify. Secrets are stored
         locally in your SQLite database and never leave your machine.
       </p>
       {data?.secrets.map((s) => <SecretRow key={s.source} info={s} />)}
@@ -50,44 +50,43 @@ function SecretRow({ info }: { info: SecretInfo }): React.ReactElement {
 
       {editing ? (
         <>
-          <input
+          <Input
             type={reveal ? "text" : "password"}
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="Paste signing secret…"
             autoFocus
-            className="flex-1 rounded border border-border bg-bg px-2 py-1 font-mono text-xs focus:outline-none focus:ring-1 focus:ring-fg"
+            className="flex-1 font-mono text-xs"
           />
-          <button
-            type="button"
+          <Button
             onClick={() => setReveal((v) => !v)}
-            className="text-fg-subtle hover:text-fg"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
             title={reveal ? "Hide" : "Show"}
           >
             {reveal ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
             onClick={() => save.mutate()}
             disabled={!value || save.isPending}
-            className={cn(
-              "inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs hover:bg-bg",
-              (!value || save.isPending) && "opacity-50",
-            )}
+            size="sm"
           >
             {save.isSuccess ? <Check className="h-3 w-3 text-success" /> : <Save className="h-3 w-3" />}
             Save
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
             onClick={() => {
               setEditing(false);
               setValue("");
             }}
-            className="text-fg-subtle hover:text-fg"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            aria-label="Cancel editing secret"
           >
             <X className="h-3.5 w-3.5" />
-          </button>
+          </Button>
         </>
       ) : (
         <>
@@ -98,24 +97,24 @@ function SecretRow({ info }: { info: SecretInfo }): React.ReactElement {
               <span className="text-xs text-fg-subtle">Not configured</span>
             )}
           </div>
-          <button
-            type="button"
+          <Button
             onClick={() => setEditing(true)}
-            className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs hover:bg-bg-muted"
+            size="sm"
           >
             <Key className="h-3 w-3" />
             {info.configured ? "Update" : "Add secret"}
-          </button>
+          </Button>
           {info.configured && (
-            <button
-              type="button"
+            <Button
               onClick={() => remove.mutate()}
               disabled={remove.isPending}
-              className="text-fg-subtle hover:text-danger"
+              variant="danger"
+              size="icon"
+              className="h-7 w-7"
               title="Remove secret"
             >
               <Trash2 className="h-3.5 w-3.5" />
-            </button>
+            </Button>
           )}
         </>
       )}

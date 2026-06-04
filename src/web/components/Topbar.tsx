@@ -1,5 +1,6 @@
 import { Search } from "lucide-react";
 import { useCommandPalette } from "../lib/useCommandPalette.js";
+import { Button } from "./coss-ui/index.js";
 
 type Props = {
   title: string;
@@ -22,9 +23,9 @@ export function Topbar({ title, subtitle }: Props): React.ReactElement {
         )}
       </div>
       <div className="flex items-center gap-2">
-        <button
-          type="button"
+        <Button
           onClick={open}
+          variant="outline"
           className="pb-search w-[280px] cursor-pointer text-left transition-colors hover:bg-bg-muted"
           aria-label="Open command palette"
         >
@@ -34,7 +35,7 @@ export function Topbar({ title, subtitle }: Props): React.ReactElement {
             <span className="pb-kbd">⌘</span>
             <span className="pb-kbd">K</span>
           </span>
-        </button>
+        </Button>
       </div>
     </header>
   );

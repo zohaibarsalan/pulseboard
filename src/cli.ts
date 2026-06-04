@@ -11,8 +11,8 @@ import type { AppContext } from "./server/context.js";
 const program = new Command();
 
 program
-  .name("webhook-studio")
-  .description("Local-first webhook studio — capture, inspect, replay, and forward webhooks")
+  .name("pulseboard")
+  .description("Pulseboard is a local-first webhook dashboard for capturing, inspecting, replaying, and forwarding webhooks")
   .version("0.1.0-pre")
   .option("--forward <url>", "Forward captured webhooks to this URL (e.g. http://localhost:3000)")
   .option("--port <port>", "Bind port (default 4500)")
@@ -24,7 +24,7 @@ program
     try {
       await start(opts);
     } catch (err) {
-      console.error(pc.red("Failed to start Webhook Studio:"), err instanceof Error ? err.message : err);
+      console.error(pc.red("Failed to start Pulseboard:"), err instanceof Error ? err.message : err);
       process.exitCode = 1;
     }
   });
@@ -32,7 +32,7 @@ program
 async function start(opts: ConfigOverrides): Promise<void> {
   const config = loadConfig(opts);
 
-  console.log(pc.dim(`Webhook Studio starting…`));
+  console.log(pc.dim(`Pulseboard starting...`));
   console.log(pc.dim(`  DB:      ${config.dbPath}`));
   console.log(pc.dim(`  Forward: ${config.forwardTo ?? "(capture-only mode)"}`));
 
@@ -71,7 +71,7 @@ async function start(opts: ConfigOverrides): Promise<void> {
   const displayHost =
     config.host === "127.0.0.1" || config.host === "0.0.0.0" || config.host === "::" ? "localhost" : config.host;
 
-  console.log(pc.green(`\n  Webhook Studio is running at http://${displayHost}:${config.port}\n`));
+  console.log(pc.green(`\n  Pulseboard is running at http://${displayHost}:${config.port}\n`));
   console.log(pc.dim(`  Dashboard:   http://${displayHost}:${config.port}`));
   console.log(pc.bold(`  Capture URL: http://${displayHost}:${config.port}/hook/...`));
   console.log(

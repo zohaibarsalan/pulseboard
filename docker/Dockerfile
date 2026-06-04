@@ -31,9 +31,9 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
 # ---------- runtime ----------
 FROM node:20-bookworm-slim AS runtime
 ENV NODE_ENV=production
-ENV WEBHOOK_STUDIO_DB_PATH=/data/webhook-studio.db
-ENV WEBHOOK_STUDIO_HOST=0.0.0.0
-ENV WEBHOOK_STUDIO_PORT=4500
+ENV PULSEBOARD_DB_PATH=/data/pulseboard.db
+ENV PULSEBOARD_HOST=0.0.0.0
+ENV PULSEBOARD_PORT=4500
 
 WORKDIR /app
 

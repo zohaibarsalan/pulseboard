@@ -1,4 +1,4 @@
-# Webhook Studio — AI Context
+# Pulseboard — AI Context
 
 This file orients AI assistants working on this codebase. **Keep it up to date as the code evolves.** If you change architecture, decisions, or conventions, update this file in the same commit.
 
@@ -6,15 +6,15 @@ This file orients AI assistants working on this codebase. **Keep it up to date a
 
 ## One-line summary
 
-Webhook Studio is a local-first, self-hosted tool to **capture, inspect, replay, and forward webhooks**. You point a provider (Stripe, GitHub, Shopify, etc.) — or a tunnel like ngrok — at Studio's capture URL; it stores every request in embedded SQLite, forwards it to your local app with the raw bytes preserved, and serves a polished dashboard. Positioning: *Postman for incoming requests*.
+Pulseboard is a local-first, self-hosted tool to **capture, inspect, replay, and forward webhooks**. You point a provider (Stripe, GitHub, Shopify, etc.) — or a tunnel like ngrok — at Pulseboard's capture URL; it stores every request in embedded SQLite, forwards it to your local app with the raw bytes preserved, and serves a polished dashboard. Positioning: *Postman for incoming requests*.
 
-This project was pivoted from "Pulseboard" (a BullMQ studio) after we found [Workbench](https://github.com/pontusab/workbench) already occupied that space. The server scaffold, SQLite/Drizzle layer, React UI shell, SSE, and CLI/distribution model were reused; the BullMQ-specific code was removed.
+This project was pivoted from the original Pulseboard BullMQ concept after we found [Workbench](https://github.com/pontusab/workbench) already occupied that space. The product name is Pulseboard again, but the product surface is still webhook capture and replay. Keep the current logo mark as-is.
 
 ---
 
 ## How it works
 
-Studio sits **behind** the user's tunnel — it does not build one (that's the expensive ngrok-competing part, out of scope for v1).
+Pulseboard sits **behind** the user's tunnel — it does not build one (that's the expensive ngrok-competing part, out of scope for v1).
 
 ```
 Stripe / GitHub / etc
@@ -23,13 +23,13 @@ Stripe / GitHub / etc
    ngrok / Cloudflare / HTTPS URL   (user's responsibility)
         │
         ▼
-   Webhook Studio  :4500/hook/*     (capture + store + forward)
+   Pulseboard      :4500/hook/*     (capture + store + forward)
         │
         ▼
    Your local app  :3000            (--forward target)
 ```
 
-The user changes their tunnel target from their app's port to Studio's port. Webhooks arrive at `/hook/*`; everything after `/hook` is the "real" path, recorded and replayed onto the forward target.
+The user changes their tunnel target from their app's port to Pulseboard's port. Webhooks arrive at `/hook/*`; everything after `/hook` is the "real" path, recorded and replayed onto the forward target.
 
 ### Design principles
 
@@ -45,8 +45,8 @@ Building **v0.1**.
 
 | Component | Status | Notes |
 |---|---|---|
-| CLI (`webhook-studio --forward <url>`) | done | commander; `--port`, `--forward`, `--forward-timeout`, `--readonly`, `--db` |
-| Config loader (CLI + env) | done | zod-validated; `WEBHOOK_STUDIO_*` env vars |
+| CLI (`pulseboard --forward <url>`) | done | commander; `--port`, `--forward`, `--forward-timeout`, `--readonly`, `--db` |
+| Config loader (CLI + env) | done | zod-validated; `PULSEBOARD_*` env vars, with `WEBHOOK_STUDIO_*` fallback compatibility |
 | Drizzle schema + WAL SQLite | done | Single `webhooks` table; indexes on received_at, source, path |
 | Capture route (`/hook/*`) | done | `server/routes/capture.ts` — catch-all, stores raw body, detects source, forwards, publishes to bus |
 | Forwarder | done | `capture/forwarder.ts` — preserves raw bytes, strips hop-by-hop headers, records status/duration/error |
@@ -59,7 +59,7 @@ Building **v0.1**.
 | Webhooks page | done | Split-pane: filterable live list (left) + inspect detail (right). Status + source filters, search, clear |
 | Webhook detail | done | `components/WebhookDetail.tsx` — Body/Headers/Forwarding tabs, replay, copy-as-cURL |
 | Settings page | done | Capture URL (copyable), forwarding target, system status, read-only mode |
-| Dockerfile + compose example | done | Node 20 slim; `WEBHOOK_STUDIO_*` env; port 4500 |
+| Dockerfile + compose example | done | Node 20 slim; `PULSEBOARD_*` env; port 4500 |
 | Production build | done | `pnpm build` → `dist/cli.js` + `dist/web/` |
 
 ---
@@ -85,7 +85,7 @@ pnpm install
 
 # dev — runs everything you need:
 #   - Vite on :5173 (HMR)
-#   - Studio server on :4500 (proxies non-/api, non-/hook to Vite)
+#   - Pulseboard server on :4500 (proxies non-/api, non-/hook to Vite)
 #   - dev-sender: an echo target on :3999 + a fake-webhook generator
 #     so the UI always has live traffic
 pnpm dev
@@ -102,15 +102,15 @@ pnpm db:generate      # regenerate Drizzle migrations after schema changes
 ### Real usage
 
 ```bash
-npx webhook-studio --forward http://localhost:3000
+npx pulseboard --forward http://localhost:3000
 # Point your tunnel at the printed capture URL, e.g.
 #   https://your-tunnel.ngrok.io/hook/stripe
-# Studio captures, stores, and forwards to localhost:3000/stripe
+# Pulseboard captures, stores, and forwards to localhost:3000/stripe
 ```
 
 ### Dev test traffic
 
-`scripts/dev-sender.ts` runs a tiny echo server (the forward target on :3999) and posts realistic fake webhooks (stripe/github/shopify/clerk/custom) to the capture URL every 2.5s, with ~15% simulated downstream failures so error states are visible. Started automatically by `pnpm dev`.
+`scripts/dev-sender.ts` runs a tiny echo server (the forward target on :3999) and posts realistic fake webhooks (stripe/github/shopify/clerk/custom) to the capture URL every 2.5s. It defaults to no downstream failures for a quiet dev run; set `ECHO_FAILURE_RATE=0.15` when you want visible error states. Started automatically by `pnpm dev`.
 
 ---
 

@@ -38,7 +38,9 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
     done(null, body);
   });
 
-  if (!process.env.WEBHOOK_STUDIO_DEV_PROXY && process.env.NODE_ENV !== "production") {
+  const devProxyTarget = process.env.PULSEBOARD_DEV_PROXY ?? process.env.WEBHOOK_STUDIO_DEV_PROXY;
+
+  if (!devProxyTarget && process.env.NODE_ENV !== "production") {
     await app.register(cors, { origin: true, credentials: true });
   }
 
@@ -50,7 +52,6 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
   await liveRoute(app, ctx);
   await captureRoute(app, ctx);
 
-  const devProxyTarget = process.env.WEBHOOK_STUDIO_DEV_PROXY;
   if (devProxyTarget) {
     await app.register(proxy, {
       upstream: devProxyTarget,

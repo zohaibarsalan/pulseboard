@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Activity, ArrowRight, Moon, Send, Settings, Sun, Webhook, type LucideIcon } from "lucide-react";
 import { cn } from "../lib/cn.js";
 import { api } from "../lib/api.js";
+import { Button } from "./coss-ui/index.js";
 
 type NavItem = { href: string; label: string; icon: LucideIcon; match?: (loc: string) => boolean };
 
@@ -24,7 +25,7 @@ export function Sidebar(): React.ReactElement {
         <div className="flex h-5 w-5 items-center justify-center rounded-md bg-fg text-bg">
           <Webhook className="h-3 w-3" />
         </div>
-        <span className="text-xs font-semibold tracking-tight">Webhook Studio</span>
+        <span className="text-xs font-semibold tracking-tight">Pulseboard</span>
         <span className="ml-auto rounded border border-border px-1 font-mono text-[10px] leading-4 text-fg-subtle">
           {health?.version ?? "0.1"}
         </span>
@@ -89,13 +90,14 @@ function ThemeToggle(): React.ReactElement {
   };
 
   return (
-    <button
-      type="button"
+    <Button
       onClick={toggle}
-      className="flex h-5 w-5 items-center justify-center rounded text-fg-subtle transition-colors hover:bg-bg-muted hover:text-fg"
+      variant="ghost"
+      size="icon"
+      className="h-5 w-5"
       aria-label="Toggle theme"
     >
       {isDark ? <Sun className="h-3 w-3 stroke-[1.75]" /> : <Moon className="h-3 w-3 stroke-[1.75]" />}
-    </button>
+    </Button>
   );
 }

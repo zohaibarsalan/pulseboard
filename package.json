@@ -1,14 +1,14 @@
 {
-  "name": "webhook-studio",
+  "name": "pulseboard",
   "version": "0.1.0-pre",
-  "description": "Local-first webhook studio — capture, inspect, replay, and forward webhooks. Postman for incoming requests.",
+  "description": "Pulseboard is a local-first webhook dashboard for capturing, inspecting, replaying, and forwarding webhooks.",
   "type": "module",
   "engines": {
     "node": ">=20"
   },
   "packageManager": "pnpm@10.14.0",
   "bin": {
-    "webhook-studio": "./dist/cli.js"
+    "pulseboard": "./dist/cli.js"
   },
   "main": "./dist/cli.js",
   "files": [
@@ -16,7 +16,7 @@
     "README.md"
   ],
   "scripts": {
-    "dev": "concurrently -k -n web,api,sender -c magenta,blue,yellow \"vite\" \"WEBHOOK_STUDIO_DEV_PROXY=http://localhost:5173 tsx watch src/cli.ts --port 4500 --db .webhook-studio/dev.db --forward http://localhost:3999\" \"tsx scripts/dev-sender.ts\"",
+    "dev": "concurrently -k -n web,api,sender -c magenta,blue,yellow \"vite\" \"PULSEBOARD_DEV_PROXY=http://localhost:5173 tsx watch src/cli.ts --port 4500 --db .pulseboard/dev.db --forward http://localhost:3999\" \"tsx scripts/dev-sender.ts\"",
     "build": "vite build && tsc -p tsconfig.build.json && node -e \"import('node:fs').then(fs=>fs.cpSync('src/db/migrations','dist/db/migrations',{recursive:true}))\"",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.web.json --noEmit",
     "start": "node dist/cli.js",

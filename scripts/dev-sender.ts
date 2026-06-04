@@ -2,16 +2,17 @@ import { createServer } from "node:http";
 import { createHmac } from "node:crypto";
 
 // Dev helper: runs a tiny "echo" server that acts as the forward target, and
-// periodically sends realistic fake webhooks to Webhook Studio's capture URL so
+// periodically sends realistic fake webhooks to Pulseboard's capture URL so
 // the UI always has live traffic to show. Webhooks are signed with known dev
-// secrets, and those secrets are pushed into Studio on startup so signature
+// secrets, and those secrets are pushed into Pulseboard on startup so signature
 // verification shows valid/invalid badges out of the box.
 
-const STUDIO_URL = process.env.STUDIO_URL ?? "http://localhost:4500";
+const PULSEBOARD_URL = process.env.PULSEBOARD_URL ?? process.env.STUDIO_URL ?? "http://localhost:4500";
 const ECHO_PORT = Number(process.env.ECHO_PORT ?? 3999);
 const INTERVAL_MS = Number(process.env.SENDER_INTERVAL ?? 2500);
+const ECHO_FAILURE_RATE = Number(process.env.ECHO_FAILURE_RATE ?? 0);
 
-// Known dev secrets — also pushed into Studio so verification matches.
+// Known dev secrets — also pushed into Pulseboard so verification matches.
 const DEV_SECRETS: Record<string, string> = {
   stripe: "whsec_test_stripe_secret_for_dev",
   github: "test_github_secret_for_dev",
@@ -19,13 +20,12 @@ const DEV_SECRETS: Record<string, string> = {
   clerk: "whsec_dGVzdF9jbGVya19zZWNyZXQ=", // whsec_ + base64
 };
 
-// ── Echo target server (this is what Studio forwards to) ──────────────────────
+// ── Echo target server (this is what Pulseboard forwards to) ──────────────────
 const echo = createServer((req, res) => {
   let body = "";
   req.on("data", (chunk) => (body += chunk));
   req.on("end", () => {
-    // Occasionally fail so the UI shows error states.
-    if (Math.random() < 0.15) {
+    if (Math.random() < ECHO_FAILURE_RATE) {
       res.writeHead(500, { "content-type": "application/json" });
       res.end(JSON.stringify({ error: "simulated downstream failure" }));
       return;
@@ -142,7 +142,7 @@ async function sendOne(): Promise<void> {
   const fixture = FIXTURES[Math.floor(Math.random() * FIXTURES.length)]!;
   const { headers, body } = fixture.build();
   try {
-    await fetch(`${STUDIO_URL}/hook${fixture.path}`, {
+    await fetch(`${PULSEBOARD_URL}/hook${fixture.path}`, {
       method: "POST",
       headers: { "content-type": "application/json", ...headers },
       body,
@@ -152,13 +152,13 @@ async function sendOne(): Promise<void> {
   }
 }
 
-// Push the dev signing secrets into Studio so verification works out of the box.
+// Push the dev signing secrets into Pulseboard so verification works out of the box.
 // Retries until the API is reachable.
 async function seedSecrets(): Promise<void> {
   for (let attempt = 0; attempt < 30; attempt++) {
     try {
       for (const [source, secret] of Object.entries(DEV_SECRETS)) {
-        const res = await fetch(`${STUDIO_URL}/api/secrets/${source}`, {
+        const res = await fetch(`${PULSEBOARD_URL}/api/secrets/${source}`, {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ secret }),
@@ -175,7 +175,7 @@ async function seedSecrets(): Promise<void> {
 }
 
 void seedSecrets().then(() => {
-  console.log(`[dev-sender] sending fake webhooks to ${STUDIO_URL}/hook every ${INTERVAL_MS}ms`);
+  console.log(`[dev-sender] sending fake webhooks to ${PULSEBOARD_URL}/hook every ${INTERVAL_MS}ms`);
   setInterval(() => void sendOne(), INTERVAL_MS);
   void sendOne();
   setTimeout(() => void sendOne(), 600);
