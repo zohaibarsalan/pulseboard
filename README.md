@@ -54,6 +54,18 @@ npx @zohaibarsalan/pulseboard \
 Keep that terminal open while receiving webhooks. Use a tunnel when an external
 provider needs to reach the local capture endpoint.
 
+Installing globally changes only how the command is resolved:
+
+```bash
+npm install --global @zohaibarsalan/pulseboard
+pulseboard --forward http://localhost:3000
+```
+
+It still runs locally in the foreground and uses the same default port and
+database. For an always-on shared instance, run the Docker image or command
+under your own process manager on a server, bind deliberately with
+`PULSEBOARD_HOST=0.0.0.0`, and configure authentication before exposing it.
+
 Point your provider or tunnel at:
 
 ```text
@@ -163,6 +175,42 @@ pnpm smoke:docker
 pnpm release:check
 pnpm start
 ```
+
+## Test strategy
+
+Pulseboard has a minimum release gate of 100 named automated tests. The suite is
+deliberately split across independent failure boundaries:
+
+- configuration defaults, environment parsing, CLI precedence, invalid values,
+  routing rules, forwarding allowlists, and SSRF protections;
+- provider detection plus valid, modified, and missing-secret signature cases
+  for every signable provider;
+- exact-byte capture, authentication, header redaction, capture-only mode,
+  read-only mode, persistence, retention, forwarding, response capture,
+  retries, delivery diagnostics, and analytics;
+- webhook body/header comparison, provider onboarding commands, JSON display,
+  time/number formatting, and refresh preferences;
+- browser E2E coverage for capture → inspect → edit → replay → compare → clear;
+  and
+- clean-room npm tarball and Docker smoke tests, including process restart and
+  SQLite persistence for the installed package.
+
+Run the fast 100-test suite with:
+
+```bash
+pnpm test
+```
+
+Before publishing, run the complete release gate:
+
+```bash
+pnpm release:check
+```
+
+That command additionally type-checks both server and browser code, audits
+production dependencies, executes the real browser workflow, installs the
+packed npm artifact in a clean temporary project, and boots the Docker image.
+The release is not considered verified if any layer fails.
 
 ## Docker
 
