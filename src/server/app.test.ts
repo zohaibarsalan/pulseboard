@@ -284,6 +284,76 @@ test("routing rules override defaults and combine matching targets", () => {
   );
 });
 
+test("capture-only mode acknowledges and persists webhooks without delivery attempts", async () => {
+  const ctx = createContext();
+  const app = await buildApp(ctx);
+  cleanup.push(() => app.close());
+
+  const capture = await app.inject({
+    method: "POST",
+    url: "/hook/capture-only?mode=test",
+    headers: { "content-type": "application/json" },
+    payload: JSON.stringify({ type: "capture.only" }),
+  });
+  assert.equal(capture.statusCode, 200);
+
+  const stored = ctx.db.$client
+    .prepare("SELECT path, query_params, forwarded_to, forward_status FROM webhooks LIMIT 1")
+    .get() as {
+      path: string;
+      query_params: string;
+      forwarded_to: string | null;
+      forward_status: number | null;
+    };
+  assert.equal(stored.path, "/capture-only");
+  assert.equal(stored.query_params, "mode=test");
+  assert.equal(stored.forwarded_to, null);
+  assert.equal(stored.forward_status, null);
+
+  const attempts = ctx.db.$client
+    .prepare("SELECT COUNT(*) AS count FROM delivery_attempts")
+    .get() as { count: number };
+  assert.equal(attempts.count, 0);
+
+  const health = await app.inject({ method: "GET", url: "/api/health" });
+  assert.equal(health.json().version, "0.1.0");
+  assert.deepEqual(health.json().forwardTargets, []);
+});
+
+test("readonly mode still captures but blocks destructive and secret mutations", async () => {
+  const ctx = createContext({ readonly: true });
+  const app = await buildApp(ctx);
+  cleanup.push(() => app.close());
+
+  const capture = await app.inject({
+    method: "POST",
+    url: "/hook/readonly",
+    payload: "{}",
+  });
+  assert.equal(capture.statusCode, 200);
+  const webhookId = capture.json().captured as string;
+
+  const clear = await app.inject({ method: "POST", url: "/api/webhooks/clear" });
+  assert.equal(clear.statusCode, 403);
+  const replay = await app.inject({
+    method: "POST",
+    url: `/api/webhooks/${webhookId}/replay`,
+  });
+  assert.equal(replay.statusCode, 403);
+  const secret = await app.inject({
+    method: "POST",
+    url: "/api/secrets/stripe",
+    headers: { "content-type": "application/json" },
+    payload: JSON.stringify({ secret: "whsec_test" }),
+  });
+  assert.equal(secret.statusCode, 403);
+
+  const remaining = ctx.db.$client
+    .prepare("SELECT COUNT(*) AS count FROM webhooks")
+    .get() as { count: number };
+  assert.equal(remaining.count, 1);
+});
+
 test("automatic delivery retries recover a transient target without duplicating the webhook", async () => {
   let requests = 0;
   const target = createServer((_req, res) => {

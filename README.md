@@ -27,6 +27,33 @@ For real use:
 npx @zohaibarsalan/pulseboard --forward http://localhost:3000
 ```
 
+### Where Pulseboard runs
+
+The npm package starts a local Node.js process on the machine where you run the
+command. By default it:
+
+- listens only on `127.0.0.1:4500`;
+- serves the dashboard and capture API from that same process;
+- stores history in `~/.pulseboard/pulseboard.db`; and
+- keeps running in the foreground until you press `Ctrl+C` or terminate it.
+
+`npx` installs the package into npm's cache and launches it; it does not create
+a hosted Pulseboard account or permanent cloud server. Running the command
+again starts another local process and reuses the same SQLite history unless
+you pass a different `--db` path. Only one process can bind to the same port.
+
+To choose explicit runtime locations:
+
+```bash
+npx @zohaibarsalan/pulseboard \
+  --port 4600 \
+  --db ./data/pulseboard.db \
+  --forward http://localhost:3000
+```
+
+Keep that terminal open while receiving webhooks. Use a tunnel when an external
+provider needs to reach the local capture endpoint.
+
 Point your provider or tunnel at:
 
 ```text
