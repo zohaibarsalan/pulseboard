@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Check, Copy, Pencil, Plus, RefreshCw, Send, Terminal, X } from "lucide-react";
-import { api, type Webhook } from "../lib/api.js";
+import { api, type DeliveryResult, type Webhook } from "../lib/api.js";
 import { formatRelativeTime, formatDuration } from "../lib/format.js";
 import { SourceBadge } from "./SourceBadge.js";
 import { SignatureBadge } from "./SignatureBadge.js";
@@ -110,11 +110,11 @@ export function WebhookDetail({
             Back to webhooks
           </Button>
         )}
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           <span className={cn("rounded px-1.5 py-0.5 font-mono text-2xs font-semibold", methodColor(webhook.method))}>
             {webhook.method}
           </span>
-          <span className="font-mono text-sm font-medium">{webhook.path}</span>
+          <span className="min-w-0 break-all font-mono text-sm font-medium">{webhook.path}</span>
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <SourceBadge source={webhook.source} />
@@ -133,7 +133,7 @@ export function WebhookDetail({
         </div>
 
         {/* Actions */}
-        <div className="mt-3 flex items-center gap-2">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           {editing ? (
             <>
               <Button
@@ -154,7 +154,7 @@ export function WebhookDetail({
                 <X className="h-3 w-3" />
                 Cancel
               </Button>
-              <span className="ml-1 text-2xs text-fg-subtle">
+              <span className="basis-full text-2xs text-fg-subtle sm:ml-1 sm:basis-auto">
                 Editing — signature will be marked invalid
               </span>
             </>
@@ -212,7 +212,7 @@ export function WebhookDetail({
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-border px-5">
+      <div className="flex gap-1 overflow-x-auto border-b border-border px-5">
         <TabButton active={tab === "body"} onClick={() => setTab("body")}>
           Body {editing && <EditedDot />}
         </TabButton>
@@ -226,7 +226,7 @@ export function WebhookDetail({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-5">
+      <div className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-5">
         {tab === "body" && (editing ? (
           <BodyEditor body={editedBody} onChange={setEditedBody} />
         ) : (
@@ -383,9 +383,9 @@ function HeadersView({ headers }: { headers: Record<string, string> }): React.Re
   return (
     <div className="space-y-1">
       {Object.entries(headers).map(([key, value]) => (
-        <div key={key} className="flex gap-3 border-b border-border/50 py-1.5 text-xs">
-          <span className="w-48 shrink-0 font-mono font-medium text-fg-muted">{key}</span>
-          <span className="break-all font-mono text-fg">{value}</span>
+        <div key={key} className="flex min-w-0 flex-col gap-1 border-b border-border/50 py-1.5 text-xs sm:flex-row sm:gap-3">
+          <span className="break-all font-mono font-medium text-fg-muted sm:w-40 sm:shrink-0 lg:w-48">{key}</span>
+          <span className="min-w-0 break-all font-mono text-fg">{value}</span>
         </div>
       ))}
     </div>
@@ -461,29 +461,61 @@ function ForwardView({ webhook }: { webhook: Webhook }): React.ReactElement {
     );
   }
 
-  const ok = webhook.forwardStatus != null && webhook.forwardStatus >= 200 && webhook.forwardStatus < 300;
+  const deliveries: DeliveryResult[] = webhook.deliveriesJson
+    ? JSON.parse(webhook.deliveriesJson) as DeliveryResult[]
+    : [{
+        target: webhook.forwardedTo,
+        status: webhook.forwardStatus,
+        durationMs: webhook.forwardDurationMs ?? 0,
+        error: webhook.forwardError,
+        responseHeaders: webhook.responseHeadersJson ? JSON.parse(webhook.responseHeadersJson) as Record<string, string> : {},
+        responseBody: webhook.responseBody,
+        responseContentType: webhook.responseContentType,
+        responseBodyTruncated: webhook.responseBodyTruncated,
+      }];
 
   return (
-    <div className="space-y-3 text-sm">
-      <Row label="Target" value={<span className="font-mono text-xs">{webhook.forwardedTo}</span>} />
-      <Row
-        label="Status"
-        value={
-          webhook.forwardError ? (
-            <span className="text-danger">Error</span>
-          ) : (
-            <span className={ok ? "text-success" : "text-danger"}>{webhook.forwardStatus}</span>
-          )
-        }
-      />
-      {webhook.forwardDurationMs != null && (
-        <Row label="Duration" value={formatDuration(webhook.forwardDurationMs)} />
-      )}
-      {webhook.forwardError && (
-        <div className="rounded-lg border border-danger/30 bg-danger/5 p-3 font-mono text-xs text-danger">
-          {webhook.forwardError}
-        </div>
-      )}
+    <div className="space-y-4 text-sm">
+      {deliveries.map((delivery, index) => {
+        const ok = delivery.status != null && delivery.status >= 200 && delivery.status < 300;
+        return (
+          <section key={`${delivery.target}-${index}`} className="rounded-lg border border-border p-3">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <span className="font-mono text-xs break-all">{delivery.target}</span>
+              <span className={cn("font-medium tabular-nums", ok ? "text-success" : "text-danger")}>
+                {delivery.error ? "Error" : delivery.status}
+              </span>
+            </div>
+            <Row label="Duration" value={formatDuration(delivery.durationMs)} />
+            {delivery.error && (
+              <div className="mt-3 rounded-md border border-danger/30 bg-danger/5 p-3 font-mono text-xs text-danger">
+                {delivery.error}
+              </div>
+            )}
+            {!delivery.error && (
+              <div className="mt-3 space-y-3 border-t border-border pt-3">
+                <div>
+                  <div className="mb-1 text-2xs font-medium uppercase text-fg-subtle">Response headers</div>
+                  {Object.keys(delivery.responseHeaders).length > 0 ? (
+                    <HeadersView headers={delivery.responseHeaders} />
+                  ) : (
+                    <p className="text-xs text-fg-subtle">No response headers</p>
+                  )}
+                </div>
+                <div>
+                  <div className="mb-1 flex items-center justify-between text-2xs font-medium uppercase text-fg-subtle">
+                    <span>Response body</span>
+                    {delivery.responseBodyTruncated && <span className="normal-case text-warning">First 64 KB shown</span>}
+                  </div>
+                  <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md bg-bg-muted/40 p-3 font-mono text-xs text-fg">
+                    {delivery.responseBody ?? "No response body"}
+                  </pre>
+                </div>
+              </div>
+            )}
+          </section>
+        );
+      })}
       {webhook.replayCount > 0 && (
         <Row label="Replays" value={`${webhook.replayCount} · last ${formatRelativeTime(webhook.lastReplayedAt)}`} />
       )}

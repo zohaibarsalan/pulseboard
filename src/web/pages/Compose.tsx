@@ -113,8 +113,8 @@ export function ComposePage(): React.ReactElement {
     }
   };
 
-  const targetPlaceholder = health?.forwardTo ?? "http://localhost:3000";
-  const canSend = (target.trim() || health?.forwardTo) && !send.isPending;
+  const targetPlaceholder = health?.forwardTargets[0] ?? "http://localhost:3000";
+  const canSend = (target.trim() || health?.forwardTargets.length) && !send.isPending;
   const readonly = health?.readonly ?? false;
 
   return (
@@ -166,7 +166,7 @@ export function ComposePage(): React.ReactElement {
                     className="w-full font-mono text-xs"
                   />
                   <p className="mt-1 text-2xs text-fg-subtle">
-                    Sender will POST to <code className="font-mono">{(target.trim() || targetPlaceholder)}{path}</code>.
+                    Leave empty to use configured routing. Custom targets must match a configured or allowlisted host.
                   </p>
                 </Field>
               </div>
@@ -284,7 +284,7 @@ export function ComposePage(): React.ReactElement {
                 <Send className={cn("h-3.5 w-3.5", send.isPending && "animate-pulse")} />
                 {send.isPending ? "Sending…" : "Send"}
               </Button>
-              {!health?.forwardTo && !target.trim() && (
+              {!health?.forwardTargets.length && !target.trim() && (
                 <div className="mt-3 text-xs text-warning">Set a target or configure --forward to send.</div>
               )}
             </Section>

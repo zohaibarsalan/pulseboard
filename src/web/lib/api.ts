@@ -2,6 +2,8 @@ export type Health = {
   status: "ok" | "degraded";
   sqlite: "open" | "closed";
   forwardTo: string | null;
+  forwardTargets: string[];
+  routingRules: Array<{ pathPrefix?: string; source?: string; targets: string[] }>;
   captureUrl: string;
   uptimeSeconds: number;
   lastCapturedAt: number | null;
@@ -30,6 +32,11 @@ export type Webhook = {
   forwardStatus: number | null;
   forwardDurationMs: number | null;
   forwardError: string | null;
+  responseHeadersJson: string | null;
+  responseBody: string | null;
+  responseContentType: string | null;
+  responseBodyTruncated: boolean;
+  deliveriesJson: string | null;
   replayCount: number;
   lastReplayedAt: number | null;
   replayOf: string | null;
@@ -166,7 +173,7 @@ export const api = {
     id: string,
     overrides?: { forwardTo?: string; body?: string; headers?: Record<string, string> },
   ) =>
-    post<{ ok: true; replayId: string; result: { status: number | null; durationMs: number; error: string | null } }>(
+    post<{ ok: true; replayId: string; result: DeliveryResult; results: DeliveryResult[] }>(
       `/api/webhooks/${id}/replay`,
       overrides && Object.keys(overrides).length > 0 ? overrides : undefined,
     ),
@@ -199,7 +206,8 @@ export const api = {
     post<{
       ok: true;
       id: string;
-      result: { status: number | null; durationMs: number; error: string | null };
+      result: DeliveryResult;
+      results: DeliveryResult[];
       signedWith: string | null;
     }>("/api/sender/send", input),
 
@@ -211,4 +219,15 @@ export const api = {
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
     return (await res.json()) as { ok: true };
   },
+};
+
+export type DeliveryResult = {
+  target: string;
+  status: number | null;
+  durationMs: number;
+  error: string | null;
+  responseHeaders: Record<string, string>;
+  responseBody: string | null;
+  responseContentType: string | null;
+  responseBodyTruncated: boolean;
 };

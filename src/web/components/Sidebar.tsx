@@ -53,7 +53,7 @@ export function Sidebar(): React.ReactElement {
       </nav>
 
       <div className="border-t border-border p-2.5">
-        <ForwardInfo forwardTo={health?.forwardTo ?? null} />
+        <ForwardInfo forwardTo={health?.forwardTargets[0] ?? null} count={health?.forwardTargets.length ?? 0} />
         <div className="mt-2 flex items-center justify-between px-1">
           <span className="text-[10px] uppercase tracking-wider text-fg-subtle">Theme</span>
           <ThemeToggle />
@@ -83,7 +83,7 @@ export function Sidebar(): React.ReactElement {
   );
 }
 
-function ForwardInfo({ forwardTo }: { forwardTo: string | null }): React.ReactElement {
+function ForwardInfo({ forwardTo, count }: { forwardTo: string | null; count: number }): React.ReactElement {
   return (
     <div className="flex items-start gap-1.5 rounded-md px-1 py-1">
       <ArrowRight className="mt-0.5 h-3 w-3 shrink-0 stroke-[1.75] text-fg-subtle" />
@@ -93,7 +93,7 @@ function ForwardInfo({ forwardTo }: { forwardTo: string | null }): React.ReactEl
           <span className={cn("pb-dot h-1 w-1", forwardTo ? "bg-success" : "bg-fg-subtle")} />
         </div>
         <div className="truncate font-mono text-[11px] text-fg-muted">
-          {forwardTo ?? "capture-only"}
+          {forwardTo ? `${forwardTo}${count > 1 ? ` +${count - 1}` : ""}` : "capture-only"}
         </div>
       </div>
     </div>

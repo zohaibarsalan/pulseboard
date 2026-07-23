@@ -59,19 +59,27 @@ export function SettingsPage(): React.ReactElement {
 
           {/* Forwarding */}
           <Section title="Forwarding" icon={ArrowRight}>
-            <InfoRow
-              label="Forward target"
-              value={
-                health?.forwardTo ? (
-                  <span className="font-mono text-sm">{health.forwardTo}</span>
-                ) : (
-                  <span className="text-fg-muted">Capture-only mode</span>
-                )
-              }
-            />
+            <div className="space-y-2">
+              {(health?.forwardTargets.length ?? 0) > 0 ? health?.forwardTargets.map((target, index) => (
+                <InfoRow key={target} label={`Target ${index + 1}`} value={<span className="font-mono text-sm break-all">{target}</span>} />
+              )) : <InfoRow label="Targets" value={<span className="text-fg-muted">Capture-only mode</span>} />}
+            </div>
+            {(health?.routingRules.length ?? 0) > 0 && (
+              <div className="mt-3 border-t border-border pt-3">
+                <h3 className="mb-2 text-xs font-medium">Routing rules</h3>
+                <div className="space-y-2">
+                  {health?.routingRules.map((rule, index) => (
+                    <div key={index} className="rounded-md bg-bg-muted/40 px-3 py-2 text-xs">
+                      <span className="font-mono">{rule.source ? `source=${rule.source}` : ""}{rule.source && rule.pathPrefix ? " · " : ""}{rule.pathPrefix ? `path=${rule.pathPrefix}*` : ""}</span>
+                      <span className="ml-2 text-fg-subtle">→ {rule.targets.length} {rule.targets.length === 1 ? "target" : "targets"}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <p className="mt-2 text-xs text-fg-subtle">
-              {health?.forwardTo
-                ? "Captured webhooks are proxied to this target with the original raw body preserved."
+              {health?.forwardTargets.length
+                ? "Captured webhooks are routed to every matching target with the original raw body preserved."
                 : "Webhooks are captured but not forwarded. Start with --forward <url> to proxy them."}
             </p>
           </Section>
