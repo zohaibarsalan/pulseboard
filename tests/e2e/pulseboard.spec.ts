@@ -34,6 +34,9 @@ test("capture, inspect response, edit, replay, and clear", async ({ page, reques
   expect(Math.abs((summaryBox!.y + summaryBox!.height) - (identityBox!.y + identityBox!.height))).toBeLessThanOrEqual(1);
   expect(Math.abs((controlsBox!.y + controlsBox!.height) - (detailsBox!.y + detailsBox!.height))).toBeLessThanOrEqual(1);
 
+  await page.getByRole("button", { name: "Refresh webhooks" }).hover();
+  await expect(page.getByText("Refresh now. Auto-refreshes every 30 seconds.")).toBeVisible();
+
   const controlsHeight = controlsBox!.height;
   const liveCapture = await request.post("/hook/live-layout", {
     headers: { "content-type": "application/json" },

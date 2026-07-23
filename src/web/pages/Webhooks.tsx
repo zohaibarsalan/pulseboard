@@ -19,6 +19,12 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PulseboardSelect } from "../components/PulseboardSelect.js";
+import {
+  Tooltip,
+  TooltipPopup,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { getWebhookRefreshInterval } from "../lib/refreshPreference.js";
 import type { SignatureStatus } from "../lib/api.js";
 
@@ -29,6 +35,7 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
   const [, navigate] = useLocation();
   const initialParams = new URLSearchParams(window.location.search);
   const [clearOpen, setClearOpen] = useState(false);
+  const [refreshTooltipOpen, setRefreshTooltipOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(() => {
     const status = initialParams.get("status");
     return status === "success" || status === "failed" || status === "pending" ? status : "all";
@@ -117,17 +124,38 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
             <span className="text-success"><span className="font-semibold tabular-nums">{stats?.succeeded ?? 0}</span> ok</span>
             <span className="text-danger"><span className="font-semibold tabular-nums">{stats?.failed ?? 0}</span> failed</span>
             <div className="ml-auto flex items-center gap-1">
-              <Button
-                onClick={refreshEvents}
-                disabled={isRefetching}
-                variant="ghost"
-                size="icon-sm"
-                title={`Refresh webhooks${live.newEventCount ? ` · ${live.newEventCount} new` : ""}`}
-                aria-label={`Refresh webhooks${live.newEventCount ? `, ${live.newEventCount} new events` : ""}`}
-              >
-                <RefreshCw className={cn(isRefetching && "animate-spin")} />
-                {live.newEventCount > 0 && <span className="absolute right-1 top-1 size-1.5 rounded-full bg-success" />}
-              </Button>
+              <TooltipProvider delay={300}>
+                <Tooltip
+                  open={refreshTooltipOpen}
+                  onOpenChange={setRefreshTooltipOpen}
+                >
+                  <TooltipTrigger
+                    render={(
+                      <Button
+                        onClick={() => {
+                          if (!isRefetching) refreshEvents();
+                        }}
+                        aria-disabled={isRefetching}
+                        onMouseEnter={() => setRefreshTooltipOpen(true)}
+                        onMouseLeave={() => setRefreshTooltipOpen(false)}
+                        onFocus={() => setRefreshTooltipOpen(true)}
+                        onBlur={() => setRefreshTooltipOpen(false)}
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`Refresh webhooks${live.newEventCount ? `, ${live.newEventCount} new events` : ""}`}
+                      >
+                        <RefreshCw className={cn(isRefetching && "animate-spin")} />
+                        {live.newEventCount > 0 && <span className="absolute right-1 top-1 size-1.5 rounded-full bg-success" />}
+                      </Button>
+                    )}
+                  />
+                  <TooltipPopup side="bottom">
+                    {refreshInterval === 0
+                      ? "Auto-refresh is off. Click to refresh now."
+                      : `Refresh now. Auto-refreshes every ${refreshInterval / 1_000} seconds.`}
+                  </TooltipPopup>
+                </Tooltip>
+              </TooltipProvider>
             {stats && stats.total > 0 && (
               <Button
                 onClick={() => setClearOpen(true)}
