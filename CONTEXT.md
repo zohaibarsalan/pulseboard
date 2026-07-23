@@ -35,7 +35,7 @@ The user changes their tunnel target from their app's port to Pulseboard's port.
 
 - **Payload-agnostic core.** We store raw bytes + headers + content-type. We never try to understand each provider's payload semantics — there are thousands. The UI renders JSON generically.
 - **Source detection is cosmetic.** We sniff the provider from headers (`Stripe-Signature`, `X-GitHub-Event`, etc.) only for a label/icon. Unknown providers still work fully.
-- **Raw-byte preservation is load-bearing.** Webhook signatures are HMACs of the exact body. The forwarder must never re-serialize, or signature validation breaks on the user's app. This is why the Fastify content-type parser is replaced with a global raw-string parser (`removeAllContentTypeParsers()` + wildcard parser in `server/app.ts`).
+- **Raw-byte preservation is load-bearing.** Webhook signatures are HMACs of the exact body. Capture uses a Buffer parser, persists the exact bytes as base64, and only creates a UTF-8 preview for display/search.
 
 ---
 
@@ -74,7 +74,7 @@ Prioritized list. Done items kept here for product context.
 | 2 | Replay with edits | ✅ done | Replay endpoint accepts body + headers overrides (merged with original). Inline edit mode in WebhookDetail with JSON formatter and editable header rows. Edited replays tagged `replay-edited`; signature marked `not_applicable` since HMAC no longer matches |
 | 3 | Analytics page | ✅ done | Filter bar (source pills + status + signature), 4 KPIs with vs-prev-period trends, stacked-area throughput chart, forwarding-latency line chart, breakdowns by source and event_type with success-rate bars. Endpoints under `/api/analytics/{summary,timeseries,breakdown}`. |
 | 4 | Built-in webhook sender | ✅ done | Compose page with provider presets (Stripe, GitHub, Shopify, Clerk, Slack, Linear, Paddle + blank). Auto-sign with stored secrets via `capture/signer.ts` (mirror of the verifier). `POST /api/sender/send` forwards through the same pipeline and stores the result tagged `sourceIp: studio-sender`. Closed loop: sender signs → capture verifies → badge shows valid. |
-| 5 | Onboarding / first-run | pending | When empty, show the capture URL huge with a copyable curl example. Most important moment in the UX. |
+| 5 | Onboarding / first-run | ✅ done | Empty history shows the capture URL and a copyable test cURL command. |
 
 ---
 
@@ -172,7 +172,7 @@ docker/
 
 - TypeScript strict, ESM only (`.js` import extensions), kebab-case files.
 - Comments only when the WHY is non-obvious.
-- API routes carry **no request bodies** (GET + param-only POST) so the global raw-body parser is safe. The one exception (replay's optional `forwardTo`) is parsed manually from the raw string.
+- API request bodies arrive as Buffers through the global parser and JSON routes parse them explicitly.
 - Hand-written SQL returns snake_case — always map through `rowToWebhook` before returning to the client or publishing to the bus.
 
 ---
