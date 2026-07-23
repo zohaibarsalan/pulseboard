@@ -19,6 +19,11 @@ test("capture, inspect response, edit, replay, and clear", async ({ page, reques
   await expect(page.getByText("Source IP", { exact: true })).toBeVisible();
   await expect(page.getByText("Forward targets", { exact: true })).toBeVisible();
   await expect(page.getByText("Original request", { exact: true })).toBeVisible();
+  const [tabsBox, bodyTabBox] = await Promise.all([
+    page.getByTestId("webhook-tabs").boundingBox(),
+    page.getByRole("tab", { name: "Body" }).boundingBox(),
+  ]);
+  expect(Math.abs(tabsBox!.height - bodyTabBox!.height)).toBeLessThanOrEqual(1);
 
   const [summaryBox, identityBox, controlsBox, detailsBox] = await Promise.all([
     page.getByTestId("webhook-summary").boundingBox(),
