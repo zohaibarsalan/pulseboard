@@ -5,6 +5,7 @@ import { Activity, ArrowRight, Moon, Send, Settings, Sun, Webhook, type LucideIc
 import { cn } from "../lib/cn.js";
 import { api } from "../lib/api.js";
 import { Button } from "@/components/ui/button";
+import { PulseboardMark } from "./PulseboardMark.js";
 
 type NavItem = { href: string; label: string; icon: LucideIcon; match?: (loc: string) => boolean };
 
@@ -23,9 +24,7 @@ export function Sidebar(): React.ReactElement {
     <>
     <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-bg-subtle md:flex">
       <div className="flex h-16 items-center gap-2.5 px-4">
-        <div className="flex size-7 items-center justify-center rounded-md bg-fg text-bg">
-          <Webhook className="size-4" />
-        </div>
+        <PulseboardMark className="size-7" />
         <span className="text-sm font-semibold">Pulseboard</span>
         <span className="ml-auto rounded border border-border px-1.5 font-mono text-[11px] leading-5 text-fg-subtle">
           {health?.version ?? "0.1"}

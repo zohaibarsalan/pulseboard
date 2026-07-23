@@ -9,6 +9,7 @@ test("capture, inspect response, edit, replay, and clear", async ({ page, reques
   expect(capture.ok()).toBeTruthy();
 
   await page.goto("/");
+  await expect(page.locator('link[rel="icon"]')).toHaveAttribute("href", "/favicon.svg");
   await page.getByRole("button").filter({ hasText: "e2e.created" }).click();
   await expect(page).toHaveURL(/\/webhooks\//);
   await expect(page.getByLabel("Search webhooks…")).toBeVisible();
