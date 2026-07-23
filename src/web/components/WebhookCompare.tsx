@@ -45,11 +45,11 @@ export function WebhookCompare({
         onValueChange={(value) => setTab(value as CompareTab)}
         className="min-h-0 flex-1 gap-0"
       >
-        <div className="flex flex-wrap items-center gap-3 border-b px-5">
-          <TabsList variant="underline" className="h-14 min-w-0 flex-1 justify-start rounded-none p-0">
-            <TabsTab value="body" className="h-14 rounded-none">Body <DiffCount entries={bodyDiff.entries} /></TabsTab>
-            <TabsTab value="headers" className="h-14 rounded-none">Headers <DiffCount entries={headerDiff.entries} /></TabsTab>
-            <TabsTab value="delivery" className="h-14 rounded-none">Delivery</TabsTab>
+        <div className="flex flex-wrap items-center gap-4 border-b px-6">
+          <TabsList variant="underline" className="h-16 min-w-0 flex-1 justify-start rounded-none p-0">
+            <TabsTab value="body" className="h-16 rounded-none">Body <DiffCount entries={bodyDiff.entries} /></TabsTab>
+            <TabsTab value="headers" className="h-16 rounded-none">Headers <DiffCount entries={headerDiff.entries} /></TabsTab>
+            <TabsTab value="delivery" className="h-16 rounded-none">Delivery</TabsTab>
           </TabsList>
           {tab !== "delivery" && (
             <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs text-muted-foreground">
@@ -59,7 +59,7 @@ export function WebhookCompare({
           )}
         </div>
 
-        <TabsPanel value="body" className="min-h-0 overflow-y-auto p-4 sm:p-5">
+        <TabsPanel value="body" className="min-h-0 overflow-y-auto p-5 sm:p-6">
           <DiffCard
             title={bodyDiff.structured ? "JSON body" : "Raw body"}
             description={
@@ -71,7 +71,7 @@ export function WebhookCompare({
             showUnchanged={showUnchanged}
           />
         </TabsPanel>
-        <TabsPanel value="headers" className="min-h-0 overflow-y-auto p-4 sm:p-5">
+        <TabsPanel value="headers" className="min-h-0 overflow-y-auto p-5 sm:p-6">
           <DiffCard
             title="Request headers"
             description="Header names are compared case-insensitively."
@@ -79,7 +79,7 @@ export function WebhookCompare({
             showUnchanged={showUnchanged}
           />
         </TabsPanel>
-        <TabsPanel value="delivery" className="min-h-0 overflow-y-auto p-4 sm:p-5">
+        <TabsPanel value="delivery" className="min-h-0 overflow-y-auto p-5 sm:p-6">
           <DeliveryComparison earlier={earlier} later={later} responseEntries={responseDiff.entries} />
         </TabsPanel>
       </Tabs>

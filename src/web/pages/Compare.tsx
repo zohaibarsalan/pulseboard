@@ -88,15 +88,15 @@ export function ComparePage(): React.ReactElement {
       <Topbar title="Compare" subtitle="Select two captures, then inspect what changed" />
 
       <div className="flex min-h-0 flex-1 flex-col xl:flex-row">
-        <aside className="flex max-h-[44%] min-h-0 w-full shrink-0 flex-col border-b bg-bg-subtle/20 xl:max-h-none xl:w-[380px] xl:border-b-0 xl:border-r">
-          <div className="flex flex-col gap-3 border-b p-4">
+        <aside className="flex max-h-[48%] min-h-0 w-full shrink-0 flex-col border-b bg-bg-subtle/20 xl:max-h-none xl:w-[420px] xl:border-b-0 xl:border-r">
+          <div className="flex flex-col gap-4 border-b p-5">
             <div>
               <h2 className="text-balance text-sm font-medium">Webhook selector</h2>
               <p className="mt-1 text-pretty text-xs text-muted-foreground">
                 Choose a slot, then select a webhook from the list.
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="flex flex-col gap-3">
               <SelectionSlot
                 label="Webhook A"
                 webhook={left}
@@ -112,7 +112,7 @@ export function ComparePage(): React.ReactElement {
             </div>
           </div>
 
-          <div className="border-b p-3">
+          <div className="border-b p-4">
             <SearchInput
               value={search}
               onChange={setSearch}
@@ -145,20 +145,20 @@ export function ComparePage(): React.ReactElement {
                     disabled={unavailable}
                     variant="ghost"
                     className={cn(
-                      "h-auto w-full justify-start rounded-none border-b px-4 py-3 text-left",
+                      "min-h-16 w-full justify-start rounded-none border-b px-5 py-4 text-left",
                       selectedSide && "bg-bg-muted",
                     )}
                     data-webhook-id={webhook.id}
                   >
                     <span className="size-2 shrink-0 rounded-full bg-success" aria-hidden="true" />
-                    <span className="flex min-w-0 flex-1 flex-col gap-1">
+                    <span className="flex min-w-0 flex-1 flex-col gap-1.5">
                       <span className="flex min-w-0 items-center gap-2">
                         <SourceBadge source={webhook.source} />
-                        <span className="truncate font-mono text-xs font-medium">
+                        <span className="truncate font-mono text-sm font-medium">
                           {webhook.eventType || webhook.path}
                         </span>
                       </span>
-                      <span className="flex min-w-0 items-center justify-between gap-3 font-mono text-2xs text-muted-foreground">
+                      <span className="flex min-w-0 items-center justify-between gap-3 font-mono text-xs text-muted-foreground">
                         <span className="truncate">{webhook.method} {webhook.path}</span>
                         <span className="shrink-0 tabular-nums">{formatRelativeTime(webhook.receivedAt)}</span>
                       </span>
@@ -225,15 +225,21 @@ function SelectionSlot({
       onClick={onClick}
       variant={active ? "outline" : "ghost"}
       className={cn(
-        "h-auto min-w-0 justify-start px-3 py-2.5 text-left",
+        "min-h-20 min-w-0 justify-start px-4 py-3 text-left",
         active && "ring-1 ring-ring",
       )}
       aria-pressed={active}
     >
-      <span className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="text-2xs text-muted-foreground">{label}</span>
-        <span className="truncate font-mono text-xs font-medium">
-          {webhook?.eventType || webhook?.path || "Not selected"}
+      <span className="flex min-w-0 flex-1 flex-col gap-2">
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+        <span className="flex min-w-0 items-center gap-2">
+          {webhook && <SourceBadge source={webhook.source} />}
+          <span className="truncate font-mono text-sm font-medium">
+            {webhook?.eventType || webhook?.path || "Not selected"}
+          </span>
+        </span>
+        <span className="truncate font-mono text-xs text-muted-foreground">
+          {webhook ? `${webhook.method} ${webhook.path}` : "Select from the list below"}
         </span>
       </span>
     </Button>
@@ -250,7 +256,7 @@ function ComparisonSummary({
   return (
     <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch border-b bg-bg-subtle/15">
       <SummaryWebhook label="Earlier" webhook={earlier} />
-      <div className="flex items-center border-x px-3 text-muted-foreground">
+      <div className="flex items-center border-x px-4 text-muted-foreground">
         <ArrowRight className="size-4" aria-hidden="true" />
       </div>
       <SummaryWebhook label="Later" webhook={later} />
@@ -260,16 +266,16 @@ function ComparisonSummary({
 
 function SummaryWebhook({ label, webhook }: { label: string; webhook: Webhook }): React.ReactElement {
   return (
-    <div className="min-w-0 px-5 py-3">
-      <span className="text-2xs text-muted-foreground">{label}</span>
-      <div className="mt-1 flex min-w-0 items-center gap-2">
+    <div className="min-w-0 px-6 py-4">
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      <div className="mt-2 flex min-w-0 items-center gap-2">
         <SourceBadge source={webhook.source} />
-        <span className="truncate font-mono text-xs font-medium">
+        <span className="truncate font-mono text-sm font-medium">
           {webhook.eventType || webhook.path}
         </span>
         <SignatureBadge status={webhook.signatureStatus} notes={webhook.signatureNotes} />
       </div>
-      <p className="mt-1 truncate font-mono text-2xs text-muted-foreground">
+      <p className="mt-2 truncate font-mono text-xs text-muted-foreground">
         {new Date(webhook.receivedAt).toLocaleString()}
       </p>
     </div>
@@ -278,9 +284,9 @@ function SummaryWebhook({ label, webhook }: { label: string; webhook: Webhook })
 
 function SelectorSkeleton(): React.ReactElement {
   return (
-    <div className="flex flex-col gap-1 p-3">
+    <div className="flex flex-col gap-2 p-4">
       {Array.from({ length: 5 }, (_, index) => (
-        <Skeleton key={index} className="h-14" />
+        <Skeleton key={index} className="h-16" />
       ))}
     </div>
   );
