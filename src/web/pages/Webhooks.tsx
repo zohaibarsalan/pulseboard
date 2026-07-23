@@ -228,25 +228,25 @@ function WebhookRow({
     <Button
       onClick={onClick}
       variant="ghost"
-      className="flex h-auto w-full items-center gap-3 rounded-none border-x-0 border-b border-t-0 border-border/60 bg-bg px-4 py-2.5 text-left last:border-b-0 hover:bg-bg-muted/50"
+      className="flex h-auto min-h-16 w-full items-center gap-3 rounded-none border-x-0 border-b border-t-0 border-border/60 bg-bg px-4 py-3.5 text-left last:border-b-0 hover:bg-bg-muted/50"
     >
       <span className={cn("h-2 w-2 shrink-0 rounded-full", statusDot)} />
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
+        <div className="flex min-h-6 items-center gap-2">
           <SourceBadge source={webhook.source} />
           <SignatureBadge status={webhook.signatureStatus} notes={webhook.signatureNotes} size="sm" />
           {webhook.eventType && (
             <span className="truncate font-mono text-xs font-medium text-fg">{webhook.eventType}</span>
           )}
         </div>
-        <div className="mt-1 truncate font-mono text-2xs text-fg-subtle">
+        <div className="mt-1.5 truncate font-mono text-2xs leading-4 text-fg-subtle">
           {webhook.method} {webhook.path}
         </div>
       </div>
-      <div className="shrink-0 text-right">
-        <div className="text-2xs text-fg-subtle">{formatRelativeTime(webhook.receivedAt)}</div>
+      <div className="shrink-0 space-y-1.5 text-right">
+        <div className="text-2xs leading-4 text-fg-subtle">{formatRelativeTime(webhook.receivedAt)}</div>
         {webhook.forwardDurationMs != null && (
-          <div className="text-2xs text-fg-subtle">{formatDuration(webhook.forwardDurationMs)}</div>
+          <div className="text-2xs leading-4 text-fg-subtle">{formatDuration(webhook.forwardDurationMs)}</div>
         )}
       </div>
     </Button>
