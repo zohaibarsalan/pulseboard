@@ -38,7 +38,7 @@ export function App(): React.ReactElement {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent): void => {
-      const cmdK = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k";
+      const cmdK = (e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "k";
       if (cmdK) {
         e.preventDefault();
         setPaletteOpen((v) => !v);

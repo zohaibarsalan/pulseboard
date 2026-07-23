@@ -10,6 +10,20 @@ Provider → your tunnel → Pulseboard :4500/hook/* → your app
 
 Pulseboard stores exact request bytes in SQLite, forwards them without re-serialization, detects common providers, verifies signatures, and provides a live web interface.
 
+## Product shots
+
+### Inspect a webhook
+
+![Pulseboard webhook inspector](docs/product-shots/webhook-inspector.png)
+
+### Monitor delivery health
+
+![Pulseboard analytics](docs/product-shots/analytics.png)
+
+### Compare captures
+
+![Pulseboard webhook comparison](docs/product-shots/compare.png)
+
 ## Quick start
 
 Requirements: Node.js 20 or newer and pnpm.
@@ -169,12 +183,20 @@ responses.
 pnpm typecheck
 pnpm test
 pnpm test:e2e
+pnpm product-shots
 pnpm build
 pnpm smoke:package
 pnpm smoke:docker
 pnpm release:check
 pnpm start
 ```
+
+`pnpm product-shots` starts or reuses the development stack, seeds a
+representative GitHub webhook pair, and uses the development-only Screenshotter
+integration to capture the webhook inspector, analytics, and comparison
+workspaces into `docs/product-shots`. In development, open Screenshotter
+manually from its bottom-right launcher or with `Cmd/Ctrl + Shift + K`. It is
+excluded from Pulseboard's production bundle and npm runtime.
 
 ## Test strategy
 
