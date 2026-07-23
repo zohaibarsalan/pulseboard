@@ -31,7 +31,7 @@ Everything after `/hook` is retained as the forwarded path.
 - Search and filters with cursor pagination
 - Body, header, forwarding, and signature inspection
 - Downstream status, headers, and bounded response-body inspection per delivery
-- Dedicated, URL-addressable chronological webhook comparison across JSON paths, request headers, delivery outcomes, signatures, and response bodies
+- Dedicated, URL-addressable chronological webhook comparison with an inline searchable selector for JSON paths, request headers, delivery outcomes, signatures, and response bodies
 - Replay and edited replay
 - Built-in webhook sender with provider presets
 - Provider onboarding with generated local, tunnel, and hosted-target setup

@@ -65,8 +65,8 @@ events that need attention. Every issue links back to the captured webhook.
 Open any captured webhook and choose **Compare** to diff it against another
 request in a dedicated comparison workspace. The selected pair is kept in the
 URL, so the comparison can be bookmarked or shared with someone using the same
-Pulseboard instance. Pulseboard ranks matching event types and providers first,
-then shows:
+Pulseboard instance. A persistent selector lets you switch either side and
+search captured events without opening the command palette. The workspace shows:
 
 - added, removed, changed, and unchanged JSON fields by path;
 - case-insensitive request-header changes;

@@ -210,16 +210,17 @@ test("compare two webhooks across body, headers, and delivery", async ({ page, r
   await page.getByTestId("webhook-row").first().click();
   await page.getByRole("button", { name: "Compare", exact: true }).click();
   await expect(page).toHaveURL(/\/compare\?left=/);
-  await expect(page.getByText("Choose two captures")).toBeVisible();
-  await page.getByRole("button", { name: "Choose comparison", exact: true }).first().click();
-  const picker = page.getByRole("dialog");
-  await expect(picker).toBeVisible();
-  await expect(picker.getByText("same event type", { exact: true })).toBeVisible();
-  await picker.getByText("compare.updated", { exact: true }).click();
+  await expect(page.getByText("Webhook selector")).toBeVisible();
+  await expect(page.getByPlaceholder("Search for Webhook B…")).toBeVisible();
+  await page
+    .getByTestId("compare-selector-list")
+    .locator("[data-webhook-id]:not(:disabled)")
+    .first()
+    .click();
 
   const comparison = page.getByTestId("webhook-compare");
   await expect(comparison).toBeVisible();
-  await expect(page.getByText("Earlier → later")).toBeVisible();
+  await expect(page.getByText("Earlier", { exact: true }).first()).toBeVisible();
   const statusDiff = comparison.locator('[data-diff-kind="changed"]').filter({ hasText: "$.status" });
   await expect(statusDiff).toContainText('"pending"');
   await expect(statusDiff).toContainText('"paid"');
@@ -234,8 +235,8 @@ test("compare two webhooks across body, headers, and delivery", async ({ page, r
 
   await comparison.getByRole("tab", { name: "Delivery" }).click();
   await expect(comparison.getByText("Delivery outcome")).toBeVisible();
-  await page.getByRole("button", { name: "Change", exact: true }).first().click();
-  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.getByRole("button", { name: /Webhook A/ }).click();
+  await expect(page.getByPlaceholder("Search for Webhook A…")).toBeVisible();
 });
 
 test("coss command, webhook search, select, and checkbox primitives are operable", async ({ page, request }) => {
