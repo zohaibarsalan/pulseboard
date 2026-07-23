@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, Pencil, Plus, RefreshCw, Send, Terminal, X } from "lucide-react";
+import { ArrowLeft, Check, Copy, Pencil, Plus, RefreshCw, Send, Terminal, X } from "lucide-react";
 import { api, type Webhook } from "../lib/api.js";
 import { formatRelativeTime, formatDuration } from "../lib/format.js";
 import { SourceBadge } from "./SourceBadge.js";
@@ -27,9 +27,11 @@ const fromRows = (rows: HeaderRow[]): Record<string, string> => {
 export function WebhookDetail({
   webhook,
   readonly,
+  onBack,
 }: {
   webhook: Webhook;
   readonly: boolean;
+  onBack?: () => void;
 }): React.ReactElement {
   const [tab, setTab] = useState<Tab>("body");
   const [copied, setCopied] = useState<string | null>(null);
@@ -102,6 +104,12 @@ export function WebhookDetail({
     <div className="flex h-full flex-col">
       {/* Header */}
       <div className="border-b border-border px-5 py-4">
+        {onBack && (
+          <Button onClick={onBack} variant="ghost" size="sm" className="mb-3 md:hidden">
+            <ArrowLeft className="size-3.5" aria-hidden="true" />
+            Back to webhooks
+          </Button>
+        )}
         <div className="flex items-center gap-2">
           <span className={cn("rounded px-1.5 py-0.5 font-mono text-2xs font-semibold", methodColor(webhook.method))}>
             {webhook.method}
@@ -196,6 +204,11 @@ export function WebhookDetail({
             )}
           </div>
         )}
+        {replay.error && (
+          <div role="alert" className="mt-2 text-xs text-danger">
+            Replay failed: {replay.error.message}
+          </div>
+        )}
       </div>
 
       {/* Tabs */}
@@ -287,6 +300,7 @@ function BodyView({
         variant="outline"
         size="xs"
         className="absolute right-0 top-0 bg-bg"
+        aria-label={copied === "body" ? "Body copied" : "Copy webhook body"}
       >
         {copied === "body" ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
       </Button>
@@ -398,13 +412,13 @@ function HeadersEditor({
   return (
     <div className="space-y-1.5">
       {rows.map((row) => (
-        <div key={row.id} className="flex items-center gap-2">
+        <div key={row.id} className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <Input
             type="text"
             value={row.key}
             onChange={(e) => update(row.id, { key: e.target.value })}
             placeholder="header name"
-            className="w-48 shrink-0 font-mono text-xs"
+            className="w-full shrink-0 font-mono text-xs sm:w-48"
           />
           <Input
             type="text"

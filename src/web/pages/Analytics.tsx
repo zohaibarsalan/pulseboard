@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -34,6 +34,7 @@ type StatusFilter = "all" | "success" | "failed" | "pending";
 type SignatureFilter = "all" | "valid" | "invalid" | "no_secret";
 
 export function AnalyticsPage(): React.ReactElement {
+  const [, navigate] = useLocation();
   const [range, setRange] = useState<Range>("7d");
   const [source, setSource] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -48,12 +49,12 @@ export function AnalyticsPage(): React.ReactElement {
     signature: sigFilter === "all" ? undefined : sigFilter,
   };
 
-  const { data: summary } = useQuery({
+  const { data: summary, error: summaryError } = useQuery({
     queryKey: ["analytics-summary", filter],
     queryFn: () => api.analyticsSummary(filter),
     refetchInterval: 15_000,
   });
-  const { data: timeseries } = useQuery({
+  const { data: timeseries, error: timeseriesError } = useQuery({
     queryKey: ["analytics-timeseries", filter, rangeCfg.bucket],
     queryFn: () => api.analyticsTimeseries(filter, rangeCfg.bucket),
     refetchInterval: 15_000,
@@ -97,8 +98,13 @@ export function AnalyticsPage(): React.ReactElement {
         }
       />
 
-      <div className="flex-1 overflow-y-auto px-6 py-5">
+      <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
         <div className="mx-auto max-w-7xl space-y-5">
+          {(summaryError || timeseriesError) && (
+            <div role="alert" className="rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">
+              Could not load analytics: {(summaryError ?? timeseriesError)?.message}
+            </div>
+          )}
           {/* Filters */}
           <FilterBar
             sources={sources?.sources ?? []}
@@ -130,7 +136,7 @@ export function AnalyticsPage(): React.ReactElement {
             <BreakdownList
               title="By source"
               items={bySource?.items ?? []}
-              onItemClick={(key) => setSource(key === source ? null : key)}
+              onItemClick={(key) => navigate(`/?source=${encodeURIComponent(key)}`)}
               currentKey={source}
               renderKey={(k) => <SourceBadge source={k} />}
             />
@@ -138,6 +144,7 @@ export function AnalyticsPage(): React.ReactElement {
               title="By event type"
               items={byEventType?.items ?? []}
               renderKey={(k) => <span className="font-mono text-xs">{k}</span>}
+              onItemClick={(key) => navigate(`/?q=${encodeURIComponent(key)}`)}
             />
           </div>
         </div>
@@ -224,9 +231,8 @@ function FilterBar({
   onSig: (next: SignatureFilter) => void;
 }): React.ReactElement {
   return (
-    <div className="space-y-2 rounded-lg border border-border bg-bg-muted/20 p-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-2xs font-medium uppercase tracking-wider text-fg-subtle">Source</span>
+    <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1.5fr_1fr_1fr]">
+      <FilterCard title="Source">
         <FilterPill active={source === null} onClick={() => onSource(null)}>All</FilterPill>
         {sources.map((s) => (
           <FilterPill key={s.source} active={source === s.source} onClick={() => onSource(s.source)}>
@@ -234,32 +240,43 @@ function FilterBar({
             <span className="ml-1 text-fg-subtle">{s.count}</span>
           </FilterPill>
         ))}
-      </div>
+      </FilterCard>
 
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-2">
-          <span className="text-2xs font-medium uppercase tracking-wider text-fg-subtle">Status</span>
-          {(["all", "success", "failed", "pending"] as StatusFilter[]).map((s) => (
-            <FilterPill key={s} active={statusFilter === s} onClick={() => onStatus(s)} tone={
-              s === "failed" ? "danger" : s === "success" ? "success" : "neutral"
-            }>
-              <span className="capitalize">{s}</span>
-            </FilterPill>
-          ))}
-        </div>
+      <FilterCard title="Status">
+        {(["all", "success", "failed", "pending"] as StatusFilter[]).map((s) => (
+          <FilterPill key={s} active={statusFilter === s} onClick={() => onStatus(s)} tone={
+            s === "failed" ? "danger" : s === "success" ? "success" : "neutral"
+          }>
+            <span className="capitalize">{s}</span>
+          </FilterPill>
+        ))}
+      </FilterCard>
 
-        <div className="flex items-center gap-2">
-          <span className="text-2xs font-medium uppercase tracking-wider text-fg-subtle">Signature</span>
-          {(["all", "valid", "invalid", "no_secret"] as SignatureFilter[]).map((s) => (
-            <FilterPill key={s} active={sigFilter === s} onClick={() => onSig(s)} tone={
-              s === "invalid" ? "danger" : s === "valid" ? "success" : "neutral"
-            }>
-              {s === "no_secret" ? "no secret" : <span className="capitalize">{s}</span>}
-            </FilterPill>
-          ))}
-        </div>
-      </div>
+      <FilterCard title="Signature">
+        {(["all", "valid", "invalid", "no_secret"] as SignatureFilter[]).map((s) => (
+          <FilterPill key={s} active={sigFilter === s} onClick={() => onSig(s)} tone={
+            s === "invalid" ? "danger" : s === "valid" ? "success" : "neutral"
+          }>
+            {s === "no_secret" ? "no secret" : <span className="capitalize">{s}</span>}
+          </FilterPill>
+        ))}
+      </FilterCard>
     </div>
+  );
+}
+
+function FilterCard({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}): React.ReactElement {
+  return (
+    <Card className="p-3">
+      <div className="mb-2 text-2xs font-medium uppercase tracking-wider text-fg-subtle">{title}</div>
+      <div className="flex flex-wrap gap-1.5">{children}</div>
+    </Card>
   );
 }
 
@@ -376,7 +393,7 @@ function BreakdownList({
       )}
       {onItemClick && currentKey && (
         <div className="border-t border-border px-4 py-2 text-2xs text-fg-subtle">
-          Filtered by {currentKey}. <Link href="/" className="hover:underline">View in feed →</Link>
+          Filtered by {currentKey}. <Link href={`/?source=${encodeURIComponent(currentKey)}`} className="hover:underline">View in feed →</Link>
         </div>
       )}
     </Card>

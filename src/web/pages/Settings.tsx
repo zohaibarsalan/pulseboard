@@ -8,7 +8,7 @@ import { formatRelativeTime } from "../lib/format.js";
 import { Button, Card, CardHeader } from "../components/coss-ui/index.js";
 
 export function SettingsPage(): React.ReactElement {
-  const { data: health } = useQuery({ queryKey: ["health"], queryFn: api.health, refetchInterval: 5_000 });
+  const { data: health, error } = useQuery({ queryKey: ["health"], queryFn: api.health, refetchInterval: 5_000 });
   const [copied, setCopied] = useState(false);
 
   const copyCaptureUrl = (): void => {
@@ -22,8 +22,13 @@ export function SettingsPage(): React.ReactElement {
     <div className="flex h-full flex-col">
       <Topbar title="Settings" />
 
-      <div className="flex-1 overflow-y-auto px-6 py-5">
+      <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
         <div className="mx-auto max-w-3xl space-y-6">
+          {error && (
+            <div role="alert" className="rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">
+              Could not load settings: {error.message}
+            </div>
+          )}
           {/* Capture URL */}
           <Section title="Capture URL" icon={Server}>
             <p className="mb-2 text-sm text-fg-muted">
@@ -49,7 +54,7 @@ export function SettingsPage(): React.ReactElement {
 
           {/* Signing secrets */}
           <Section title="Signing Secrets" icon={ShieldCheck}>
-            <SecretsManager />
+            <SecretsManager readonly={health?.readonly ?? false} />
           </Section>
 
           {/* Forwarding */}
@@ -87,6 +92,10 @@ export function SettingsPage(): React.ReactElement {
               label="Last captured"
               value={health?.lastCapturedAt ? formatRelativeTime(health.lastCapturedAt) : "never"}
             />
+            <InfoRow label="Database size" value={health ? formatBytes(health.dbSizeBytes) : "—"} />
+            <InfoRow label="Retention" value={health ? `${health.retentionDays} days` : "—"} />
+            <InfoRow label="Database limit" value={health ? `${health.maxDbSizeMb} MB` : "—"} />
+            <InfoRow label="Password protection" value={health?.authEnabled ? "Enabled" : "Disabled"} />
           </Section>
 
           {/* Mode */}
@@ -132,7 +141,7 @@ function Section({
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }): React.ReactElement {
   return (
-    <div className="flex items-center justify-between py-1">
+    <div className="flex flex-wrap items-start justify-between gap-2 py-1">
       <span className="text-sm text-fg-subtle">{label}</span>
       <span className="text-sm">{value}</span>
     </div>
@@ -147,4 +156,9 @@ function formatUptime(seconds: number): string {
   if (hours < 24) return `${hours}h ${mins}m`;
   const days = Math.floor(hours / 24);
   return `${days}d ${hours % 24}h`;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }

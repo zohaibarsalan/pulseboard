@@ -27,6 +27,7 @@ export function SearchInput({ value, onChange, placeholder, hint, autoFocus }: P
       <div className="pb-search w-full max-w-2xl">
         <Search className="h-3.5 w-3.5 stroke-[1.75] text-fg-subtle" />
         <Input
+          aria-label={placeholder ?? "Search"}
           type="search"
           value={local}
           onChange={(e) => flush(e.target.value)}

@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Command } from "cmdk";
-import { Activity, Moon, Search, Send, Settings, Sun, Trash2, Webhook, type LucideIcon } from "lucide-react";
-import { api } from "../lib/api.js";
+import { Activity, Moon, Search, Send, Settings, Sun, Webhook, type LucideIcon } from "lucide-react";
 
 type Props = {
   open: boolean;
@@ -12,7 +10,6 @@ type Props = {
 
 export function CommandPalette({ open, onClose }: Props): React.ReactElement | null {
   const [, setLocation] = useLocation();
-  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
 
   useEffect(() => {
@@ -23,14 +20,6 @@ export function CommandPalette({ open, onClose }: Props): React.ReactElement | n
     setLocation(href);
     onClose();
   };
-
-  const clearMutation = useMutation({
-    mutationFn: () => api.clear(),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["webhooks"] });
-      void queryClient.invalidateQueries({ queryKey: ["webhook-stats"] });
-    },
-  });
 
   const toggleTheme = (): void => {
     const next = !document.documentElement.classList.contains("dark");
@@ -58,7 +47,7 @@ export function CommandPalette({ open, onClose }: Props): React.ReactElement | n
             <Command.Input
               value={search}
               onValueChange={setSearch}
-              placeholder="Search pages, actions…"
+              placeholder="Go to a page or action…"
               autoFocus
               className="h-11 flex-1 bg-transparent text-sm text-fg placeholder:text-fg-subtle focus:outline-none"
             />
@@ -73,17 +62,6 @@ export function CommandPalette({ open, onClose }: Props): React.ReactElement | n
               <PaletteItem icon={Send} label="Compose" onSelect={() => go("/compose")} />
               <PaletteItem icon={Activity} label="Analytics" onSelect={() => go("/analytics")} />
               <PaletteItem icon={Settings} label="Settings" onSelect={() => go("/settings")} />
-            </Command.Group>
-
-            <Command.Group heading="Actions">
-              <PaletteItem
-                icon={Trash2}
-                label="Clear all webhooks"
-                onSelect={() => {
-                  clearMutation.mutate();
-                  onClose();
-                }}
-              />
             </Command.Group>
 
             <Command.Group heading="Preferences">

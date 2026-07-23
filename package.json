@@ -17,8 +17,9 @@
   ],
   "scripts": {
     "dev": "concurrently -k -n web,api,sender -c magenta,blue,yellow \"vite\" \"PULSEBOARD_DEV_PROXY=http://localhost:5173 tsx watch src/cli.ts --port 4500 --db .pulseboard/dev.db --forward http://localhost:3999\" \"tsx scripts/dev-sender.ts\"",
-    "build": "vite build && tsc -p tsconfig.build.json && node -e \"import('node:fs').then(fs=>fs.cpSync('src/db/migrations','dist/db/migrations',{recursive:true}))\"",
+    "build": "node -e \"import('node:fs').then(fs=>fs.rmSync('dist',{recursive:true,force:true}))\" && vite build && tsc -p tsconfig.build.json && node -e \"import('node:fs').then(fs=>fs.cpSync('src/db/migrations','dist/db/migrations',{recursive:true}))\"",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.web.json --noEmit",
+    "test": "tsx --test src/**/*.test.ts",
     "start": "node dist/cli.js",
     "db:generate": "drizzle-kit generate"
   },
@@ -28,6 +29,8 @@
     "@fastify/static": "^7.0.4",
     "@fontsource-variable/geist": "^5.2.8",
     "@fontsource-variable/geist-mono": "^5.2.7",
+    "@radix-ui/react-alert-dialog": "^1.1.21",
+    "@radix-ui/react-select": "^2.3.5",
     "@tanstack/react-query": "^5.59.0",
     "better-sqlite3": "^11.3.0",
     "cmdk": "^1.1.1",

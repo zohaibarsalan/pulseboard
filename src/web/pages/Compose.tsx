@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { CheckCircle2, Plus, Send, ShieldOff, X, XCircle } from "lucide-react";
@@ -31,6 +31,8 @@ const SOURCE_OPTIONS = [
 ];
 
 const METHODS = ["POST", "PUT", "PATCH", "DELETE", "GET"];
+const METHOD_OPTIONS = METHODS.map((method) => ({ value: method, label: method }));
+const SOURCE_SELECT_OPTIONS = SOURCE_OPTIONS.map((source) => ({ value: source, label: source }));
 
 export function ComposePage(): React.ReactElement {
   const [, navigate] = useLocation();
@@ -67,14 +69,6 @@ export function ComposePage(): React.ReactElement {
     }
     setHeaders(next);
   };
-
-  // If the user switches source and we'd auto-sign but have no secret, surface
-  // that — but don't toggle their choice for them.
-  useEffect(() => {
-    if (autoSign && !sourceHasSecret && source !== "unknown") {
-      // Just leave the toggle on; the UI will show a warning next to it.
-    }
-  }, [autoSign, sourceHasSecret, source]);
 
   const send = useMutation({
     mutationFn: () =>
@@ -127,213 +121,190 @@ export function ComposePage(): React.ReactElement {
     <div className="flex h-full flex-col">
       <Topbar title="Compose" subtitle="Send a webhook to your local app" />
 
-      <div className="flex-1 overflow-y-auto px-6 py-5">
-        <div className="mx-auto max-w-3xl space-y-5">
+      <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
           {readonly && (
-            <div className="rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning">
+            <div className="rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning xl:col-span-2">
               Pulseboard is running in read-only mode — sending is disabled.
             </div>
           )}
 
-          {/* Preset */}
-          <Section title="Preset">
-            <Select
-              value={presetId}
-              onChange={(e) => {
-                const preset = findPreset(e.target.value);
-                if (preset) applyPreset(preset);
-              }}
-              className="w-full"
-            >
-              {PRESETS.map((p) => (
-                <option key={p.id} value={p.id}>{p.label}</option>
-              ))}
-            </Select>
-            <p className="mt-1.5 text-2xs text-fg-subtle">
-              Picks a sample body, default path, and the right source for auto-signing.
-            </p>
-          </Section>
-
-          {/* Request line */}
-          <Section title="Request">
-            <div className="flex items-center gap-2">
-              <Select
-                value={method}
-                onChange={(e) => setMethod(e.target.value)}
-                className="rounded-md border border-border bg-bg px-2 py-1.5 font-mono text-xs focus:border-fg focus:outline-none"
-              >
-                {METHODS.map((m) => <option key={m}>{m}</option>)}
-              </Select>
-              <Input
-                type="text"
-                value={path}
-                onChange={(e) => setPath(e.target.value)}
-                placeholder="/path"
-                className="flex-1 font-mono"
-              />
-            </div>
-
-            <div className="mt-2">
-              <label className="block text-2xs font-medium uppercase tracking-wider text-fg-subtle">Target</label>
-              <Input
-                type="text"
-                value={target}
-                onChange={(e) => setTarget(e.target.value)}
-                placeholder={targetPlaceholder}
-                className="mt-1 w-full font-mono text-xs"
-              />
-              <p className="mt-1 text-2xs text-fg-subtle">
-                Leave empty to use the configured forward target. Sender will POST to{" "}
-                <code className="font-mono">{(target.trim() || targetPlaceholder)}{path}</code>.
-              </p>
-            </div>
-          </Section>
-
-          {/* Source + sign */}
-          <Section title="Identity">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2">
-                <SourceBadge source={source} />
-                <Select
-                  value={source}
-                  onChange={(e) => setSource(e.target.value)}
-                  className="text-xs"
-                >
-                  {SOURCE_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-                </Select>
-              </div>
-
-              <label className="ml-auto inline-flex cursor-pointer items-center gap-2 text-xs">
-                <Checkbox
-                  checked={autoSign}
-                  onChange={(e) => setAutoSign(e.target.checked)}
-                />
-                <span>Auto-sign with stored secret</span>
-              </label>
-            </div>
-
-            {autoSign && source !== "unknown" && !sourceHasSecret && (
-              <div className="mt-2 flex items-center gap-2 rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-2xs text-warning">
-                <ShieldOff className="h-3 w-3" />
-                No <span className="font-mono">{source}</span> secret in Settings — signature header won&apos;t be added.
-              </div>
-            )}
-          </Section>
-
-          {/* Headers */}
-          <Section title={`Headers (${headers.length})`}>
-            <div className="space-y-1.5">
-              {headers.map((row) => (
-                <div key={row.id} className="flex items-center gap-2">
-                  <Input
-                    type="text"
-                    value={row.key}
-                    onChange={(e) => updateHeader(row.id, { key: e.target.value })}
-                    placeholder="header name"
-                    className="w-48 shrink-0 font-mono text-xs"
+          <div className="space-y-5">
+            <Section title="Request">
+              <div className="grid gap-3">
+                <Field label="Preset">
+                  <Select
+                    value={presetId}
+                    options={PRESETS.map((preset) => ({ value: preset.id, label: preset.label }))}
+                    onChange={(next) => {
+                      const preset = findPreset(next);
+                      if (preset) applyPreset(preset);
+                    }}
+                    className="w-full"
+                    ariaLabel="Webhook preset"
                   />
+                </Field>
+                <div className="grid grid-cols-[7rem_1fr] gap-2">
+                  <Select value={method} options={METHOD_OPTIONS} onChange={setMethod} className="font-mono text-xs" ariaLabel="HTTP method" />
                   <Input
+                    aria-label="Request path"
                     type="text"
-                    value={row.value}
-                    onChange={(e) => updateHeader(row.id, { value: e.target.value })}
-                    placeholder="value"
-                    className="flex-1 font-mono text-xs"
+                    value={path}
+                    onChange={(e) => setPath(e.target.value)}
+                    placeholder="/path"
+                    className="font-mono"
                   />
-                  <Button
-                    onClick={() => removeHeader(row.id)}
-                    variant="danger"
-                    size="icon"
-                    className="h-7 w-7"
-                    aria-label="Remove header"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
                 </div>
-              ))}
-              <Button
-                onClick={addHeader}
-                variant="outline"
-                size="xs"
-                className="mt-1 border-dashed"
-              >
-                <Plus className="h-3 w-3" />
-                Add header
-              </Button>
-            </div>
-            <p className="mt-2 text-2xs text-fg-subtle">
-              Signature headers are added automatically when auto-sign is on.
-            </p>
-          </Section>
 
-          {/* Body */}
-          <Section title="Body">
-            <div className="mb-2 flex items-center gap-2">
-              <Button
-                onClick={formatJson}
-                variant="outline"
-                size="xs"
-              >
-                Format JSON
-              </Button>
-              <Button
-                onClick={minifyJson}
-                variant="outline"
-                size="xs"
-              >
-                Minify
-              </Button>
-              <span className="ml-auto text-2xs text-fg-subtle">{body.length} chars</span>
-            </div>
-            {parseError && (
-              <div className="mb-2 rounded border border-danger/30 bg-danger/5 px-2 py-1 text-2xs text-danger">
-                {parseError}
+                <Field label="Target">
+                  <Input
+                    aria-label="Forward target"
+                    type="text"
+                    value={target}
+                    onChange={(e) => setTarget(e.target.value)}
+                    placeholder={targetPlaceholder}
+                    className="w-full font-mono text-xs"
+                  />
+                  <p className="mt-1 text-2xs text-fg-subtle">
+                    Sender will POST to <code className="font-mono">{(target.trim() || targetPlaceholder)}{path}</code>.
+                  </p>
+                </Field>
               </div>
-            )}
-            <Textarea
-              value={body}
-              onChange={(e) => {
-                setBody(e.target.value);
-                if (parseError) setParseError(null);
-              }}
-              rows={14}
-              spellCheck={false}
-              className="font-mono text-xs leading-relaxed"
-              placeholder="Request body"
-            />
-          </Section>
+            </Section>
 
-          {/* Send */}
-          <div className="flex items-center gap-3">
-            <Button
-              onClick={() => send.mutate()}
-              disabled={!canSend || readonly}
-              variant="default"
-              size="md"
-            >
-              <Send className={cn("h-3.5 w-3.5", send.isPending && "animate-pulse")} />
-              {send.isPending ? "Sending…" : "Send"}
-            </Button>
-            {!health?.forwardTo && !target.trim() && (
-              <span className="text-xs text-warning">Set a target or configure --forward to send.</span>
-            )}
+            <Section title={`Headers (${headers.length})`}>
+              <div className="space-y-1.5">
+                {headers.map((row, index) => (
+                  <div key={row.id} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <Input
+                      aria-label={`Header ${index + 1} name`}
+                      type="text"
+                      value={row.key}
+                      onChange={(e) => updateHeader(row.id, { key: e.target.value })}
+                      placeholder="header name"
+                      className="w-full shrink-0 font-mono text-xs sm:w-48"
+                    />
+                    <Input
+                      aria-label={`Header ${index + 1} value`}
+                      type="text"
+                      value={row.value}
+                      onChange={(e) => updateHeader(row.id, { value: e.target.value })}
+                      placeholder="value"
+                      className="flex-1 font-mono text-xs"
+                    />
+                    <Button
+                      onClick={() => removeHeader(row.id)}
+                      variant="danger"
+                      size="icon"
+                      className="h-7 w-7"
+                      aria-label="Remove header"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+                <Button onClick={addHeader} variant="outline" size="xs" className="mt-1 border-dashed">
+                  <Plus className="h-3 w-3" />
+                  Add header
+                </Button>
+              </div>
+              <p className="mt-2 text-2xs text-fg-subtle">
+                Signature headers are added automatically when auto-sign is on.
+              </p>
+            </Section>
+
+            <Section title="Body">
+              <div className="mb-2 flex items-center gap-2">
+                <Button onClick={formatJson} variant="outline" size="xs">
+                  Format JSON
+                </Button>
+                <Button onClick={minifyJson} variant="outline" size="xs">
+                  Minify
+                </Button>
+                <span className="ml-auto text-2xs text-fg-subtle">{body.length} chars</span>
+              </div>
+              {parseError && (
+                <div id="compose-body-error" role="alert" className="mb-2 rounded border border-danger/30 bg-danger/5 px-2 py-1 text-2xs text-danger">
+                  {parseError}
+                </div>
+              )}
+              <Textarea
+                aria-label="Webhook request body"
+                aria-invalid={parseError ? true : undefined}
+                aria-describedby={parseError ? "compose-body-error" : undefined}
+                value={body}
+                onChange={(e) => {
+                  setBody(e.target.value);
+                  if (parseError) setParseError(null);
+                }}
+                rows={14}
+                spellCheck={false}
+                className="font-mono text-xs leading-relaxed"
+                placeholder="Request body"
+              />
+            </Section>
           </div>
 
-          {/* Result */}
-          {send.data && (
-            <ResultPanel
-              status={send.data.result.status}
-              durationMs={send.data.result.durationMs}
-              error={send.data.result.error}
-              signedWith={send.data.signedWith}
-              id={send.data.id}
-              onInspect={() => navigate("/")}
-            />
-          )}
-          {send.error && (
-            <div className="rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-xs text-danger">
-              {(send.error as Error).message}
-            </div>
-          )}
+          <div className="space-y-5">
+            <Section title="Identity">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <SourceBadge source={source} />
+                  <Select
+                    value={source}
+                    options={SOURCE_SELECT_OPTIONS}
+                    onChange={setSource}
+                    className="w-40 text-xs"
+                    ariaLabel="Webhook source"
+                  />
+                </div>
+
+                <label className="flex cursor-pointer items-center justify-between gap-3 rounded-md border border-border bg-bg-muted/30 px-3 py-2 text-xs">
+                  <span>Auto-sign with stored secret</span>
+                  <Checkbox checked={autoSign} onChange={(e) => setAutoSign(e.target.checked)} />
+                </label>
+              </div>
+
+              {autoSign && source !== "unknown" && !sourceHasSecret && (
+                <div className="mt-3 flex items-center gap-2 rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-2xs text-warning">
+                  <ShieldOff className="h-3 w-3" />
+                  No <span className="font-mono">{source}</span> secret in Settings.
+                </div>
+              )}
+            </Section>
+
+            <Section title="Send">
+              <Button
+                onClick={() => send.mutate()}
+                disabled={!canSend || readonly}
+                variant="default"
+                size="md"
+                className="w-full justify-center"
+              >
+                <Send className={cn("h-3.5 w-3.5", send.isPending && "animate-pulse")} />
+                {send.isPending ? "Sending…" : "Send"}
+              </Button>
+              {!health?.forwardTo && !target.trim() && (
+                <div className="mt-3 text-xs text-warning">Set a target or configure --forward to send.</div>
+              )}
+            </Section>
+
+            {send.data && (
+              <ResultPanel
+                status={send.data.result.status}
+                durationMs={send.data.result.durationMs}
+                error={send.data.result.error}
+                signedWith={send.data.signedWith}
+                id={send.data.id}
+                onInspect={() => navigate(`/webhooks/${send.data.id}`)}
+              />
+            )}
+            {send.error && (
+              <div className="rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-xs text-danger">
+                {(send.error as Error).message}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -346,6 +317,21 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <h2 className="mb-3 text-2xs font-medium uppercase tracking-wider text-fg-subtle">{title}</h2>
       {children}
     </Card>
+  );
+}
+
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}): React.ReactElement {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-2xs font-medium uppercase tracking-wider text-fg-subtle">{label}</span>
+      {children}
+    </label>
   );
 }
 

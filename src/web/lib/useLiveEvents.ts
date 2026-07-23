@@ -1,11 +1,16 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 export type LiveStatus = "connecting" | "live" | "error";
 
-export function useLiveEvents(): LiveStatus {
+export function useLiveEvents(): {
+  status: LiveStatus;
+  newEventCount: number;
+  acknowledge: () => void;
+} {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<LiveStatus>("connecting");
+  const [newEventCount, setNewEventCount] = useState(0);
 
   useEffect(() => {
     const source = new EventSource("/api/live");
@@ -16,9 +21,9 @@ export function useLiveEvents(): LiveStatus {
       if (pending) return;
       pending = setTimeout(() => {
         pending = null;
-        void queryClient.invalidateQueries({ queryKey: ["webhooks"] });
         void queryClient.invalidateQueries({ queryKey: ["webhook-stats"] });
         void queryClient.invalidateQueries({ queryKey: ["webhook-sources"] });
+        setNewEventCount((count) => count + 1);
       }, 400);
     };
 
@@ -33,5 +38,6 @@ export function useLiveEvents(): LiveStatus {
     };
   }, [queryClient]);
 
-  return status;
+  const acknowledge = useCallback(() => setNewEventCount(0), []);
+  return { status, newEventCount, acknowledge };
 }

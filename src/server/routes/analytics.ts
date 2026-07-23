@@ -120,7 +120,7 @@ export async function analyticsRoutes(app: FastifyInstance, ctx: AppContext): Pr
 
     const pctDelta = (cur: number, prev: number): number | null => {
       if (prev === 0 && cur === 0) return null;
-      if (prev === 0) return 100;
+      if (prev === 0) return null;
       return ((cur - prev) / prev) * 100;
     };
 

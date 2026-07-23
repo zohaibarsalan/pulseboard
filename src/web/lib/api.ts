@@ -6,6 +6,10 @@ export type Health = {
   uptimeSeconds: number;
   lastCapturedAt: number | null;
   readonly: boolean;
+  retentionDays: number;
+  maxDbSizeMb: number;
+  dbSizeBytes: number;
+  authEnabled: boolean;
   version: string;
 };
 

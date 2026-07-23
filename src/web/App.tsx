@@ -30,11 +30,14 @@ export function App(): React.ReactElement {
 
   return (
     <CommandPaletteContext.Provider value={{ open: () => setPaletteOpen(true) }}>
-      <div className="flex h-screen w-screen overflow-hidden bg-bg text-fg">
+      <div className="flex h-dvh w-screen overflow-hidden bg-bg text-fg">
         <Sidebar />
-        <main className="flex min-w-0 flex-1 flex-col">
+        <main className="flex min-w-0 flex-1 flex-col pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0">
           <Switch>
-            <Route path="/" component={WebhooksPage} />
+            <Route path="/">{() => <WebhooksPage />}</Route>
+            <Route path="/webhooks/:id">
+              {(params) => <WebhooksPage selectedId={params.id} />}
+            </Route>
             <Route path="/compose" component={ComposePage} />
             <Route path="/analytics" component={AnalyticsPage} />
             <Route path="/settings" component={SettingsPage} />

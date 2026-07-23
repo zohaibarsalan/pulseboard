@@ -20,7 +20,8 @@ export function Sidebar(): React.ReactElement {
   const { data: health } = useQuery({ queryKey: ["health"], queryFn: api.health, refetchInterval: 5_000 });
 
   return (
-    <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-bg-subtle">
+    <>
+    <aside className="hidden w-56 shrink-0 flex-col border-r border-border bg-bg-subtle md:flex">
       <div className="flex h-14 items-center gap-2 px-3">
         <div className="flex h-5 w-5 items-center justify-center rounded-md bg-fg text-bg">
           <Webhook className="h-3 w-3" />
@@ -59,6 +60,26 @@ export function Sidebar(): React.ReactElement {
         </div>
       </div>
     </aside>
+    <nav className="fixed inset-x-0 bottom-0 z-30 flex h-[calc(3.5rem+env(safe-area-inset-bottom))] items-start justify-around border-t border-border bg-bg px-2 pt-1.5 pb-[env(safe-area-inset-bottom)] md:hidden" aria-label="Primary navigation">
+      {items.map((item) => {
+        const isActive = item.match ? item.match(location) : location.startsWith(item.href);
+        const Icon = item.icon;
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={cn(
+              "flex min-w-16 flex-col items-center gap-1 rounded-md px-2 py-1 text-[10px] text-fg-muted",
+              isActive && "bg-bg-muted text-fg",
+            )}
+          >
+            <Icon className="size-4" aria-hidden="true" />
+            <span>{item.label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+    </>
   );
 }
 
