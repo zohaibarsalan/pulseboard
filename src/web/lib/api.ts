@@ -68,6 +68,8 @@ export type AnalyticsSummary = {
     failed: number;
     pending: number;
     avgForwardMs: number | null;
+    p95ForwardMs: number | null;
+    slowDeliveries: number;
     validSignatures: number;
     verifiableTotal: number;
   };
@@ -106,6 +108,30 @@ export type AnalyticsBreakdown = {
   rangeDays: number;
   by: "source" | "event_type" | "path";
   items: AnalyticsBreakdownItem[];
+};
+
+export type AnalyticsDiagnostics = {
+  rangeDays: number;
+  issueTotal: number;
+  failureReasons: Array<{ reason: string; count: number; percentage: number }>;
+  statusClasses: Array<{ key: string; count: number }>;
+  slowestEndpoints: Array<{
+    path: string;
+    total: number;
+    failed: number;
+    avgForwardMs: number;
+    maxForwardMs: number;
+  }>;
+  recentIssues: Array<{
+    id: string;
+    source: string;
+    eventType: string | null;
+    path: string;
+    forwardStatus: number | null;
+    forwardError: string | null;
+    receivedAt: number;
+    reason: string;
+  }>;
 };
 
 export type WebhookStats = {
@@ -223,6 +249,8 @@ export const api = {
     params.set("limit", String(limit));
     return get<AnalyticsBreakdown>(`/api/analytics/breakdown?${params.toString()}`);
   },
+  analyticsDiagnostics: (filter: AnalyticsFilter = {}) =>
+    get<AnalyticsDiagnostics>(`/api/analytics/diagnostics?${buildAnalyticsParams(filter)}`),
 
   send: (input: {
     method: string;

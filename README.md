@@ -49,6 +49,17 @@ The synthetic connection test verifies Pulseboard and the configured downstream
 target. Send a real provider event afterward to confirm public reachability and
 provider signature verification.
 
+### Diagnose deliveries
+
+Pulseboard translates common delivery failures into an explanation and a
+concrete next step. It recognizes connection, DNS, TLS, timeout, redirect,
+authentication, rate-limit, route, handler, and signature failures while
+preserving the raw response and error evidence.
+
+Analytics adds a developer-focused view of delivery health: P95 latency, slow
+handler counts, failure causes, response classes, slowest endpoints, and recent
+events that need attention. Every issue links back to the captured webhook.
+
 ## Configuration
 
 | Variable | Default | Purpose |

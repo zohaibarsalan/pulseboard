@@ -14,6 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsPanel, TabsTab } from "@/components/ui/tabs";
+import { diagnoseDelivery } from "../../shared/deliveryDiagnostics.js";
+import { DeliveryDiagnostic } from "./DeliveryDiagnostic.js";
 
 type Tab = "body" | "headers" | "forward";
 
@@ -259,6 +261,8 @@ export function WebhookDetail({
         </dl>
       </section>
 
+      <DeliveryDiagnosticStrip webhook={webhook} />
+
       {replay.data && !editing && (
         <div className="border-b border-border px-5 py-2 text-xs">
           {replay.data.result.error ? (
@@ -316,6 +320,26 @@ export function WebhookDetail({
           </TabsPanel>
         )}
       </Tabs>
+    </div>
+  );
+}
+
+function DeliveryDiagnosticStrip({ webhook }: { webhook: Webhook }): React.ReactElement | null {
+  const delivery = {
+    forwardedTo: webhook.forwardedTo,
+    forwardStatus: webhook.forwardStatus,
+    forwardDurationMs: webhook.forwardDurationMs,
+    forwardError: webhook.forwardError,
+    signatureStatus: webhook.signatureStatus,
+    signatureNotes: webhook.signatureNotes,
+    path: webhook.path,
+  };
+  const diagnosis = diagnoseDelivery(delivery);
+  if (diagnosis.severity === "success") return null;
+
+  return (
+    <div data-testid="delivery-diagnostic" className="border-b border-border px-5 py-3">
+      <DeliveryDiagnostic delivery={delivery} />
     </div>
   );
 }
@@ -574,6 +598,19 @@ function ForwardView({ webhook }: { webhook: Webhook }): React.ReactElement {
               </span>
             </div>
             <Row label="Duration" value={formatDuration(delivery.durationMs)} />
+            <div className="mt-3">
+              <DeliveryDiagnostic
+                showSuccess
+                delivery={{
+                  forwardedTo: delivery.target,
+                  forwardStatus: delivery.status,
+                  forwardDurationMs: delivery.durationMs,
+                  forwardError: delivery.error,
+                  signatureStatus: "not_applicable",
+                  path: webhook.path,
+                }}
+              />
+            </div>
             {delivery.error && (
               <Alert variant="error" className="mt-3 font-mono text-xs">
                 <AlertDescription>{delivery.error}</AlertDescription>

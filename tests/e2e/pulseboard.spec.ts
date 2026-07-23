@@ -162,6 +162,28 @@ test("left and right arrows move through the webhook inspector", async ({ page, 
   await expect(rows.first()).toHaveAttribute("aria-current", "true");
 });
 
+test("failed deliveries explain the fix and roll up into developer analytics", async ({ page, request }) => {
+  await request.post("/api/webhooks/clear");
+  const capture = await request.post("/hook/missing-route", {
+    headers: { "content-type": "application/json" },
+    data: { type: "diagnostics.route_missing" },
+  });
+  expect(capture.status()).toBe(404);
+
+  await page.goto("/");
+  await page.getByRole("button").filter({ hasText: "diagnostics.route_missing" }).click();
+  const diagnostic = page.getByTestId("delivery-diagnostic");
+  await expect(diagnostic).toContainText("Webhook route was not found");
+  await expect(diagnostic).toContainText("Next:");
+
+  await page.getByRole("link", { name: "Analytics" }).click();
+  await expect(page.getByRole("heading", { name: "Developer insights" })).toBeVisible();
+  await expect(page.getByText("P95 latency", { exact: true })).toBeVisible();
+  await expect(page.getByText("Route not found", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Slowest endpoints", { exact: true })).toBeVisible();
+  await expect(page.getByText("Recent issues", { exact: true })).toBeVisible();
+});
+
 test("coss command, webhook search, select, and checkbox primitives are operable", async ({ page, request }) => {
   const searchable = await request.post("/hook/palette", {
     headers: { "content-type": "application/json" },

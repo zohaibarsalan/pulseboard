@@ -15,6 +15,14 @@ const echo = createServer((req, res) => {
   req.on("data", (chunk: Buffer) => chunks.push(chunk));
   req.on("end", () => {
     const body = Buffer.concat(chunks).toString("utf8");
+    if (req.url === "/missing-route") {
+      res.writeHead(404, {
+        "content-type": "application/json",
+        "x-e2e-response": "missing",
+      });
+      res.end(JSON.stringify({ error: "route_not_found" }));
+      return;
+    }
     res.writeHead(200, {
       "content-type": "application/json",
       "x-e2e-response": "captured",

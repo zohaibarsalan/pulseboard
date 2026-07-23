@@ -36,7 +36,8 @@ Everything after `/hook` is retained as the forwarded path.
 - Provider onboarding with generated local, tunnel, and hosted-target setup
 - Synthetic capture and downstream connection test with inspectable results
 - Signature verification and locally stored signing secrets
-- Source, delivery, latency, and signature analytics
+- Actionable connection and delivery diagnostics with raw error evidence
+- Source, delivery, P95 latency, slow endpoint, failure-cause, response-class, and signature analytics
 - Read-only mode, header redaction, optional password protection
 - Allowlisted custom forwarding targets with redirects disabled
 - npm and Docker distribution
@@ -66,6 +67,6 @@ Everything after `/hook` is retained as the forwarded path.
 - Password protection covers dashboard and API while leaving `/hook/*` available
 - Custom targets cannot reach unconfigured hosts or escape the allowlist through redirects
 - Desktop and narrow-screen capture, inspection, compose, analytics, and settings flows are usable
-- Browser E2E covers capture, inspect, edit, replay, clear, reverse-proxy auth, dark mode, narrow desktop, and large payloads
+- Browser E2E covers capture, inspect, edit, replay, clear, delivery diagnostics, analytics, reverse-proxy auth, dark mode, narrow desktop, and large payloads
 - npm package and Docker image pass smoke tests
 - Production dependency audit has no known vulnerabilities

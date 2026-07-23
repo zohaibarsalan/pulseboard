@@ -5,8 +5,12 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock,
+  Gauge,
+  ListChecks,
+  Route,
   ShieldCheck,
   TrendingUp,
+  XCircle,
 } from "lucide-react";
 import { Topbar } from "../components/Topbar.js";
 import { KpiCard } from "../components/KpiCard.js";
@@ -16,15 +20,18 @@ import { SourceBadge } from "../components/SourceBadge.js";
 import {
   api,
   type AnalyticsBreakdownItem,
+  type AnalyticsDiagnostics,
   type AnalyticsFilter,
   type AnalyticsSummary,
 } from "../lib/api.js";
-import { formatDuration, formatNumber } from "../lib/format.js";
+import { formatDuration, formatNumber, formatRelativeTime } from "../lib/format.js";
 import { cn } from "../lib/cn.js";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { PulseboardSelect } from "../components/PulseboardSelect.js";
+import { DIAGNOSTIC_REASON_LABELS, type DiagnosticReason } from "../../shared/deliveryDiagnostics.js";
 
 type Range = "24h" | "7d" | "30d";
 const RANGES: { id: Range; label: string; days: number; bucket: "hour" | "day" }[] = [
@@ -79,6 +86,11 @@ export function AnalyticsPage(): React.ReactElement {
     queryFn: () => api.analyticsBreakdown("event_type", filter),
     refetchInterval: 30_000,
   });
+  const { data: diagnostics, error: diagnosticsError } = useQuery({
+    queryKey: ["analytics-diagnostics", filter],
+    queryFn: () => api.analyticsDiagnostics(filter),
+    refetchInterval: 15_000,
+  });
 
   return (
     <div className="flex h-full flex-col">
@@ -86,8 +98,8 @@ export function AnalyticsPage(): React.ReactElement {
 
       <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
         <div className="mx-auto max-w-7xl space-y-5">
-          {(summaryError || timeseriesError) && (
-            <Alert variant="error"><AlertDescription>Could not load analytics: {(summaryError ?? timeseriesError)?.message}</AlertDescription></Alert>
+          {(summaryError || timeseriesError || diagnosticsError) && (
+            <Alert variant="error"><AlertDescription>Could not load analytics: {(summaryError ?? timeseriesError ?? diagnosticsError)?.message}</AlertDescription></Alert>
           )}
           {/* Filters */}
           <FilterBar
@@ -117,7 +129,27 @@ export function AnalyticsPage(): React.ReactElement {
             />
           </div>
 
+          <section className="flex flex-col gap-3" aria-labelledby="developer-insights-heading">
+            <div>
+              <h2 id="developer-insights-heading" className="text-balance text-lg font-medium">Developer insights</h2>
+              <p className="text-pretty text-sm text-muted-foreground">
+                Failure causes, response classes, slow handlers, and the latest events that need attention.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+              <FailureCauses diagnostics={diagnostics} />
+              <StatusDistribution diagnostics={diagnostics} />
+              <SlowestEndpoints diagnostics={diagnostics} />
+              <RecentIssues diagnostics={diagnostics} />
+            </div>
+          </section>
+
           {/* Breakdowns */}
+          <section className="flex flex-col gap-3" aria-labelledby="traffic-breakdown-heading">
+          <div>
+            <h2 id="traffic-breakdown-heading" className="text-balance text-lg font-medium">Traffic breakdown</h2>
+            <p className="text-pretty text-sm text-muted-foreground">Volume and delivery success across providers and event types.</p>
+          </div>
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
             <BreakdownList
               title="By source"
@@ -133,6 +165,7 @@ export function AnalyticsPage(): React.ReactElement {
               onItemClick={(key) => navigate(`/?q=${encodeURIComponent(key)}`)}
             />
           </div>
+          </section>
         </div>
       </div>
     </div>
@@ -144,7 +177,7 @@ function Kpis({ summary }: { summary: AnalyticsSummary | undefined }): React.Rea
   const derived = summary?.derived;
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
       <KpiCard
         label="Total webhooks"
         value={cur ? formatNumber(cur.total) : "—"}
@@ -168,6 +201,12 @@ function Kpis({ summary }: { summary: AnalyticsSummary | undefined }): React.Rea
         }
       />
       <KpiCard
+        label="Failed deliveries"
+        value={cur ? formatNumber(cur.failed) : "—"}
+        subtext={cur ? `${cur.slowDeliveries} handlers took 5s or longer` : undefined}
+        icon={XCircle}
+      />
+      <KpiCard
         label="Avg fwd latency"
         value={cur?.avgForwardMs != null ? formatDuration(cur.avgForwardMs) : "—"}
         subtext="round trip to your app"
@@ -177,6 +216,12 @@ function Kpis({ summary }: { summary: AnalyticsSummary | undefined }): React.Rea
             ? { direction: derived.avgForwardTrendPct >= 0 ? "up" : "down", percent: derived.avgForwardTrendPct, good: "down" }
             : undefined
         }
+      />
+      <KpiCard
+        label="P95 latency"
+        value={cur?.p95ForwardMs != null ? formatDuration(cur.p95ForwardMs) : "—"}
+        subtext="95% of handler responses were faster"
+        icon={Gauge}
       />
       <KpiCard
         label="Signatures valid"
@@ -197,6 +242,181 @@ function Kpis({ summary }: { summary: AnalyticsSummary | undefined }): React.Rea
       />
     </div>
   );
+}
+
+function FailureCauses({ diagnostics }: { diagnostics: AnalyticsDiagnostics | undefined }): React.ReactElement {
+  const items = diagnostics?.failureReasons ?? [];
+  return (
+    <InsightCard
+      title="Failure causes"
+      description={`${formatNumber(diagnostics?.issueTotal ?? 0)} actionable issues in this range`}
+      icon={AlertTriangle}
+    >
+      {items.length === 0 ? (
+        <EmptyInsight>Nothing needs attention in this range.</EmptyInsight>
+      ) : (
+        <ul className="divide-y divide-border">
+          {items.map((item) => (
+            <li key={item.reason} className="px-4 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-medium">
+                  {DIAGNOSTIC_REASON_LABELS[item.reason as Exclude<DiagnosticReason, "healthy">] ?? item.reason}
+                </span>
+                <span className="text-xs tabular-nums text-muted-foreground">
+                  {formatNumber(item.count)} · {item.percentage.toFixed(0)}%
+                </span>
+              </div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                <div className="h-full rounded-full bg-danger" style={{ width: `${Math.max(3, item.percentage)}%` }} />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </InsightCard>
+  );
+}
+
+function StatusDistribution({ diagnostics }: { diagnostics: AnalyticsDiagnostics | undefined }): React.ReactElement {
+  const items = diagnostics?.statusClasses ?? [];
+  const total = items.reduce((sum, item) => sum + item.count, 0);
+  const labels: Record<string, string> = {
+    "2xx": "Successful responses",
+    "3xx": "Redirects",
+    "4xx": "Handler rejected request",
+    "5xx": "Handler errors",
+    network_error: "Network errors",
+    capture_only: "Capture only",
+    unknown: "No response",
+  };
+  return (
+    <InsightCard title="Response classes" description="What downstream handlers returned" icon={ListChecks}>
+      {items.length === 0 ? (
+        <EmptyInsight>No downstream responses in this range.</EmptyInsight>
+      ) : (
+        <ul className="divide-y divide-border">
+          {items.map((item) => {
+            const percentage = total > 0 ? (item.count / total) * 100 : 0;
+            const healthy = item.key === "2xx";
+            return (
+              <li key={item.key} className="grid grid-cols-[3.5rem_minmax(0,1fr)_4rem] items-center gap-3 px-4 py-3">
+                <Badge variant={healthy ? "success" : item.key === "capture_only" ? "secondary" : "error"} size="sm" className="justify-center font-mono">
+                  {item.key.replace("_", " ")}
+                </Badge>
+                <div className="min-w-0">
+                  <p className="truncate text-sm">{labels[item.key] ?? item.key}</p>
+                  <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className={cn("h-full rounded-full", healthy ? "bg-success" : "bg-danger")}
+                      style={{ width: `${Math.max(3, percentage)}%` }}
+                    />
+                  </div>
+                </div>
+                <span className="text-right text-xs tabular-nums text-muted-foreground">{formatNumber(item.count)}</span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </InsightCard>
+  );
+}
+
+function SlowestEndpoints({ diagnostics }: { diagnostics: AnalyticsDiagnostics | undefined }): React.ReactElement {
+  const items = diagnostics?.slowestEndpoints ?? [];
+  return (
+    <InsightCard title="Slowest endpoints" description="Ranked by average downstream latency" icon={Clock}>
+      {items.length === 0 ? (
+        <EmptyInsight>No forwarding latency recorded yet.</EmptyInsight>
+      ) : (
+        <ul className="divide-y divide-border">
+          {items.map((item) => (
+            <li key={item.path}>
+              <Link
+                href={`/?q=${encodeURIComponent(item.path)}`}
+                className="grid grid-cols-[minmax(0,1fr)_5rem_5rem] items-center gap-3 px-4 py-3 hover:bg-muted/32"
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-mono text-xs font-medium">{item.path}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {formatNumber(item.total)} events{item.failed > 0 ? ` · ${item.failed} failed` : ""}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs tabular-nums">{formatDuration(item.avgForwardMs)}</p>
+                  <p className="text-2xs text-muted-foreground">average</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs tabular-nums">{formatDuration(item.maxForwardMs)}</p>
+                  <p className="text-2xs text-muted-foreground">slowest</p>
+                </div>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </InsightCard>
+  );
+}
+
+function RecentIssues({ diagnostics }: { diagnostics: AnalyticsDiagnostics | undefined }): React.ReactElement {
+  const items = diagnostics?.recentIssues ?? [];
+  return (
+    <InsightCard title="Recent issues" description="Latest deliveries with an actionable diagnosis" icon={Route}>
+      {items.length === 0 ? (
+        <EmptyInsight>No recent delivery issues.</EmptyInsight>
+      ) : (
+        <ul className="divide-y divide-border">
+          {items.map((item) => (
+            <li key={item.id}>
+              <Link href={`/webhooks/${item.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/32">
+                <SourceBadge source={item.source} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-mono text-xs font-medium">{item.eventType || item.path}</p>
+                  <p className="mt-1 truncate text-xs text-muted-foreground">
+                    {DIAGNOSTIC_REASON_LABELS[item.reason as Exclude<DiagnosticReason, "healthy">] ?? item.reason}
+                  </p>
+                </div>
+                <div className="shrink-0 text-right">
+                  {item.forwardStatus != null && <p className="font-mono text-xs text-danger">{item.forwardStatus}</p>}
+                  <p className="text-2xs tabular-nums text-muted-foreground">{formatRelativeTime(item.receivedAt)}</p>
+                </div>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </InsightCard>
+  );
+}
+
+function InsightCard({
+  title,
+  description,
+  icon: Icon,
+  children,
+}: {
+  title: string;
+  description: string;
+  icon: typeof Clock;
+  children: React.ReactNode;
+}): React.ReactElement {
+  return (
+    <Card className="overflow-hidden">
+      <div className="flex items-start gap-3 border-b px-4 py-3">
+        <Icon className="mt-0.5 size-4 text-muted-foreground" aria-hidden="true" />
+        <div className="min-w-0">
+          <h3 className="text-sm font-medium">{title}</h3>
+          <p className="text-pretty text-xs text-muted-foreground">{description}</p>
+        </div>
+      </div>
+      {children}
+    </Card>
+  );
+}
+
+function EmptyInsight({ children }: { children: React.ReactNode }): React.ReactElement {
+  return <div className="px-4 py-8 text-center text-sm text-muted-foreground">{children}</div>;
 }
 
 function FilterBar({

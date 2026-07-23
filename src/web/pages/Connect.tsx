@@ -44,6 +44,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { PulseboardSelect } from "../components/PulseboardSelect.js";
 import { cn } from "../lib/cn.js";
+import { diagnoseDelivery } from "../../shared/deliveryDiagnostics.js";
 
 type TestResult =
   | { status: "idle" }
@@ -95,12 +96,13 @@ export function ConnectPage(): React.ReactElement {
     try {
       const result = await api.testConnection(normalizeWebhookPath(path));
       const forwarded = result.webhook.forwardStatus != null && result.webhook.forwardStatus < 400 && !result.webhook.forwardError;
+      const diagnosis = diagnoseDelivery(result.webhook);
       setTestResult(
         forwarded || !configuredTarget
           ? { status: "success", ...result }
           : {
               status: "error",
-              message: result.webhook.forwardError || `Forward target returned ${result.webhook.forwardStatus}`,
+              message: `${diagnosis.title}: ${diagnosis.action ?? diagnosis.summary}`,
             },
       );
     } catch (error) {

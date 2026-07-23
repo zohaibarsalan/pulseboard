@@ -208,3 +208,60 @@ test("routing rules override defaults and combine matching targets", () => {
     ["http://default.test"],
   );
 });
+
+test("analytics exposes latency percentiles and actionable delivery diagnostics", async () => {
+  const ctx = createContext();
+  const now = Date.now();
+  const base = {
+    method: "POST",
+    headersJson: "{}",
+    receivedAt: now,
+    source: "github",
+    replayCount: 0,
+    signatureStatus: "valid",
+    forwardedTo: "http://target.test",
+  };
+  ctx.db.insert(webhooks).values([
+    { ...base, id: "healthy", path: "/healthy", forwardStatus: 200, forwardDurationMs: 100 },
+    { ...base, id: "missing", path: "/missing", forwardStatus: 404, forwardDurationMs: 20 },
+    {
+      ...base,
+      id: "timeout",
+      path: "/timeout",
+      forwardDurationMs: 2_000,
+      forwardError: "Timed out after 2000ms",
+    },
+    {
+      ...base,
+      id: "invalid-signature",
+      path: "/signed",
+      forwardStatus: 200,
+      forwardDurationMs: 50,
+      signatureStatus: "invalid",
+    },
+    { ...base, id: "slow", path: "/slow", forwardStatus: 200, forwardDurationMs: 7_000 },
+  ]).run();
+
+  const app = await buildApp(ctx);
+  cleanup.push(() => app.close());
+
+  const summary = await app.inject({ method: "GET", url: "/api/analytics/summary?days=1" });
+  assert.equal(summary.statusCode, 200);
+  assert.equal(summary.json().current.total, 5);
+  assert.equal(summary.json().current.failed, 2);
+  assert.equal(summary.json().current.p95ForwardMs, 7_000);
+  assert.equal(summary.json().current.slowDeliveries, 1);
+
+  const diagnostics = await app.inject({ method: "GET", url: "/api/analytics/diagnostics?days=1" });
+  assert.equal(diagnostics.statusCode, 200);
+  const payload = diagnostics.json();
+  assert.deepEqual(
+    new Set(payload.failureReasons.map((row: { reason: string }) => row.reason)),
+    new Set(["route_not_found", "timeout", "signature_invalid", "slow_handler"]),
+  );
+  assert.equal(payload.statusClasses.find((row: { key: string }) => row.key === "2xx")?.count, 3);
+  assert.equal(payload.statusClasses.find((row: { key: string }) => row.key === "4xx")?.count, 1);
+  assert.equal(payload.statusClasses.find((row: { key: string }) => row.key === "network_error")?.count, 1);
+  assert.equal(payload.slowestEndpoints[0].path, "/slow");
+  assert.equal(payload.recentIssues.length, 4);
+});

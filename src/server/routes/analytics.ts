@@ -14,6 +14,39 @@ type CommonQuery = {
 type SummaryQuery = CommonQuery;
 type TimeseriesQuery = CommonQuery & { bucket?: "hour" | "day" };
 type BreakdownQuery = CommonQuery & { by?: "source" | "event_type" | "path"; limit?: string };
+type DiagnosticsQuery = CommonQuery;
+
+const DIAGNOSTIC_REASON_SQL = `CASE
+  WHEN signature_status = 'invalid' THEN 'signature_invalid'
+  WHEN signature_status = 'no_secret' THEN 'signature_missing'
+  WHEN signature_status = 'unverifiable' THEN 'signature_unverifiable'
+  WHEN forwarded_to IS NULL THEN 'capture_only'
+  WHEN forward_error IS NOT NULL AND (LOWER(forward_error) LIKE '%timed out%' OR LOWER(forward_error) LIKE '%timeout%' OR LOWER(forward_error) LIKE '%abort%') THEN 'timeout'
+  WHEN forward_error IS NOT NULL AND (LOWER(forward_error) LIKE '%econnrefused%' OR LOWER(forward_error) LIKE '%connection refused%' OR LOWER(forward_error) LIKE '%fetch failed%') THEN 'connection_refused'
+  WHEN forward_error IS NOT NULL AND (LOWER(forward_error) LIKE '%enotfound%' OR LOWER(forward_error) LIKE '%getaddrinfo%' OR LOWER(forward_error) LIKE '%dns%') THEN 'dns_failure'
+  WHEN forward_error IS NOT NULL AND (LOWER(forward_error) LIKE '%certificate%' OR LOWER(forward_error) LIKE '%tls%' OR LOWER(forward_error) LIKE '%ssl%') THEN 'tls_failure'
+  WHEN forward_error IS NOT NULL THEN 'network_error'
+  WHEN forward_status BETWEEN 300 AND 399 THEN 'redirect'
+  WHEN forward_status IN (401, 403) THEN 'unauthorized'
+  WHEN forward_status = 404 THEN 'route_not_found'
+  WHEN forward_status IN (408, 504) THEN 'timeout'
+  WHEN forward_status = 429 THEN 'rate_limited'
+  WHEN forward_status IN (400, 409, 422) THEN 'invalid_request'
+  WHEN forward_status >= 500 THEN 'handler_error'
+  WHEN forward_status IS NOT NULL AND (forward_status < 200 OR forward_status >= 300) THEN 'unexpected_status'
+  WHEN forward_duration_ms >= 5000 THEN 'slow_handler'
+  ELSE NULL
+END`;
+
+const STATUS_CLASS_SQL = `CASE
+  WHEN forwarded_to IS NULL THEN 'capture_only'
+  WHEN forward_error IS NOT NULL THEN 'network_error'
+  WHEN forward_status BETWEEN 200 AND 299 THEN '2xx'
+  WHEN forward_status BETWEEN 300 AND 399 THEN '3xx'
+  WHEN forward_status BETWEEN 400 AND 499 THEN '4xx'
+  WHEN forward_status >= 500 THEN '5xx'
+  ELSE 'unknown'
+END`;
 
 function buildFilter(query: CommonQuery, baseTimeColumn = "received_at"): {
   clause: string;
@@ -79,6 +112,8 @@ export async function analyticsRoutes(app: FastifyInstance, ctx: AppContext): Pr
       failed: number;
       pending: number;
       avgForwardMs: number | null;
+      p95ForwardMs: number | null;
+      slowDeliveries: number;
       validSignatures: number;
       verifiableTotal: number;
     } => {
@@ -91,18 +126,30 @@ export async function analyticsRoutes(app: FastifyInstance, ctx: AppContext): Pr
             SUM(CASE WHEN forward_error IS NOT NULL OR forward_status >= 400 THEN 1 ELSE 0 END) AS failed,
             SUM(CASE WHEN forwarded_to IS NULL THEN 1 ELSE 0 END) AS pending,
             AVG(forward_duration_ms) AS avg_forward_ms,
+            SUM(CASE WHEN forward_duration_ms >= 5000 THEN 1 ELSE 0 END) AS slow_deliveries,
             SUM(CASE WHEN signature_status = 'valid' THEN 1 ELSE 0 END) AS valid_signatures,
             SUM(CASE WHEN signature_status IN ('valid', 'invalid') THEN 1 ELSE 0 END) AS verifiable_total
           FROM webhooks
           ${range.where}`,
         )
         .get(...range.params) as Record<string, number | null>;
+      const durationCount = ctx.db.$client
+        .prepare(`SELECT COUNT(*) AS count FROM webhooks ${range.where} AND forward_duration_ms IS NOT NULL`)
+        .get(...range.params) as { count: number };
+      const p95Offset = Math.max(0, Math.ceil((durationCount.count ?? 0) * 0.95) - 1);
+      const p95Row = durationCount.count > 0
+        ? ctx.db.$client
+            .prepare(`SELECT forward_duration_ms AS value FROM webhooks ${range.where} AND forward_duration_ms IS NOT NULL ORDER BY forward_duration_ms ASC LIMIT 1 OFFSET ?`)
+            .get(...range.params, p95Offset) as { value: number } | undefined
+        : undefined;
       return {
         total: row.total ?? 0,
         succeeded: row.succeeded ?? 0,
         failed: row.failed ?? 0,
         pending: row.pending ?? 0,
         avgForwardMs: row.avg_forward_ms != null ? Math.round(row.avg_forward_ms) : null,
+        p95ForwardMs: p95Row?.value ?? null,
+        slowDeliveries: row.slow_deliveries ?? 0,
         validSignatures: row.valid_signatures ?? 0,
         verifiableTotal: row.verifiable_total ?? 0,
       };
@@ -239,6 +286,121 @@ export async function analyticsRoutes(app: FastifyInstance, ctx: AppContext): Pr
         succeeded: r.succeeded,
         failed: r.failed,
         successRate: r.total > 0 ? (r.succeeded / r.total) * 100 : 0,
+      })),
+    };
+  });
+
+  app.get<{ Querystring: DiagnosticsQuery }>("/api/analytics/diagnostics", async (req) => {
+    const days = Math.min(90, Math.max(1, Number(req.query.days) || 7));
+    const since = Date.now() - days * DAY_MS;
+    const filter = buildFilter(req.query);
+    const range = withTimeRange(filter, since);
+
+    const failureReasons = ctx.db.$client
+      .prepare(
+        `SELECT reason, COUNT(*) AS count
+         FROM (
+           SELECT ${DIAGNOSTIC_REASON_SQL} AS reason
+           FROM webhooks
+           ${range.where}
+         )
+         WHERE reason IS NOT NULL AND reason != 'capture_only'
+         GROUP BY reason
+         ORDER BY count DESC`,
+      )
+      .all(...range.params) as Array<{ reason: string; count: number }>;
+
+    const statusClasses = ctx.db.$client
+      .prepare(
+        `SELECT ${STATUS_CLASS_SQL} AS key, COUNT(*) AS count
+         FROM webhooks
+         ${range.where}
+         GROUP BY key
+         ORDER BY count DESC`,
+      )
+      .all(...range.params) as Array<{ key: string; count: number }>;
+
+    const slowestEndpoints = ctx.db.$client
+      .prepare(
+        `SELECT
+           path,
+           COUNT(*) AS total,
+           SUM(CASE WHEN forward_error IS NOT NULL OR forward_status >= 400 THEN 1 ELSE 0 END) AS failed,
+           AVG(forward_duration_ms) AS avg_forward_ms,
+           MAX(forward_duration_ms) AS max_forward_ms
+         FROM webhooks
+         ${range.where}
+           AND forwarded_to IS NOT NULL
+           AND forward_duration_ms IS NOT NULL
+         GROUP BY path
+         ORDER BY avg_forward_ms DESC
+         LIMIT 8`,
+      )
+      .all(...range.params) as Array<{
+        path: string;
+        total: number;
+        failed: number;
+        avg_forward_ms: number;
+        max_forward_ms: number;
+      }>;
+
+    const recentIssues = ctx.db.$client
+      .prepare(
+        `SELECT id, source, event_type, path, forward_status, forward_error, received_at, reason
+         FROM (
+           SELECT
+             id,
+             source,
+             event_type,
+             path,
+             forward_status,
+             forward_error,
+             received_at,
+             ${DIAGNOSTIC_REASON_SQL} AS reason
+           FROM webhooks
+           ${range.where}
+         )
+         WHERE reason IS NOT NULL AND reason != 'capture_only'
+         ORDER BY received_at DESC
+         LIMIT 8`,
+      )
+      .all(...range.params) as Array<{
+        id: string;
+        source: string;
+        event_type: string | null;
+        path: string;
+        forward_status: number | null;
+        forward_error: string | null;
+        received_at: number;
+        reason: string;
+      }>;
+
+    const issueTotal = failureReasons.reduce((sum, item) => sum + item.count, 0);
+    return {
+      rangeDays: days,
+      issueTotal,
+      failureReasons: failureReasons.map((item) => ({
+        reason: item.reason,
+        count: item.count,
+        percentage: issueTotal > 0 ? (item.count / issueTotal) * 100 : 0,
+      })),
+      statusClasses,
+      slowestEndpoints: slowestEndpoints.map((item) => ({
+        path: item.path,
+        total: item.total,
+        failed: item.failed ?? 0,
+        avgForwardMs: Math.round(item.avg_forward_ms),
+        maxForwardMs: item.max_forward_ms,
+      })),
+      recentIssues: recentIssues.map((item) => ({
+        id: item.id,
+        source: item.source,
+        eventType: item.event_type,
+        path: item.path,
+        forwardStatus: item.forward_status,
+        forwardError: item.forward_error,
+        receivedAt: item.received_at,
+        reason: item.reason,
       })),
     };
   });
