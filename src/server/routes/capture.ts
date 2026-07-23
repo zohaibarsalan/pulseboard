@@ -6,6 +6,7 @@ import { detectSource } from "../../capture/detector.js";
 import { forwardWebhook } from "../../capture/forwarder.js";
 import { verifySignature } from "../../capture/signature.js";
 import { rowToWebhook } from "../serialize.js";
+import { deliveryFields, targetsForWebhook } from "../../capture/routing.js";
 
 // Webhooks are captured under /hook/*. Everything after /hook is treated as the
 // "real" path: it's recorded and replayed onto the forward target. This keeps
@@ -66,6 +67,11 @@ export async function captureRoute(app: FastifyInstance, ctx: AppContext): Promi
       forwardStatus: null,
       forwardDurationMs: null,
       forwardError: null,
+      responseHeadersJson: null,
+      responseBody: null,
+      responseContentType: null,
+      responseBodyTruncated: false,
+      deliveriesJson: null,
       replayCount: 0,
       lastReplayedAt: null,
       replayOf: null,
@@ -74,20 +80,18 @@ export async function captureRoute(app: FastifyInstance, ctx: AppContext): Promi
     };
 
     // Forward first (if configured) so we can record the result in one insert.
-    if (ctx.config.forwardTo) {
-      const result = await forwardWebhook({
-        forwardTo: ctx.config.forwardTo,
+    const targets = targetsForWebhook(ctx.config, { path, source: detected.source });
+    if (targets.length > 0) {
+      const results = await Promise.all(targets.map((forwardTo) => forwardWebhook({
+        forwardTo,
         method: req.method,
         path,
         queryParams,
         headers,
         body: rawBody,
         timeoutMs: ctx.config.forwardTimeoutMs,
-      });
-      record.forwardedTo = ctx.config.forwardTo;
-      record.forwardStatus = result.status;
-      record.forwardDurationMs = result.durationMs;
-      record.forwardError = result.error;
+      })));
+      Object.assign(record, deliveryFields(results));
     }
 
     ctx.db.insert(webhooks).values(record).run();

@@ -6,6 +6,7 @@ import { forwardWebhook } from "../../capture/forwarder.js";
 import { signFor } from "../../capture/signer.js";
 import { verifySignature } from "../../capture/signature.js";
 import { rowToWebhook } from "../serialize.js";
+import { deliveryFields, targetsForWebhook, validateOverrideTarget } from "../../capture/routing.js";
 
 type SendBody = {
   method?: string;
@@ -36,8 +37,14 @@ export async function senderRoutes(app: FastifyInstance, ctx: AppContext): Promi
 
     const method = (input.method ?? "POST").toUpperCase();
     const path = input.path ?? "/";
-    const target = input.target ?? ctx.config.forwardTo;
-    if (!target) {
+    const override = input.target ? validateOverrideTarget(input.target, ctx.config) : null;
+    if (override && !override.ok) {
+      return reply.code(400).send({ error: override.reason });
+    }
+    const targets = override?.ok
+      ? [override.url]
+      : targetsForWebhook(ctx.config, { path, source: input.source ?? "unknown" });
+    if (targets.length === 0) {
       return reply.code(400).send({ error: "no_forward_target" });
     }
 
@@ -67,15 +74,16 @@ export async function senderRoutes(app: FastifyInstance, ctx: AppContext): Promi
       ...signedHeaders,
     };
 
-    const result = await forwardWebhook({
-      forwardTo: target,
+    const results = await Promise.all(targets.map((forwardTo) => forwardWebhook({
+      forwardTo,
       method,
       path,
       queryParams: null,
       headers,
       body,
       timeoutMs: ctx.config.forwardTimeoutMs,
-    });
+    })));
+    const result = results[0]!;
 
     // Verify the signature we just attached so the row's badge matches reality.
     const signature = verifySignature({
@@ -104,10 +112,7 @@ export async function senderRoutes(app: FastifyInstance, ctx: AppContext): Promi
       receivedAt: now,
       source,
       eventType: null,
-      forwardedTo: target,
-      forwardStatus: result.status,
-      forwardDurationMs: result.durationMs,
-      forwardError: result.error,
+      ...deliveryFields(results),
       replayCount: 0,
       lastReplayedAt: null,
       replayOf: null,
@@ -122,6 +127,6 @@ export async function senderRoutes(app: FastifyInstance, ctx: AppContext): Promi
       .get(record.id) as Record<string, unknown>;
     ctx.bus.publish(rowToWebhook(stored));
 
-    return { ok: true, id: record.id, result, signedWith };
+    return { ok: true, id: record.id, result, results, signedWith };
   });
 }

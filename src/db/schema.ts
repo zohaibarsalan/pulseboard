@@ -29,6 +29,11 @@ export const webhooks = sqliteTable(
     forwardStatus: integer("forward_status"),
     forwardDurationMs: integer("forward_duration_ms"),
     forwardError: text("forward_error"),
+    responseHeadersJson: text("response_headers_json"),
+    responseBody: text("response_body"),
+    responseContentType: text("response_content_type"),
+    responseBodyTruncated: integer("response_body_truncated", { mode: "boolean" }).notNull().default(false),
+    deliveriesJson: text("deliveries_json"),
 
     // Replay tracking
     replayCount: integer("replay_count").notNull().default(0),

@@ -11,6 +11,12 @@ export async function healthRoute(app: FastifyInstance, ctx: AppContext): Promis
       status: sqliteOk ? "ok" : "degraded",
       sqlite: sqliteOk ? "open" : "closed",
       forwardTo: redactUrl(ctx.config.forwardTo),
+      forwardTargets: ctx.config.forwardTargets.map((target) => redactUrl(target)!),
+      routingRules: ctx.config.routingRules.map((rule) => ({
+        pathPrefix: rule.pathPrefix,
+        source: rule.source,
+        targets: rule.targets.map((target) => redactUrl(target)!),
+      })),
       captureUrl: `http://${ctx.config.host}:${ctx.config.port}/hook`,
       uptimeSeconds: Math.round((Date.now() - ctx.startedAt) / 1000),
       lastCapturedAt: ctx.lastCapturedAt.value,

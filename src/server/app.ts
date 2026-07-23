@@ -27,7 +27,6 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
           ? { target: "pino-pretty", options: { colorize: true, translateTime: "HH:MM:ss.l" } }
           : undefined,
     },
-    disableRequestLogging: false,
   });
 
   // Capture the raw body for EVERY content type as an unparsed Buffer. This is

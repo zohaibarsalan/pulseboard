@@ -4,6 +4,7 @@ import type { AppContext } from "../context.js";
 import { webhooks, type NewWebhook, type Webhook } from "../../db/schema.js";
 import { forwardWebhook } from "../../capture/forwarder.js";
 import { rowToWebhook, webhookForClient } from "../serialize.js";
+import { deliveryFields, targetsForWebhook, validateOverrideTarget } from "../../capture/routing.js";
 
 type ListQuery = {
   source?: string;
@@ -126,8 +127,21 @@ export async function webhooksRoutes(app: FastifyInstance, ctx: AppContext): Pro
           // ignore malformed override
         }
       }
-      const target = overrideTarget ?? ctx.config.forwardTo;
-      if (!target) {
+      const override = overrideTarget ? validateOverrideTarget(overrideTarget, ctx.config) : null;
+      if (override && !override.ok) {
+        return reply.code(400).send({ error: override.reason });
+      }
+      const originalTargets = original.deliveriesJson
+        ? (JSON.parse(original.deliveriesJson) as Array<{ target: string }>).map((delivery) => delivery.target)
+        : original.forwardedTo
+          ? [original.forwardedTo]
+          : [];
+      const targets = override?.ok
+        ? [override.url]
+        : originalTargets.length > 0
+          ? originalTargets
+          : targetsForWebhook(ctx.config, { path: original.path, source: original.source });
+      if (targets.length === 0) {
         return reply.code(400).send({ error: "no_forward_target" });
       }
 
@@ -145,15 +159,16 @@ export async function webhooksRoutes(app: FastifyInstance, ctx: AppContext): Pro
           : original.body;
       const wasEdited = overrideBody !== undefined || overrideHeaders !== undefined;
 
-      const result = await forwardWebhook({
-        forwardTo: target,
+      const results = await Promise.all(targets.map((forwardTo) => forwardWebhook({
+        forwardTo,
         method: original.method,
         path: original.path,
         queryParams: original.queryParams,
         headers,
         body,
         timeoutMs: ctx.config.forwardTimeoutMs,
-      });
+      })));
+      const result = results[0]!;
 
       const now = Date.now();
 
@@ -173,10 +188,7 @@ export async function webhooksRoutes(app: FastifyInstance, ctx: AppContext): Pro
         receivedAt: now,
         source: original.source,
         eventType: original.eventType,
-        forwardedTo: target,
-        forwardStatus: result.status,
-        forwardDurationMs: result.durationMs,
-        forwardError: result.error,
+        ...deliveryFields(results),
         replayCount: 0,
         lastReplayedAt: null,
         replayOf: original.id,
@@ -197,7 +209,7 @@ export async function webhooksRoutes(app: FastifyInstance, ctx: AppContext): Pro
         .get(replayRecord.id) as Record<string, unknown>;
       ctx.bus.publish(rowToWebhook(stored));
 
-      return { ok: true, result, replayId: replayRecord.id };
+      return { ok: true, result, results, replayId: replayRecord.id };
     },
   );
 

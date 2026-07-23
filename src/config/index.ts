@@ -2,6 +2,14 @@ import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { z } from "zod";
 
+const RoutingRuleSchema = z.object({
+  pathPrefix: z.string().startsWith("/").optional(),
+  source: z.string().min(1).optional(),
+  targets: z.array(z.string().url()).min(1),
+}).refine((rule) => Boolean(rule.pathPrefix || rule.source), {
+  message: "A routing rule needs pathPrefix or source",
+});
+
 const RawConfigSchema = z.object({
   host: z.string().default("127.0.0.1"),
   port: z.coerce.number().int().positive().default(4500),
@@ -9,6 +17,9 @@ const RawConfigSchema = z.object({
   // Where to forward captured webhooks. If unset, Pulseboard runs in
   // capture-only mode (stores + displays, returns 200 without proxying).
   forwardTo: z.string().url().optional(),
+  forwardTargets: z.array(z.string().url()).default([]),
+  routingRules: z.array(RoutingRuleSchema).default([]),
+  allowedForwardHosts: z.array(z.string().min(1)).default([]),
 
   // Timeout for the forward request before recording a failure.
   forwardTimeoutMs: z.coerce.number().int().positive().default(30_000),
@@ -51,6 +62,13 @@ function parseList(raw: string | undefined): string[] | undefined {
     .filter(Boolean);
 }
 
+function parseRoutingRules(raw: string | undefined): unknown[] | undefined {
+  if (!raw) return undefined;
+  const parsed: unknown = JSON.parse(raw);
+  if (!Array.isArray(parsed)) throw new Error("PULSEBOARD_ROUTING_RULES must be a JSON array");
+  return parsed;
+}
+
 export function loadConfig(overrides: ConfigOverrides = {}): Config {
   const env = process.env;
 
@@ -58,6 +76,9 @@ export function loadConfig(overrides: ConfigOverrides = {}): Config {
     host: overrides.host ?? env.PULSEBOARD_HOST ?? env.WEBHOOK_STUDIO_HOST,
     port: overrides.port ?? env.PULSEBOARD_PORT ?? env.WEBHOOK_STUDIO_PORT,
     forwardTo: overrides.forward ?? env.PULSEBOARD_FORWARD ?? env.WEBHOOK_STUDIO_FORWARD,
+    forwardTargets: parseList(env.PULSEBOARD_FORWARD_TARGETS),
+    routingRules: parseRoutingRules(env.PULSEBOARD_ROUTING_RULES),
+    allowedForwardHosts: parseList(env.PULSEBOARD_ALLOWED_FORWARD_HOSTS),
     forwardTimeoutMs:
       overrides.forwardTimeout ?? env.PULSEBOARD_FORWARD_TIMEOUT_MS ?? env.WEBHOOK_STUDIO_FORWARD_TIMEOUT_MS,
     readonly: overrides.readonly ?? parseBool(env.PULSEBOARD_READONLY) ?? parseBool(env.WEBHOOK_STUDIO_READONLY),
@@ -70,5 +91,10 @@ export function loadConfig(overrides: ConfigOverrides = {}): Config {
 
   const cleaned = Object.fromEntries(Object.entries(merged).filter(([, v]) => v !== undefined));
 
-  return RawConfigSchema.parse(cleaned);
+  const parsed = RawConfigSchema.parse(cleaned);
+  const forwardTargets = Array.from(new Set([
+    ...(parsed.forwardTo ? [parsed.forwardTo] : []),
+    ...parsed.forwardTargets,
+  ]));
+  return { ...parsed, forwardTargets };
 }
