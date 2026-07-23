@@ -13,6 +13,10 @@ test("capture, inspect response, edit, replay, and clear", async ({ page, reques
   await expect(page.getByLabel("Search webhooks…")).toBeVisible();
   await expect(page.getByRole("button").filter({ hasText: "e2e.created" })).toHaveAttribute("aria-current", "true");
   await expect(page.getByText('"value": "original"')).toBeVisible();
+  await expect(page.getByText("Request ID", { exact: true })).toBeVisible();
+  await expect(page.getByText("Source IP", { exact: true })).toBeVisible();
+  await expect(page.getByText("Forward targets", { exact: true })).toBeVisible();
+  await expect(page.getByText("Original request", { exact: true })).toBeVisible();
 
   await page.getByRole("tab", { name: "Forwarding" }).click();
   await expect(page.getByText("Response headers")).toBeVisible();

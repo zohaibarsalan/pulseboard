@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, Copy, Pencil, Plus, RefreshCw, Send, Terminal, X } from "lucide-react";
+import { Link } from "wouter";
 import { api, type DeliveryResult, type Webhook } from "../lib/api.js";
 import { formatRelativeTime, formatDuration } from "../lib/format.js";
 import { SourceBadge } from "./SourceBadge.js";
@@ -102,6 +103,10 @@ export function WebhookDetail({
   };
 
   const asCurl = buildCurl(webhook, originalHeaders);
+  const forwardTargetCount = getForwardTargetCount(webhook);
+  const showSignatureNotes =
+    (webhook.signatureStatus === "invalid" || webhook.signatureStatus === "unverifiable") &&
+    webhook.signatureNotes;
 
   return (
     <div className="flex h-full flex-col">
@@ -194,6 +199,66 @@ export function WebhookDetail({
           </div>
         </div>
 
+        <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-3 border-t border-border pt-3 sm:grid-cols-2 xl:grid-cols-4">
+          <DetailItem label="Received" value={formatExactTime(webhook.receivedAt)} />
+          <DetailItem
+            label="Request ID"
+            value={
+              <span className="flex min-w-0 items-center gap-1">
+                <code className="truncate font-mono">{webhook.id}</code>
+                <Button
+                  onClick={() => copy(webhook.id, "id")}
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label={copied === "id" ? "Request ID copied" : "Copy request ID"}
+                >
+                  {copied === "id" ? <Check className="text-success" /> : <Copy />}
+                </Button>
+              </span>
+            }
+          />
+          <DetailItem label="Source IP" value={<code className="font-mono">{webhook.sourceIp ?? "Not captured"}</code>} />
+          <DetailItem
+            label="Content"
+            value={`${webhook.contentType ?? "Unknown type"} · ${formatBytes(webhook.contentLength)}`}
+          />
+          <DetailItem
+            label="Query"
+            value={
+              webhook.queryParams
+                ? <code className="break-all font-mono">{webhook.queryParams}</code>
+                : "No query parameters"
+            }
+          />
+          <DetailItem
+            label="Forward targets"
+            value={`${forwardTargetCount} ${forwardTargetCount === 1 ? "target" : "targets"}`}
+          />
+          <DetailItem
+            label="Replays"
+            value={
+              webhook.replayCount > 0
+                ? `${webhook.replayCount} · last ${formatRelativeTime(webhook.lastReplayedAt)}`
+                : "None"
+            }
+          />
+          <DetailItem
+            label="Replay origin"
+            value={
+              webhook.replayOf ? (
+                <Link href={`/webhooks/${webhook.replayOf}`} className="font-mono text-foreground underline underline-offset-4">
+                  Open original
+                </Link>
+              ) : "Original request"
+            }
+          />
+          {showSignatureNotes && (
+            <div className="sm:col-span-2 xl:col-span-4">
+              <DetailItem label="Signature note" value={webhook.signatureNotes} tone="danger" />
+            </div>
+          )}
+        </dl>
+
         {replay.data && !editing && (
           <div className="mt-2 text-xs">
             {replay.data.result.error ? (
@@ -248,6 +313,51 @@ export function WebhookDetail({
       </Tabs>
     </div>
   );
+}
+
+function DetailItem({
+  label,
+  value,
+  tone = "default",
+}: {
+  label: string;
+  value: React.ReactNode;
+  tone?: "default" | "danger";
+}): React.ReactElement {
+  return (
+    <div className="min-w-0">
+      <dt className="text-2xs text-fg-subtle">{label}</dt>
+      <dd className={cn("mt-0.5 min-w-0 text-xs text-fg-muted", tone === "danger" && "text-danger")}>
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+function formatExactTime(timestamp: number): string {
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "medium",
+  }).format(new Date(timestamp));
+}
+
+function formatBytes(bytes: number | null): string {
+  if (bytes == null) return "Unknown size";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(bytes < 10 * 1024 ? 1 : 0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getForwardTargetCount(webhook: Webhook): number {
+  if (webhook.deliveriesJson) {
+    try {
+      const deliveries = JSON.parse(webhook.deliveriesJson) as unknown;
+      if (Array.isArray(deliveries)) return deliveries.length;
+    } catch {
+      // Fall back to the legacy single-target field.
+    }
+  }
+  return webhook.forwardedTo ? 1 : 0;
 }
 
 function EditedDot(): React.ReactElement {
