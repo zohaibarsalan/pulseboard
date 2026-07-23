@@ -1,15 +1,37 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Route, Switch } from "wouter";
 import { Sidebar } from "./components/Sidebar.js";
-import { CommandPalette } from "./components/CommandPalette.js";
 import { CommandPaletteContext } from "./lib/useCommandPalette.js";
 import { WebhooksPage } from "./pages/Webhooks.js";
-import { ComposePage } from "./pages/Compose.js";
-import { AnalyticsPage } from "./pages/Analytics.js";
-import { SettingsPage } from "./pages/Settings.js";
-import { ConnectPage } from "./pages/Connect.js";
-import { ComparePage } from "./pages/Compare.js";
-import { PlaceholderPage } from "./pages/Placeholder.js";
+
+const CommandPalette = lazy(async () => {
+  const module = await import("./components/CommandPalette.js");
+  return { default: module.CommandPalette };
+});
+const ComparePage = lazy(async () => {
+  const module = await import("./pages/Compare.js");
+  return { default: module.ComparePage };
+});
+const ComposePage = lazy(async () => {
+  const module = await import("./pages/Compose.js");
+  return { default: module.ComposePage };
+});
+const ConnectPage = lazy(async () => {
+  const module = await import("./pages/Connect.js");
+  return { default: module.ConnectPage };
+});
+const AnalyticsPage = lazy(async () => {
+  const module = await import("./pages/Analytics.js");
+  return { default: module.AnalyticsPage };
+});
+const SettingsPage = lazy(async () => {
+  const module = await import("./pages/Settings.js");
+  return { default: module.SettingsPage };
+});
+const PlaceholderPage = lazy(async () => {
+  const module = await import("./pages/Placeholder.js");
+  return { default: module.PlaceholderPage };
+});
 
 export function App(): React.ReactElement {
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -35,23 +57,38 @@ export function App(): React.ReactElement {
       <div className="flex h-dvh w-screen overflow-hidden bg-bg text-fg">
         <Sidebar />
         <main className="flex min-w-0 flex-1 flex-col pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-0">
-          <Switch>
-            <Route path="/">{() => <WebhooksPage />}</Route>
-            <Route path="/webhooks/:id">
-              {(params) => <WebhooksPage selectedId={params.id} />}
-            </Route>
-            <Route path="/compare" component={ComparePage} />
-            <Route path="/compose" component={ComposePage} />
-            <Route path="/connect" component={ConnectPage} />
-            <Route path="/analytics" component={AnalyticsPage} />
-            <Route path="/settings" component={SettingsPage} />
-            <Route>
-              <PlaceholderPage title="Not found" description="That route doesn't exist." />
-            </Route>
-          </Switch>
+          <Suspense fallback={<RouteFallback />}>
+            <Switch>
+              <Route path="/">{() => <WebhooksPage />}</Route>
+              <Route path="/webhooks/:id">
+                {(params) => <WebhooksPage selectedId={params.id} />}
+              </Route>
+              <Route path="/compare" component={ComparePage} />
+              <Route path="/compose" component={ComposePage} />
+              <Route path="/connect" component={ConnectPage} />
+              <Route path="/analytics" component={AnalyticsPage} />
+              <Route path="/settings" component={SettingsPage} />
+              <Route>
+                <PlaceholderPage title="Not found" description="That route doesn't exist." />
+              </Route>
+            </Switch>
+          </Suspense>
         </main>
-        <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+        {paletteOpen ? (
+          <Suspense fallback={null}>
+            <CommandPalette open onClose={() => setPaletteOpen(false)} />
+          </Suspense>
+        ) : null}
       </div>
     </CommandPaletteContext.Provider>
+  );
+}
+
+function RouteFallback(): React.ReactElement {
+  return (
+    <div className="flex min-h-0 flex-1 animate-pulse flex-col">
+      <div className="h-16 border-b border-border" />
+      <div className="mx-auto mt-9 h-56 w-[min(72rem,calc(100%-2rem))] rounded-xl bg-bg-muted/50" />
+    </div>
   );
 }
