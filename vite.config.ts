@@ -4,6 +4,11 @@ import { resolve } from "node:path";
 
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      "@": resolve(__dirname, "src/web"),
+    },
+  },
   root: resolve(__dirname, "src/web"),
   build: {
     outDir: resolve(__dirname, "dist/web"),
