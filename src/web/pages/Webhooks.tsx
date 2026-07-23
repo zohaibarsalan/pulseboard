@@ -12,7 +12,7 @@ import { formatRelativeTime, formatDuration } from "../lib/format.js";
 import { useLiveEvents } from "../lib/useLiveEvents.js";
 import { cn } from "../lib/cn.js";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { ConfirmDialog } from "../components/ConfirmDialog.js";
 import { Badge } from "@/components/ui/badge";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
@@ -38,7 +38,6 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
   const [, navigate] = useLocation();
   const initialParams = new URLSearchParams(window.location.search);
   const [clearOpen, setClearOpen] = useState(false);
-  const [refreshTooltipOpen, setRefreshTooltipOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(() => {
     const status = initialParams.get("status");
     return status === "success" || status === "failed" || status === "pending" ? status : "all";
@@ -175,31 +174,18 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
             <span className="text-danger"><span className="font-semibold tabular-nums">{stats?.failed ?? 0}</span> failed</span>
             <div className="ml-auto flex items-center gap-1">
               <TooltipProvider delay={300}>
-                <Tooltip
-                  open={refreshTooltipOpen}
-                  onOpenChange={setRefreshTooltipOpen}
-                >
+                <Tooltip>
                   <TooltipTrigger
-                    render={(
-                      <Button
-                        onClick={() => {
-                          if (!isRefetching) refreshEvents();
-                        }}
-                        aria-disabled={isRefetching}
-                        onMouseEnter={() => setRefreshTooltipOpen(true)}
-                        onMouseLeave={() => setRefreshTooltipOpen(false)}
-                        onFocus={() => setRefreshTooltipOpen(true)}
-                        onBlur={() => setRefreshTooltipOpen(false)}
-                        variant="ghost"
-                        size="icon-sm"
-                        title={refreshTooltipText}
-                        aria-label={`Refresh webhooks${live.newEventCount ? `, ${live.newEventCount} new events` : ""}`}
-                      >
-                        <RefreshCw className={cn(isRefetching && "animate-spin")} />
-                        {live.newEventCount > 0 && <span className="absolute right-1 top-1 size-1.5 rounded-full bg-success" />}
-                      </Button>
-                    )}
-                  />
+                    onClick={() => {
+                      if (!isRefetching) refreshEvents();
+                    }}
+                    aria-disabled={isRefetching}
+                    className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
+                    aria-label={`Refresh webhooks${live.newEventCount ? `, ${live.newEventCount} new events` : ""}`}
+                  >
+                    <RefreshCw className={cn(isRefetching && "animate-spin")} />
+                    {live.newEventCount > 0 && <span className="absolute right-1 top-1 size-1.5 rounded-full bg-success" />}
+                  </TooltipTrigger>
                   <TooltipPopup side="bottom">
                     {refreshTooltipText}
                   </TooltipPopup>

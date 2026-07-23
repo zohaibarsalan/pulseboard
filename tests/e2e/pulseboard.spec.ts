@@ -59,12 +59,11 @@ test("capture, inspect response, edit, replay, and clear", async ({ page, reques
   expect(Math.abs(controlsTopGap - controlsBottomGap)).toBeLessThanOrEqual(2);
 
   const refreshButton = page.getByRole("button", { name: "Refresh webhooks" });
-  await expect(refreshButton).toHaveAttribute(
-    "title",
-    "Refresh now. Auto-refreshes every 30 seconds.",
-  );
+  await expect(refreshButton).not.toHaveAttribute("title");
   await refreshButton.hover();
-  await expect(page.getByText("Refresh now. Auto-refreshes every 30 seconds.")).toBeVisible();
+  const refreshTooltip = page.locator('[data-slot="tooltip-popup"]');
+  await expect(refreshTooltip).toBeVisible();
+  await expect(refreshTooltip).toHaveText("Refresh now. Auto-refreshes every 30 seconds.");
 
   const controlsHeight = controlsBox!.height;
   const liveCapture = await request.post("/hook/live-layout", {
