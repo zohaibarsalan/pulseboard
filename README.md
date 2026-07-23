@@ -60,6 +60,20 @@ Analytics adds a developer-focused view of delivery health: P95 latency, slow
 handler counts, failure causes, response classes, slowest endpoints, and recent
 events that need attention. Every issue links back to the captured webhook.
 
+### Compare webhook requests
+
+Open any captured webhook and choose **Compare** to diff it against another
+request. Pulseboard ranks matching event types and providers first, then shows:
+
+- added, removed, changed, and unchanged JSON fields by path;
+- case-insensitive request-header changes;
+- delivery target, status, duration, and signature differences; and
+- structured downstream response-body changes.
+
+The comparison is chronological, so the earlier and later values remain clear
+even when you start from the older request. Non-JSON payloads fall back to a
+whole-body comparison instead of hiding the change.
+
 ## Configuration
 
 | Variable | Default | Purpose |

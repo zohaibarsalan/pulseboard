@@ -31,6 +31,7 @@ Everything after `/hook` is retained as the forwarded path.
 - Search and filters with cursor pagination
 - Body, header, forwarding, and signature inspection
 - Downstream status, headers, and bounded response-body inspection per delivery
+- Chronological webhook comparison across JSON paths, request headers, delivery outcomes, signatures, and response bodies
 - Replay and edited replay
 - Built-in webhook sender with provider presets
 - Provider onboarding with generated local, tunnel, and hosted-target setup
@@ -67,6 +68,6 @@ Everything after `/hook` is retained as the forwarded path.
 - Password protection covers dashboard and API while leaving `/hook/*` available
 - Custom targets cannot reach unconfigured hosts or escape the allowlist through redirects
 - Desktop and narrow-screen capture, inspection, compose, analytics, and settings flows are usable
-- Browser E2E covers capture, inspect, edit, replay, clear, delivery diagnostics, analytics, reverse-proxy auth, dark mode, narrow desktop, and large payloads
+- Browser E2E covers capture, inspect, compare, edit, replay, clear, delivery diagnostics, analytics, reverse-proxy auth, dark mode, narrow desktop, and large payloads
 - npm package and Docker image pass smoke tests
 - Production dependency audit has no known vulnerabilities

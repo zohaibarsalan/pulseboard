@@ -185,6 +185,56 @@ test("failed deliveries explain the fix and roll up into developer analytics", a
   await expect(page.getByText("Recent issues", { exact: true })).toBeVisible();
 });
 
+test("compare two webhooks across body, headers, and delivery", async ({ page, request }) => {
+  await request.post("/api/webhooks/clear");
+  await request.post("/hook/compare", {
+    headers: { "content-type": "application/json", "x-payload-version": "1" },
+    data: {
+      type: "compare.updated",
+      status: "pending",
+      legacy: true,
+      customer: { id: "cus_123" },
+    },
+  });
+  await request.post("/hook/compare", {
+    headers: { "content-type": "application/json", "x-payload-version": "2" },
+    data: {
+      type: "compare.updated",
+      status: "paid",
+      added: true,
+      customer: { id: "cus_123" },
+    },
+  });
+
+  await page.goto("/");
+  await page.getByTestId("webhook-row").first().click();
+  await page.getByRole("button", { name: "Compare", exact: true }).click();
+  const picker = page.getByRole("dialog");
+  await expect(picker).toBeVisible();
+  await expect(picker.getByText("same event type", { exact: true })).toBeVisible();
+  await picker.getByText("compare.updated", { exact: true }).click();
+
+  const comparison = page.getByTestId("webhook-compare");
+  await expect(comparison).toBeVisible();
+  await expect(comparison.getByText("Webhook comparison")).toBeVisible();
+  const statusDiff = comparison.locator('[data-diff-kind="changed"]').filter({ hasText: "$.status" });
+  await expect(statusDiff).toContainText('"pending"');
+  await expect(statusDiff).toContainText('"paid"');
+  await expect(comparison.locator('[data-diff-kind="added"]').filter({ hasText: "$.added" })).toBeVisible();
+  await expect(comparison.locator('[data-diff-kind="removed"]').filter({ hasText: "$.legacy" })).toBeVisible();
+
+  await comparison.getByRole("checkbox", { name: "Show unchanged" }).click();
+  await expect(comparison.getByText("$.customer.id", { exact: true })).toBeVisible();
+
+  await comparison.getByRole("tab", { name: /Headers/ }).click();
+  await expect(comparison.getByText("x-payload-version", { exact: true })).toBeVisible();
+
+  await comparison.getByRole("tab", { name: "Delivery" }).click();
+  await expect(comparison.getByText("Delivery outcome")).toBeVisible();
+  await comparison.getByRole("button", { name: "Done" }).click();
+  await expect(page.getByRole("heading", { name: "Request details" })).toBeVisible();
+});
+
 test("coss command, webhook search, select, and checkbox primitives are operable", async ({ page, request }) => {
   const searchable = await request.post("/hook/palette", {
     headers: { "content-type": "application/json" },
