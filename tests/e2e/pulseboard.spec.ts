@@ -236,6 +236,8 @@ test("compare two webhooks across body, headers, and delivery", async ({ page, r
 
   await comparison.getByRole("tab", { name: "Delivery" }).click();
   await expect(comparison.getByText("Delivery outcome")).toBeVisible();
+  await expect(comparison.getByRole("checkbox", { name: "Show unchanged" })).toBeVisible();
+  await expect(comparison.getByText("$.received", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: /Webhook A/ }).click();
   await expect(page.getByPlaceholder("Search for Webhook A…")).toBeVisible();
 });

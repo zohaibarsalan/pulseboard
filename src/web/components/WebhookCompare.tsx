@@ -51,12 +51,10 @@ export function WebhookCompare({
             <TabsTab value="headers" className="h-16 rounded-none">Headers <DiffCount entries={headerDiff.entries} /></TabsTab>
             <TabsTab value="delivery" className="h-16 rounded-none">Delivery</TabsTab>
           </TabsList>
-          {tab !== "delivery" && (
-            <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs text-muted-foreground">
-              <Checkbox checked={showUnchanged} onCheckedChange={setShowUnchanged} />
-              Show unchanged
-            </label>
-          )}
+          <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+            <Checkbox checked={showUnchanged} onCheckedChange={setShowUnchanged} />
+            Show unchanged
+          </label>
         </div>
 
         <TabsPanel value="body" className="min-h-0 overflow-y-auto p-5 sm:p-6">
@@ -80,7 +78,12 @@ export function WebhookCompare({
           />
         </TabsPanel>
         <TabsPanel value="delivery" className="min-h-0 overflow-y-auto p-5 sm:p-6">
-          <DeliveryComparison earlier={earlier} later={later} responseEntries={responseDiff.entries} />
+          <DeliveryComparison
+            earlier={earlier}
+            later={later}
+            responseEntries={responseDiff.entries}
+            showUnchanged={showUnchanged}
+          />
         </TabsPanel>
       </Tabs>
     </div>
@@ -194,10 +197,12 @@ function DeliveryComparison({
   earlier,
   later,
   responseEntries,
+  showUnchanged,
 }: {
   earlier: Webhook;
   later: Webhook;
   responseEntries: DiffEntry[];
+  showUnchanged: boolean;
 }): React.ReactElement {
   const rows = [
     { label: "Target", before: earlier.forwardedTo ?? "Capture only", after: later.forwardedTo ?? "Capture only" },
@@ -237,7 +242,7 @@ function DeliveryComparison({
         title="Response body"
         description="The downstream handler response returned for each delivery."
         entries={responseEntries}
-        showUnchanged={false}
+        showUnchanged={showUnchanged}
       />
     </div>
   );
