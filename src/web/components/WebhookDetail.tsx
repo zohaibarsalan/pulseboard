@@ -198,8 +198,11 @@ export function WebhookDetail({
             )}
           </div>
         </div>
+      </div>
 
-        <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-3 border-t border-border pt-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section aria-labelledby="request-details-heading" className="border-b border-border bg-bg-subtle/30 px-5 py-3">
+        <h2 id="request-details-heading" className="mb-3 text-balance text-xs font-medium text-fg-muted">Request details</h2>
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 xl:grid-cols-4">
           <DetailItem label="Received" value={formatExactTime(webhook.receivedAt)} />
           <DetailItem
             label="Request ID"
@@ -258,24 +261,26 @@ export function WebhookDetail({
             </div>
           )}
         </dl>
+      </section>
 
-        {replay.data && !editing && (
-          <div className="mt-2 text-xs">
-            {replay.data.result.error ? (
-              <span className="text-danger">Replay failed: {replay.data.result.error}</span>
-            ) : (
-              <span className="text-success">
-                Replayed → {replay.data.result.status} in {formatDuration(replay.data.result.durationMs)}
-              </span>
-            )}
-          </div>
-        )}
-        {replay.error && (
-          <Alert variant="error" className="mt-2 py-2 text-xs">
+      {replay.data && !editing && (
+        <div className="border-b border-border px-5 py-2 text-xs">
+          {replay.data.result.error ? (
+            <span className="text-danger">Replay failed: {replay.data.result.error}</span>
+          ) : (
+            <span className="text-success">
+              Replayed → {replay.data.result.status} in {formatDuration(replay.data.result.durationMs)}
+            </span>
+          )}
+        </div>
+      )}
+      {replay.error && (
+        <div className="border-b border-border px-5 py-2">
+          <Alert variant="error" className="py-2 text-xs">
             <AlertDescription>Replay failed: {replay.error.message}</AlertDescription>
           </Alert>
-        )}
-      </div>
+        </div>
+      )}
 
       <Tabs
         value={tab}
