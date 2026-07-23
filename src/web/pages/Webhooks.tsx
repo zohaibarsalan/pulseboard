@@ -25,7 +25,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { getWebhookRefreshInterval } from "../lib/refreshPreference.js";
+import {
+  formatWebhookRefreshInterval,
+  getWebhookRefreshInterval,
+} from "../lib/refreshPreference.js";
 import type { SignatureStatus } from "../lib/api.js";
 
 type StatusFilter = "all" | "success" | "failed" | "pending";
@@ -195,7 +198,7 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
                   <TooltipPopup side="bottom">
                     {refreshInterval === 0
                       ? "Auto-refresh is off. Click to refresh now."
-                      : `Refresh now. Auto-refreshes every ${refreshInterval / 1_000} seconds.`}
+                      : `Refresh now. Auto-refreshes every ${formatWebhookRefreshInterval(refreshInterval)}.`}
                   </TooltipPopup>
                 </Tooltip>
               </TooltipProvider>

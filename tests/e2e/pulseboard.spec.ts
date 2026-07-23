@@ -141,9 +141,17 @@ test("coss command, webhook search, select, and checkbox primitives are operable
   await expect(page.getByRole("checkbox", { name: "Auto-sign" })).not.toBeChecked();
 
   await page.getByRole("link", { name: "Settings" }).click();
-  await page.getByRole("combobox", { name: "Webhook auto-refresh interval" }).click();
-  await page.getByRole("option", { name: "Every 60 seconds" }).click();
-  await expect.poll(() => page.evaluate(() => localStorage.getItem("pb-webhook-refresh-interval"))).toBe("60000");
+  const refreshInterval = page.getByRole("combobox", { name: "Webhook auto-refresh interval" });
+  await refreshInterval.click();
+  await expect(page.getByRole("option", { name: "Every 5 seconds" })).toBeVisible();
+  await expect(page.getByRole("option", { name: "Every 5 minutes" })).toBeVisible();
+  await page.getByRole("option", { name: "Custom interval…" }).click();
+  await page.getByRole("spinbutton", { name: "Custom refresh interval in seconds" }).fill("45");
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("pb-webhook-refresh-interval"))).toBe("45000");
+
+  await page.getByRole("link", { name: "Webhooks" }).click();
+  await page.getByRole("button", { name: "Refresh webhooks" }).hover();
+  await expect(page.getByText("Refresh now. Auto-refreshes every 45 seconds.")).toBeVisible();
 });
 
 test("dark mode, narrow desktop, and large payloads remain usable", async ({ page, request }) => {

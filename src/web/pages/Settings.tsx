@@ -8,18 +8,39 @@ import { formatRelativeTime } from "../lib/format.js";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
 import { PulseboardSelect } from "../components/PulseboardSelect.js";
 import {
   getWebhookRefreshInterval,
+  isWebhookRefreshPreset,
+  MAX_WEBHOOK_REFRESH_INTERVAL,
+  MIN_WEBHOOK_REFRESH_INTERVAL,
   setWebhookRefreshInterval,
   WEBHOOK_REFRESH_OPTIONS,
-  type WebhookRefreshInterval,
 } from "../lib/refreshPreference.js";
 
 export function SettingsPage(): React.ReactElement {
   const { data: health, error } = useQuery({ queryKey: ["health"], queryFn: api.health, refetchInterval: 5_000 });
   const [copied, setCopied] = useState(false);
   const [refreshInterval, setRefreshIntervalState] = useState(getWebhookRefreshInterval);
+  const [customRefreshSeconds, setCustomRefreshSeconds] = useState(() => {
+    const initial = getWebhookRefreshInterval();
+    return String(initial > 0 && !isWebhookRefreshPreset(initial) ? initial / 1_000 : 120);
+  });
+  const refreshOption =
+    refreshInterval === 0 || isWebhookRefreshPreset(refreshInterval)
+      ? String(refreshInterval)
+      : "custom";
+  const customSeconds = Number(customRefreshSeconds);
+  const customRefreshInvalid =
+    !Number.isFinite(customSeconds) ||
+    customSeconds < MIN_WEBHOOK_REFRESH_INTERVAL / 1_000 ||
+    customSeconds > MAX_WEBHOOK_REFRESH_INTERVAL / 1_000;
+
+  const updateRefreshInterval = (value: number): void => {
+    setRefreshIntervalState(value);
+    setWebhookRefreshInterval(value);
+  };
 
   const copyCaptureUrl = (): void => {
     if (!health?.captureUrl) return;
@@ -98,17 +119,53 @@ export function SettingsPage(): React.ReactElement {
           </Section>
 
           <Section title="Feed refresh" icon={RefreshCw}>
-            <div className="max-w-64">
+            <div className="flex max-w-xl flex-wrap items-start gap-2">
               <PulseboardSelect
-                value={String(refreshInterval)}
+                value={refreshOption}
                 onChange={(value) => {
-                  const next = Number(value) as WebhookRefreshInterval;
-                  setRefreshIntervalState(next);
-                  setWebhookRefreshInterval(next);
+                  if (value === "custom") {
+                    updateRefreshInterval(Number(customRefreshSeconds) * 1_000);
+                    return;
+                  }
+                  updateRefreshInterval(Number(value));
                 }}
                 options={WEBHOOK_REFRESH_OPTIONS}
                 ariaLabel="Webhook auto-refresh interval"
+                className="w-64"
               />
+              {refreshOption === "custom" && (
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      nativeInput
+                      type="number"
+                      min={MIN_WEBHOOK_REFRESH_INTERVAL / 1_000}
+                      max={MAX_WEBHOOK_REFRESH_INTERVAL / 1_000}
+                      step={1}
+                      value={customRefreshSeconds}
+                      aria-label="Custom refresh interval in seconds"
+                      aria-invalid={customRefreshInvalid || undefined}
+                      className="w-28"
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setCustomRefreshSeconds(value);
+                        const seconds = Number(value);
+                        if (
+                          Number.isFinite(seconds) &&
+                          seconds >= MIN_WEBHOOK_REFRESH_INTERVAL / 1_000 &&
+                          seconds <= MAX_WEBHOOK_REFRESH_INTERVAL / 1_000
+                        ) {
+                          updateRefreshInterval(Math.round(seconds) * 1_000);
+                        }
+                      }}
+                    />
+                    <span className="text-sm text-fg-muted">seconds</span>
+                  </div>
+                  {customRefreshInvalid && (
+                    <p className="mt-1 text-xs text-danger">Enter between 5 and 3,600 seconds.</p>
+                  )}
+                </div>
+              )}
             </div>
             <p className="mt-2 text-pretty text-xs text-fg-subtle">
               The webhook feed refreshes automatically at this interval. Live events remain indicated until the next refresh.
