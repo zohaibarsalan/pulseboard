@@ -7,6 +7,7 @@ import {
   Clock,
   Gauge,
   ListChecks,
+  Repeat2,
   Route,
   ShieldCheck,
   TrendingUp,
@@ -138,6 +139,7 @@ export function AnalyticsPage(): React.ReactElement {
             <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
               <FailureCauses diagnostics={diagnostics} />
               <StatusDistribution diagnostics={diagnostics} />
+              <DeliveryLifecycle diagnostics={diagnostics} />
               <SlowestEndpoints diagnostics={diagnostics} />
               <RecentIssues diagnostics={diagnostics} />
             </div>
@@ -325,6 +327,50 @@ function StatusDistribution({ diagnostics }: { diagnostics: AnalyticsDiagnostics
   );
 }
 
+function DeliveryLifecycle({ diagnostics }: { diagnostics: AnalyticsDiagnostics | undefined }): React.ReactElement {
+  const lifecycle = diagnostics?.deliveryLifecycle;
+  const metrics = [
+    {
+      label: "First-attempt success",
+      value: lifecycle ? `${lifecycle.firstAttemptSuccessRate.toFixed(1)}%` : "—",
+      detail: `${formatNumber(lifecycle?.targets ?? 0)} target deliveries`,
+    },
+    {
+      label: "Recovered by retry",
+      value: formatNumber(lifecycle?.recoveredTargets ?? 0),
+      detail: `${formatNumber(lifecycle?.retriedTargets ?? 0)} targets retried`,
+    },
+    {
+      label: "Exhausted",
+      value: formatNumber(lifecycle?.exhaustedTargets ?? 0),
+      detail: `${formatNumber(lifecycle?.activeRetries ?? 0)} currently active`,
+    },
+    {
+      label: "Average attempts",
+      value: lifecycle ? lifecycle.averageAttempts.toFixed(2) : "—",
+      detail: `${formatNumber(lifecycle?.attempts ?? 0)} attempts total`,
+    },
+  ];
+  return (
+    <InsightCard
+      title="Delivery lifecycle"
+      description="First sends, retry recovery, and exhausted targets"
+      icon={Repeat2}
+      className="xl:col-span-2"
+    >
+      <dl className="grid sm:grid-cols-2 xl:grid-cols-4">
+        {metrics.map((metric) => (
+          <div key={metric.label} className="border-b px-4 py-4 last:border-b-0 sm:odd:border-r xl:border-b-0 xl:not-last:border-r">
+            <dt className="text-xs text-muted-foreground">{metric.label}</dt>
+            <dd className="mt-1 text-xl font-medium tabular-nums">{metric.value}</dd>
+            <p className="mt-1 text-xs text-muted-foreground">{metric.detail}</p>
+          </div>
+        ))}
+      </dl>
+    </InsightCard>
+  );
+}
+
 function SlowestEndpoints({ diagnostics }: { diagnostics: AnalyticsDiagnostics | undefined }): React.ReactElement {
   const items = diagnostics?.slowestEndpoints ?? [];
   return (
@@ -398,14 +444,16 @@ function InsightCard({
   description,
   icon: Icon,
   children,
+  className,
 }: {
   title: string;
   description: string;
   icon: typeof Clock;
   children: React.ReactNode;
+  className?: string;
 }): React.ReactElement {
   return (
-    <Card className="overflow-hidden">
+    <Card className={cn("overflow-hidden", className)}>
       <div className="flex items-start gap-3 border-b px-4 py-3">
         <Icon className="mt-0.5 size-4 text-muted-foreground" aria-hidden="true" />
         <div className="min-w-0">

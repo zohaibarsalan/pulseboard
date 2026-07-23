@@ -59,7 +59,7 @@ export async function deliveriesRoutes(app: FastifyInstance, ctx: AppContext): P
     if (!known) return reply.code(404).send({ error: "delivery_attempt_not_found" });
     try {
       const attempt = await retryDeliveryTarget(ctx, req.params.id, known.target);
-      return { ok: true, attempt };
+      return { ok: true, attemptId: attempt.id };
     } catch (error) {
       if (error instanceof DeliveryAttemptConflictError) {
         return reply.code(409).send({ error: "delivery_attempt_active" });

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Check, Copy, Database, RefreshCw, Server, Shield, ShieldCheck } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowRight, Check, Copy, Database, RefreshCw, RotateCcw, Server, Shield, ShieldCheck } from "lucide-react";
 import { Topbar } from "../components/Topbar.js";
 import { SecretsManager } from "../components/SecretsManager.js";
 import { api } from "../lib/api.js";
@@ -10,6 +10,8 @@ import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { PulseboardSelect } from "../components/PulseboardSelect.js";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import {
   getWebhookRefreshInterval,
   isWebhookRefreshPreset,
@@ -20,7 +22,15 @@ import {
 } from "../lib/refreshPreference.js";
 
 export function SettingsPage(): React.ReactElement {
+  const queryClient = useQueryClient();
   const { data: health, error } = useQuery({ queryKey: ["health"], queryFn: api.health, refetchInterval: 5_000 });
+  const policy = useQuery({ queryKey: ["delivery-policy"], queryFn: api.deliveryPolicy });
+  const updatePolicy = useMutation({
+    mutationFn: api.updateDeliveryPolicy,
+    onSuccess: (data) => {
+      queryClient.setQueryData(["delivery-policy"], data);
+    },
+  });
   const [copied, setCopied] = useState(false);
   const [refreshInterval, setRefreshIntervalState] = useState(getWebhookRefreshInterval);
   const [customRefreshSeconds, setCustomRefreshSeconds] = useState(() => {
@@ -166,6 +176,100 @@ export function SettingsPage(): React.ReactElement {
             <p className="mt-2 text-pretty text-xs text-fg-subtle">
               The webhook feed refreshes automatically at this interval. Live events remain indicated until the next refresh.
             </p>
+          </Section>
+
+          <Section title="Delivery retries" icon={RotateCcw}>
+            {policy.error ? (
+              <Alert variant="error">
+                <AlertDescription>Could not load the retry policy: {policy.error.message}</AlertDescription>
+              </Alert>
+            ) : policy.data ? (
+              <div className="flex max-w-3xl flex-col gap-4">
+                <Field className="flex-row items-start gap-4">
+                  <div className="min-w-0 flex-1">
+                    <FieldLabel htmlFor="automatic-delivery-retries">Automatic retries</FieldLabel>
+                    <FieldDescription>
+                      Retry network errors, timeouts, rate limits, and 5xx responses. Off by default to avoid unexpected duplicate side effects.
+                    </FieldDescription>
+                  </div>
+                  <Checkbox
+                    id="automatic-delivery-retries"
+                    checked={policy.data.automaticRetries}
+                    disabled={health?.readonly || updatePolicy.isPending}
+                    onCheckedChange={(checked) => updatePolicy.mutate({
+                      ...policy.data,
+                      automaticRetries: checked,
+                    })}
+                  />
+                </Field>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <Field>
+                    <FieldLabel>Total attempts</FieldLabel>
+                    <PulseboardSelect
+                      value={String(policy.data.maxAttempts)}
+                      onChange={(value) => updatePolicy.mutate({
+                        ...policy.data,
+                        maxAttempts: Number(value),
+                      })}
+                      options={[1, 2, 3, 4, 5].map((value) => ({
+                        value: String(value),
+                        label: value === 1 ? "1 · no retries" : `${value} · ${value - 1} retries`,
+                      }))}
+                      ariaLabel="Maximum delivery attempts"
+                      disabled={health?.readonly || updatePolicy.isPending}
+                      className="w-full"
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel>Initial delay</FieldLabel>
+                    <PulseboardSelect
+                      value={String(policy.data.baseDelayMs)}
+                      onChange={(value) => updatePolicy.mutate({
+                        ...policy.data,
+                        baseDelayMs: Number(value),
+                        maxDelayMs: Math.max(Number(value), policy.data.maxDelayMs),
+                      })}
+                      options={[
+                        { value: "5000", label: "5 seconds" },
+                        { value: "15000", label: "15 seconds" },
+                        { value: "30000", label: "30 seconds" },
+                        { value: "60000", label: "1 minute" },
+                      ]}
+                      ariaLabel="Initial retry delay"
+                      disabled={health?.readonly || updatePolicy.isPending}
+                      className="w-full"
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel>Maximum delay</FieldLabel>
+                    <PulseboardSelect
+                      value={String(policy.data.maxDelayMs)}
+                      onChange={(value) => updatePolicy.mutate({
+                        ...policy.data,
+                        maxDelayMs: Number(value),
+                      })}
+                      options={[
+                        { value: "60000", label: "1 minute" },
+                        { value: "300000", label: "5 minutes" },
+                        { value: "900000", label: "15 minutes" },
+                        { value: "3600000", label: "1 hour" },
+                      ].filter((option) => Number(option.value) >= policy.data.baseDelayMs)}
+                      ariaLabel="Maximum retry delay"
+                      disabled={health?.readonly || updatePolicy.isPending}
+                      className="w-full"
+                    />
+                  </Field>
+                </div>
+                <p className="text-pretty text-xs text-fg-subtle">
+                  Delays use exponential backoff with jitter. Manual target retries remain available when automatic retries are off.
+                </p>
+                {updatePolicy.error && (
+                  <Alert variant="error">
+                    <AlertDescription>Could not update the retry policy: {updatePolicy.error.message}</AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            ) : null}
           </Section>
 
           {/* Instance */}

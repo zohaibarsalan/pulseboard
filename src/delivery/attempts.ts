@@ -149,7 +149,7 @@ export function listDeliveryTargets(db: Db, webhookId: string): DeliveryTarget[]
     const state: DeliveryTarget["state"] =
       latestState === "queued"
         ? latest.trigger === "automatic" ? "retrying" : "queued"
-        : latestState === "failed" && policy.automaticRetries && retryable && latest.attemptNumber >= policy.maxAttempts
+        : latestState === "failed" && retryable && latest.attemptNumber >= policy.maxAttempts
           ? "exhausted"
           : latestState;
     return {
@@ -262,7 +262,21 @@ export function startDeliveryScheduler(ctx: AppContext): () => void {
         )
         .all(Date.now()) as Array<{ id: string }>;
       for (const item of due) {
-        await executeDeliveryAttempt(ctx, item.id);
+        try {
+          await executeDeliveryAttempt(ctx, item.id);
+        } catch (error) {
+          ctx.db.$client
+            .prepare(
+              `UPDATE delivery_attempts
+               SET state = 'failed', completed_at = ?, error = ?
+               WHERE id = ? AND state IN ('queued', 'sending')`,
+            )
+            .run(
+              Date.now(),
+              error instanceof Error ? error.message : "delivery_attempt_failed",
+              item.id,
+            );
+        }
       }
     } finally {
       running = false;

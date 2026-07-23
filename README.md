@@ -56,9 +56,19 @@ concrete next step. It recognizes connection, DNS, TLS, timeout, redirect,
 authentication, rate-limit, route, handler, and signature failures while
 preserving the raw response and error evidence.
 
+Each forwarding target has a persisted attempt timeline in the webhook
+inspector. You can retry only the failed target, inspect every response, and
+cancel a queued automatic retry without duplicating the captured webhook.
+Automatic retries are disabled by default. Enable them under **Settings →
+Delivery retries**, then choose the maximum attempts, initial delay, and delay
+cap. Pulseboard retries transient network errors, `408`, `429`, and `5xx`
+responses with capped exponential backoff; permanent `4xx` responses remain
+manual so a broken request is not hammered repeatedly.
+
 Analytics adds a developer-focused view of delivery health: P95 latency, slow
-handler counts, failure causes, response classes, slowest endpoints, and recent
-events that need attention. Every issue links back to the captured webhook.
+handler counts, failure causes, response classes, slowest endpoints, recent
+events that need attention, first-attempt success, recovered deliveries, and
+exhausted retries. Every issue links back to the captured webhook.
 
 ### Compare webhook requests
 
@@ -109,7 +119,10 @@ npx pulseboard
 
 All matching rules are combined and de-duplicated. If no rule matches, the default targets are used. Custom targets entered in Compose or replay must use HTTP(S) and match a configured target origin or a hostname in `PULSEBOARD_ALLOWED_FORWARD_HOSTS`. Redirects are not followed, so an approved endpoint cannot redirect a server-side request to an unapproved host.
 
-Pulseboard records each delivery's target, status, duration, error, response headers, and the first 64 KB of its response body. Configured sensitive header names are redacted from dashboard/API responses.
+Pulseboard records every delivery attempt's target, trigger, state, schedule,
+status, duration, error, response headers, and the first 64 KB of its response
+body. Configured sensitive header names are redacted from dashboard/API
+responses.
 
 ## Commands
 

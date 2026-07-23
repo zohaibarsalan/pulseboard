@@ -132,6 +132,16 @@ export type AnalyticsDiagnostics = {
     receivedAt: number;
     reason: string;
   }>;
+  deliveryLifecycle: {
+    targets: number;
+    attempts: number;
+    firstAttemptSuccessRate: number;
+    retriedTargets: number;
+    recoveredTargets: number;
+    exhaustedTargets: number;
+    activeRetries: number;
+    averageAttempts: number;
+  };
 };
 
 export type WebhookStats = {
@@ -142,6 +152,39 @@ export type WebhookStats = {
 };
 
 export type SourceCount = { source: string; count: number };
+
+export type RetryPolicy = {
+  automaticRetries: boolean;
+  maxAttempts: number;
+  baseDelayMs: number;
+  maxDelayMs: number;
+};
+
+export type DeliveryAttempt = {
+  id: string;
+  webhookId: string;
+  target: string;
+  attemptNumber: number;
+  trigger: "initial" | "manual" | "automatic";
+  state: "queued" | "sending" | "delivered" | "failed" | "cancelled";
+  scheduledAt: number;
+  startedAt: number | null;
+  completedAt: number | null;
+  statusCode: number | null;
+  durationMs: number | null;
+  error: string | null;
+  responseHeadersJson: string | null;
+  responseBody: string | null;
+  responseContentType: string | null;
+  responseBodyTruncated: boolean;
+};
+
+export type DeliveryTarget = {
+  target: string;
+  state: "queued" | "sending" | "delivered" | "failed" | "retrying" | "exhausted" | "cancelled";
+  attempts: DeliveryAttempt[];
+  nextAttemptAt: number | null;
+};
 
 export type WebhookFilter = {
   source?: string;
@@ -171,6 +214,19 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
     method: "POST",
     headers: { accept: "application/json", "content-type": "application/json" },
     body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`${res.status} ${res.statusText}: ${text}`);
+  }
+  return (await res.json()) as T;
+}
+
+async function put<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(path, {
+    method: "PUT",
+    headers: { accept: "application/json", "content-type": "application/json" },
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
     const text = await res.text();
@@ -233,6 +289,15 @@ export const api = {
       `/api/webhooks/${id}/replay`,
       overrides && Object.keys(overrides).length > 0 ? overrides : undefined,
     ),
+
+  deliveries: (id: string) =>
+    get<{ policy: RetryPolicy; targets: DeliveryTarget[] }>(`/api/webhooks/${id}/deliveries`),
+  retryDelivery: (id: string, attemptId: string) =>
+    post<{ ok: true; attemptId: string }>(`/api/webhooks/${id}/deliveries/retry`, { attemptId }),
+  cancelDelivery: (id: string, attemptId: string) =>
+    post<{ ok: true }>(`/api/webhooks/${id}/deliveries/${attemptId}/cancel`),
+  deliveryPolicy: () => get<RetryPolicy>("/api/delivery-policy"),
+  updateDeliveryPolicy: (policy: RetryPolicy) => put<RetryPolicy>("/api/delivery-policy", policy),
 
   clear: () => post<{ ok: true }>("/api/webhooks/clear"),
 

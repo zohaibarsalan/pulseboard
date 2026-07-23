@@ -80,8 +80,15 @@ test("capture, inspect response, edit, replay, and clear", async ({ page, reques
   expect((await page.getByTestId("webhook-controls").boundingBox())!.height).toBe(controlsHeight);
 
   await page.getByRole("tab", { name: "Forwarding" }).click();
-  await expect(page.getByText("Response headers")).toBeVisible();
+  const deliveryTimeline = page.getByTestId("delivery-timeline");
+  await expect(deliveryTimeline).toBeVisible();
+  await expect(deliveryTimeline.getByText("Attempt 1", { exact: true })).toBeVisible();
+  await expect(deliveryTimeline.getByText("Delivered", { exact: true })).toBeVisible();
+  await expect(deliveryTimeline.getByText("Response headers")).toBeVisible();
   await expect(page.getByText(/"received": true/)).toBeVisible();
+  await deliveryTimeline.getByRole("button", { name: "Retry target" }).click();
+  await expect(deliveryTimeline.getByText("Attempt 2", { exact: true })).toBeVisible();
+  await expect(deliveryTimeline.getByText("2 attempts", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Edit & Replay" }).click();
   await page.getByPlaceholder("Body (raw)").fill('{"type":"e2e.updated","value":"edited"}');
@@ -301,6 +308,16 @@ test("coss command, webhook search, select, and checkbox primitives are operable
   await page.getByRole("option", { name: "Custom interval…" }).click();
   await page.getByRole("spinbutton", { name: "Custom refresh interval in seconds" }).fill("45");
   await expect.poll(() => page.evaluate(() => localStorage.getItem("pb-webhook-refresh-interval"))).toBe("45000");
+
+  const automaticRetries = page.getByRole("checkbox", { name: "Automatic retries" });
+  await expect(automaticRetries).not.toBeChecked();
+  await automaticRetries.click();
+  await expect(automaticRetries).toBeChecked();
+  const maximumAttempts = page.getByRole("combobox", { name: "Total attempts" });
+  await maximumAttempts.click();
+  await page.getByRole("option", { name: "4 · 3 retries" }).click();
+  await automaticRetries.click();
+  await expect(automaticRetries).not.toBeChecked();
 
   await page.getByRole("link", { name: "Webhooks" }).click();
   await page.getByRole("button", { name: "Refresh webhooks" }).hover();

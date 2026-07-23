@@ -31,6 +31,8 @@ Everything after `/hook` is retained as the forwarded path.
 - Search and filters with cursor pagination
 - Body, header, forwarding, and signature inspection
 - Downstream status, headers, and bounded response-body inspection per delivery
+- Persisted per-target delivery attempts with manual target-only retries
+- Optional automatic transient-failure retries with configurable capped exponential backoff and queued-attempt cancellation
 - Dedicated, URL-addressable chronological webhook comparison with an inline searchable selector for JSON paths, request headers, delivery outcomes, signatures, and response bodies
 - Replay and edited replay
 - Built-in webhook sender with provider presets
@@ -38,7 +40,7 @@ Everything after `/hook` is retained as the forwarded path.
 - Synthetic capture and downstream connection test with inspectable results
 - Signature verification and locally stored signing secrets
 - Actionable connection and delivery diagnostics with raw error evidence
-- Source, delivery, P95 latency, slow endpoint, failure-cause, response-class, and signature analytics
+- Source, delivery, retry lifecycle, recovery, first-attempt success, P95 latency, slow endpoint, failure-cause, response-class, and signature analytics
 - Read-only mode, header redaction, optional password protection
 - Allowlisted custom forwarding targets with redirects disabled
 - npm and Docker distribution
@@ -68,6 +70,6 @@ Everything after `/hook` is retained as the forwarded path.
 - Password protection covers dashboard and API while leaving `/hook/*` available
 - Custom targets cannot reach unconfigured hosts or escape the allowlist through redirects
 - Desktop and narrow-screen capture, inspection, compose, analytics, and settings flows are usable
-- Browser E2E covers capture, inspect, compare, edit, replay, clear, delivery diagnostics, analytics, reverse-proxy auth, dark mode, narrow desktop, and large payloads
+- Browser E2E covers capture, inspect, per-target retry timelines, retry settings, compare, edit, replay, clear, delivery diagnostics, analytics, reverse-proxy auth, dark mode, narrow desktop, and large payloads
 - npm package and Docker image pass smoke tests
 - Production dependency audit has no known vulnerabilities

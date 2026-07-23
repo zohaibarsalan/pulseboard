@@ -19,6 +19,7 @@ export function PulseboardSelect({
   className,
   menuClassName,
   ariaLabel,
+  disabled = false,
 }: {
   value: string;
   options: SelectOption[];
@@ -26,9 +27,10 @@ export function PulseboardSelect({
   className?: string;
   menuClassName?: string;
   ariaLabel?: string;
+  disabled?: boolean;
 }): React.ReactElement {
   return (
-    <Select value={value} onValueChange={(next) => next != null && onChange(next)}>
+    <Select value={value} disabled={disabled} onValueChange={(next) => next != null && onChange(next)}>
       <SelectTrigger aria-label={ariaLabel} className={className}>
         <SelectValue />
       </SelectTrigger>

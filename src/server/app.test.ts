@@ -13,6 +13,7 @@ import { maintainDatabase } from "../db/maintenance.js";
 import { runMigrations } from "../db/migrate.js";
 import { deliveryAttempts, webhooks } from "../db/schema.js";
 import { buildApp } from "./app.js";
+import { updateRetryPolicy } from "../delivery/attempts.js";
 
 const cleanup: Array<() => Promise<void> | void> = [];
 afterEach(async () => {
@@ -157,9 +158,15 @@ test("capture preserves exact bytes, redacts client headers, and requires config
     payload: JSON.stringify({ attemptId: deliveries.json().targets[0].attempts[0].id }),
   });
   assert.equal(retry.statusCode, 200);
-  assert.equal(retry.json().attempt.attemptNumber, 2);
-  assert.equal(retry.json().attempt.trigger, "manual");
-  assert.equal(retry.json().attempt.state, "delivered");
+  assert.equal(typeof retry.json().attemptId, "string");
+  const retriedDeliveries = await app.inject({
+    method: "GET",
+    url: `/api/webhooks/${storedWebhook.id}/deliveries`,
+    headers: { authorization: `Basic ${Buffer.from("pulseboard:test-password").toString("base64")}` },
+  });
+  assert.equal(retriedDeliveries.json().targets[0].attempts[0].attemptNumber, 2);
+  assert.equal(retriedDeliveries.json().targets[0].attempts[0].trigger, "manual");
+  assert.equal(retriedDeliveries.json().targets[0].attempts[0].state, "delivered");
 
   const policyUpdate = await app.inject({
     method: "PUT",
@@ -257,6 +264,61 @@ test("routing rules override defaults and combine matching targets", () => {
     targetsForWebhook(config, { source: "github", path: "/push" }),
     ["http://default.test"],
   );
+});
+
+test("automatic delivery retries recover a transient target without duplicating the webhook", async () => {
+  let requests = 0;
+  const target = createServer((_req, res) => {
+    requests += 1;
+    if (requests === 1) {
+      res.writeHead(503, { "content-type": "application/json" }).end('{"ready":false}');
+      return;
+    }
+    res.writeHead(200, { "content-type": "application/json" }).end('{"ready":true}');
+  });
+  await new Promise<void>((resolve) => target.listen(0, "127.0.0.1", resolve));
+  cleanup.push(() => new Promise<void>((resolve, reject) => target.close((error) => error ? reject(error) : resolve())));
+  const port = (target.address() as AddressInfo).port;
+  const ctx = createContext({ forwardTargets: [`http://127.0.0.1:${port}`] });
+  updateRetryPolicy(ctx.db, {
+    automaticRetries: true,
+    maxAttempts: 3,
+    baseDelayMs: 10,
+    maxDelayMs: 20,
+  });
+  const app = await buildApp(ctx);
+  cleanup.push(() => app.close());
+
+  const capture = await app.inject({
+    method: "POST",
+    url: "/hook/recover",
+    headers: { "content-type": "application/json" },
+    payload: '{"type":"retry.test"}',
+  });
+  assert.equal(capture.statusCode, 503);
+  const webhookId = capture.json().captured as string;
+
+  await waitFor(() => {
+    const row = ctx.db.$client
+      .prepare(
+        `SELECT state FROM delivery_attempts
+         WHERE webhook_id = ? AND attempt_number = 2`,
+      )
+      .get(webhookId) as { state: string } | undefined;
+    return row?.state === "delivered";
+  }, 2_500);
+
+  const attempts = ctx.db.$client
+    .prepare("SELECT attempt_number, trigger, state FROM delivery_attempts WHERE webhook_id = ? ORDER BY attempt_number")
+    .all(webhookId) as Array<{ attempt_number: number; trigger: string; state: string }>;
+  assert.deepEqual(attempts, [
+    { attempt_number: 1, trigger: "initial", state: "failed" },
+    { attempt_number: 2, trigger: "automatic", state: "delivered" },
+  ]);
+  const webhookCount = ctx.db.$client
+    .prepare("SELECT COUNT(*) AS count FROM webhooks WHERE id = ?")
+    .get(webhookId) as { count: number };
+  assert.equal(webhookCount.count, 1);
 });
 
 test("analytics exposes latency percentiles and actionable delivery diagnostics", async () => {
@@ -360,3 +422,12 @@ test("analytics exposes latency percentiles and actionable delivery diagnostics"
   assert.equal(payload.deliveryLifecycle.recoveredTargets, 1);
   assert.equal(payload.deliveryLifecycle.firstAttemptSuccessRate, 50);
 });
+
+async function waitFor(check: () => boolean, timeoutMs: number): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (check()) return;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  assert.fail(`Condition was not met within ${timeoutMs}ms`);
+}

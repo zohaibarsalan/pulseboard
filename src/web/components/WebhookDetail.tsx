@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, GitCompareArrows, Pencil, Plus, RefreshCw, Send, Terminal, X } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Ban, Check, ChevronDown, Clock3, Copy, GitCompareArrows, Pencil, Plus, RefreshCw, RotateCcw, Send, Terminal, X } from "lucide-react";
 import { Link, useLocation } from "wouter";
-import { api, type DeliveryResult, type Webhook } from "../lib/api.js";
+import { api, type DeliveryAttempt, type DeliveryTarget, type Webhook } from "../lib/api.js";
 import { formatRelativeTime, formatDuration } from "../lib/format.js";
 import { SourceBadge } from "./SourceBadge.js";
 import { SignatureBadge } from "./SignatureBadge.js";
@@ -16,6 +16,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsPanel, TabsTab } from "@/components/ui/tabs";
 import { diagnoseDelivery } from "../../shared/deliveryDiagnostics.js";
 import { DeliveryDiagnostic } from "./DeliveryDiagnostic.js";
+import { Card, CardAction, CardDescription, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Spinner } from "@/components/ui/spinner";
 
 type Tab = "body" | "headers" | "forward";
 
@@ -325,7 +329,7 @@ export function WebhookDetail({
         </TabsPanel>
         {!editing && (
           <TabsPanel value="forward" className="min-w-0 overflow-y-auto p-4 sm:p-5">
-            <ForwardView webhook={webhook} />
+            <ForwardView webhook={webhook} readonly={readonly} />
           </TabsPanel>
         )}
       </Tabs>
@@ -571,91 +575,258 @@ function HeadersEditor({
   );
 }
 
-function ForwardView({ webhook }: { webhook: Webhook }): React.ReactElement {
+function ForwardView({ webhook, readonly }: { webhook: Webhook; readonly: boolean }): React.ReactElement {
+  const queryClient = useQueryClient();
+  const deliveries = useQuery({
+    queryKey: ["delivery-attempts", webhook.id],
+    queryFn: () => api.deliveries(webhook.id),
+    refetchInterval: (query) => query.state.data?.targets.some(
+      (target) => target.state === "queued" || target.state === "retrying" || target.state === "sending",
+    ) ? 1_000 : false,
+  });
+  const retry = useMutation({
+    mutationFn: (attemptId: string) => api.retryDelivery(webhook.id, attemptId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["delivery-attempts", webhook.id] });
+      void queryClient.invalidateQueries({ queryKey: ["webhook", webhook.id] });
+      void queryClient.invalidateQueries({ queryKey: ["webhooks"] });
+      void queryClient.invalidateQueries({ queryKey: ["webhook-stats"] });
+      void queryClient.invalidateQueries({
+        predicate: (query) => String(query.queryKey[0]).startsWith("analytics-"),
+      });
+    },
+  });
+  const cancel = useMutation({
+    mutationFn: (attemptId: string) => api.cancelDelivery(webhook.id, attemptId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["delivery-attempts", webhook.id] });
+    },
+  });
+
   if (!webhook.forwardedTo) {
     return (
-      <div className="text-sm text-fg-subtle">
-        Not forwarded — Pulseboard is running in capture-only mode. Start with{" "}
-        <code className="font-mono text-fg-muted">--forward &lt;url&gt;</code> to proxy webhooks.
-      </div>
+      <Empty className="min-h-64">
+        <EmptyHeader>
+          <EmptyMedia variant="icon"><Send /></EmptyMedia>
+          <EmptyTitle>Capture-only mode</EmptyTitle>
+          <EmptyDescription>
+            Start Pulseboard with <code className="font-mono">--forward &lt;url&gt;</code> to deliver captured webhooks.
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     );
   }
 
-  const deliveries: DeliveryResult[] = webhook.deliveriesJson
-    ? JSON.parse(webhook.deliveriesJson) as DeliveryResult[]
-    : [{
-        target: webhook.forwardedTo,
-        status: webhook.forwardStatus,
-        durationMs: webhook.forwardDurationMs ?? 0,
-        error: webhook.forwardError,
-        responseHeaders: webhook.responseHeadersJson ? JSON.parse(webhook.responseHeadersJson) as Record<string, string> : {},
-        responseBody: webhook.responseBody,
-        responseContentType: webhook.responseContentType,
-        responseBodyTruncated: webhook.responseBodyTruncated,
-      }];
+  if (deliveries.isLoading) {
+    return <div className="flex min-h-40 items-center justify-center"><Spinner aria-label="Loading delivery attempts" /></div>;
+  }
+  if (deliveries.error) {
+    return (
+      <Alert variant="error">
+        <AlertDescription>Could not load delivery attempts: {deliveries.error.message}</AlertDescription>
+      </Alert>
+    );
+  }
 
   return (
-    <div className="space-y-4 text-sm">
-      {deliveries.map((delivery, index) => {
-        const ok = delivery.status != null && delivery.status >= 200 && delivery.status < 300;
-        return (
-          <section key={`${delivery.target}-${index}`} className="rounded-lg border border-border p-3">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <span className="font-mono text-xs break-all">{delivery.target}</span>
-              <span className={cn("font-medium tabular-nums", ok ? "text-success" : "text-danger")}>
-                {delivery.error ? "Error" : delivery.status}
-              </span>
+    <div className="flex flex-col gap-4 text-sm" data-testid="delivery-timeline">
+      {(deliveries.data?.targets ?? []).map((target) => (
+        <DeliveryTargetCard
+          key={target.attempts.at(-1)?.id ?? target.target}
+          webhook={webhook}
+          target={target}
+          readonly={readonly}
+          retrying={retry.isPending && retry.variables === target.attempts[0]?.id}
+          cancelling={cancel.isPending && cancel.variables === target.attempts[0]?.id}
+          onRetry={(attemptId) => retry.mutate(attemptId)}
+          onCancel={(attemptId) => cancel.mutate(attemptId)}
+        />
+      ))}
+      {retry.error && (
+        <Alert variant="error"><AlertDescription>Retry failed: {retry.error.message}</AlertDescription></Alert>
+      )}
+      {cancel.error && (
+        <Alert variant="error"><AlertDescription>Could not cancel retry: {cancel.error.message}</AlertDescription></Alert>
+      )}
+    </div>
+  );
+}
+
+function DeliveryTargetCard({
+  webhook,
+  target,
+  readonly,
+  retrying,
+  cancelling,
+  onRetry,
+  onCancel,
+}: {
+  webhook: Webhook;
+  target: DeliveryTarget;
+  readonly: boolean;
+  retrying: boolean;
+  cancelling: boolean;
+  onRetry: (attemptId: string) => void;
+  onCancel: (attemptId: string) => void;
+}): React.ReactElement {
+  const latest = target.attempts[0]!;
+  const active = target.state === "queued" || target.state === "retrying" || target.state === "sending";
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader className="border-b">
+        <div className="min-w-0">
+          <CardTitle className="break-all font-mono text-sm">{target.target}</CardTitle>
+          <CardDescription className="mt-1">
+            {target.attempts.length} {target.attempts.length === 1 ? "attempt" : "attempts"}
+            {target.nextAttemptAt ? ` · next retry ${formatRelativeTime(target.nextAttemptAt)}` : ""}
+          </CardDescription>
+        </div>
+        <CardAction className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <DeliveryStateBadge state={target.state} />
+          {!readonly && active && latest.state === "queued" ? (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={cancelling}
+              onClick={() => onCancel(latest.id)}
+            >
+              <Ban data-icon="inline-start" />
+              {cancelling ? "Cancelling…" : "Cancel retry"}
+            </Button>
+          ) : !readonly ? (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={retrying}
+              onClick={() => onRetry(latest.id)}
+            >
+              <RotateCcw data-icon="inline-start" />
+              {retrying ? "Retrying…" : "Retry target"}
+            </Button>
+          ) : null}
+        </CardAction>
+      </CardHeader>
+      <CardPanel className="p-0">
+        <div className="divide-y">
+          {target.attempts.map((attempt, index) => (
+            <DeliveryAttemptRow
+              key={attempt.id}
+              webhook={webhook}
+              attempt={attempt}
+              latest={index === 0}
+            />
+          ))}
+        </div>
+      </CardPanel>
+    </Card>
+  );
+}
+
+function DeliveryAttemptRow({
+  webhook,
+  attempt,
+  latest,
+}: {
+  webhook: Webhook;
+  attempt: DeliveryAttempt;
+  latest: boolean;
+}): React.ReactElement {
+  const headers = attempt.responseHeadersJson
+    ? JSON.parse(attempt.responseHeadersJson) as Record<string, string>
+    : {};
+  return (
+    <Collapsible defaultOpen={latest}>
+      <CollapsibleTrigger className="flex min-h-14 w-full cursor-pointer items-center gap-3 px-4 py-3 text-left hover:bg-bg-subtle/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <span className={cn(
+          "size-2 shrink-0 rounded-full",
+          attempt.state === "delivered" && "bg-success",
+          attempt.state === "failed" && "bg-danger",
+          (attempt.state === "queued" || attempt.state === "sending") && "bg-warning",
+          attempt.state === "cancelled" && "bg-fg-subtle",
+        )} />
+        <span className="min-w-0 flex-1">
+          <span className="flex flex-wrap items-center gap-2">
+            <span className="font-medium">Attempt {attempt.attemptNumber}</span>
+            <Badge variant="secondary" size="sm">{attempt.trigger}</Badge>
+            <span className="font-mono text-xs tabular-nums text-fg-muted">
+              {attempt.statusCode ?? attempt.state}
+            </span>
+          </span>
+          <span className="mt-1 flex flex-wrap items-center gap-3 text-xs text-fg-subtle">
+            <span>{formatExactTime(attempt.startedAt ?? attempt.scheduledAt)}</span>
+            {attempt.durationMs != null && <span className="tabular-nums">{formatDuration(attempt.durationMs)}</span>}
+          </span>
+        </span>
+        <ChevronDown className="shrink-0 text-fg-subtle" aria-hidden="true" />
+      </CollapsibleTrigger>
+      <CollapsiblePanel>
+        <div className="flex flex-col gap-4 border-t bg-bg-subtle/20 px-4 py-4">
+          {(attempt.state === "queued" || attempt.state === "sending") ? (
+            <div className="flex items-center gap-2 text-xs text-fg-muted">
+              <Clock3 className="size-4" aria-hidden="true" />
+              {attempt.state === "queued"
+                ? `Scheduled for ${formatExactTime(attempt.scheduledAt)}`
+                : "Delivery is in progress"}
             </div>
-            <Row label="Duration" value={formatDuration(delivery.durationMs)} />
-            <div className="mt-3">
+          ) : (
+            <>
               <DeliveryDiagnostic
                 showSuccess
                 delivery={{
-                  forwardedTo: delivery.target,
-                  forwardStatus: delivery.status,
-                  forwardDurationMs: delivery.durationMs,
-                  forwardError: delivery.error,
+                  forwardedTo: attempt.target,
+                  forwardStatus: attempt.statusCode,
+                  forwardDurationMs: attempt.durationMs,
+                  forwardError: attempt.error,
                   signatureStatus: "not_applicable",
                   path: webhook.path,
                 }}
               />
-            </div>
-            {delivery.error && (
-              <Alert variant="error" className="mt-3 font-mono text-xs">
-                <AlertDescription>{delivery.error}</AlertDescription>
-              </Alert>
-            )}
-            {!delivery.error && (
-              <div className="mt-3 space-y-3 border-t border-border pt-3">
+              {attempt.error && (
+                <Alert variant="error" className="font-mono text-xs">
+                  <AlertDescription>{attempt.error}</AlertDescription>
+                </Alert>
+              )}
+              <div className="grid gap-4 lg:grid-cols-2">
                 <div>
-                  <div className="mb-1 text-2xs font-medium uppercase text-fg-subtle">Response headers</div>
-                  {Object.keys(delivery.responseHeaders).length > 0 ? (
-                    <HeadersView headers={delivery.responseHeaders} />
-                  ) : (
-                    <p className="text-xs text-fg-subtle">No response headers</p>
-                  )}
+                  <h3 className="text-balance text-xs font-medium">Response headers</h3>
+                  <div className="mt-2">
+                    {Object.keys(headers).length > 0
+                      ? <HeadersView headers={headers} />
+                      : <p className="text-xs text-fg-subtle">No response headers</p>}
+                  </div>
                 </div>
                 <div>
-                  <div className="mb-1 flex items-center justify-between text-2xs font-medium uppercase text-fg-subtle">
-                    <span>Response body</span>
-                    {delivery.responseBodyTruncated && <span className="normal-case text-warning">First 64 KB shown</span>}
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="text-balance text-xs font-medium">Response body</h3>
+                    {attempt.responseBodyTruncated && <Badge variant="warning" size="sm">First 64 KB</Badge>}
                   </div>
-                  <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md bg-bg-muted/40 p-3 font-mono text-xs text-fg">
-                    {delivery.responseBody
-                      ? formatJsonForDisplay(delivery.responseBody)
-                      : "No response body"}
+                  <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md bg-bg-muted/40 p-3 font-mono text-xs text-fg">
+                    {attempt.responseBody ? formatJsonForDisplay(attempt.responseBody) : "No response body"}
                   </pre>
                 </div>
               </div>
-            )}
-          </section>
-        );
-      })}
-      {webhook.replayCount > 0 && (
-        <Row label="Replays" value={`${webhook.replayCount} · last ${formatRelativeTime(webhook.lastReplayedAt)}`} />
-      )}
-    </div>
+            </>
+          )}
+        </div>
+      </CollapsiblePanel>
+    </Collapsible>
   );
+}
+
+function DeliveryStateBadge({ state }: { state: DeliveryTarget["state"] }): React.ReactElement {
+  const config: Record<DeliveryTarget["state"], {
+    label: string;
+    variant: "success" | "error" | "warning" | "secondary";
+  }> = {
+    queued: { label: "Queued", variant: "warning" },
+    sending: { label: "Sending", variant: "warning" },
+    delivered: { label: "Delivered", variant: "success" },
+    failed: { label: "Failed", variant: "error" },
+    retrying: { label: "Retrying", variant: "warning" },
+    exhausted: { label: "Exhausted", variant: "error" },
+    cancelled: { label: "Cancelled", variant: "secondary" },
+  };
+  return <Badge variant={config[state].variant}>{config[state].label}</Badge>;
 }
 
 function Row({ label, value }: { label: string; value: React.ReactNode }): React.ReactElement {
