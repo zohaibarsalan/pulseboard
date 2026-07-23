@@ -13,7 +13,7 @@ const program = new Command();
 program
   .name("pulseboard")
   .description("Pulseboard is a local-first webhook dashboard for capturing, inspecting, replaying, and forwarding webhooks")
-  .version("0.1.0-pre")
+  .version("0.1.0")
   .option("--forward <url>", "Forward captured webhooks to this URL (e.g. http://localhost:3000)")
   .option("--port <port>", "Bind port (default 4500)")
   .option("--host <host>", "Bind host (default 127.0.0.1)")

@@ -1,14 +1,32 @@
 {
-  "name": "pulseboard",
+  "name": "@zohaibarsalan/pulseboard",
   "version": "0.1.0",
   "description": "Pulseboard is a local-first webhook dashboard for capturing, inspecting, replaying, and forwarding webhooks.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zohaibarsalan/pulseboard.git"
+  },
+  "homepage": "https://github.com/zohaibarsalan/pulseboard#readme",
+  "bugs": {
+    "url": "https://github.com/zohaibarsalan/pulseboard/issues"
+  },
+  "keywords": [
+    "webhooks",
+    "webhook-debugger",
+    "developer-tools",
+    "local-development",
+    "cli"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "engines": {
     "node": ">=20"
   },
   "packageManager": "pnpm@10.14.0",
   "bin": {
-    "pulseboard": "./dist/cli.js"
+    "pulseboard": "dist/cli.js"
   },
   "main": "./dist/cli.js",
   "files": [

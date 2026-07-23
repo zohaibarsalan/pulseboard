@@ -20,7 +20,7 @@ try {
   execFileSync("npm", ["init", "-y", "--cache", npmCache], { cwd: directory, stdio: "ignore" });
   execFileSync("npm", ["install", tarballPath, "--omit=dev", "--cache", npmCache], { cwd: directory, stdio: "inherit" });
 
-  const cli = join(directory, "node_modules", "pulseboard", "dist", "cli.js");
+  const cli = join(directory, "node_modules", "@zohaibarsalan", "pulseboard", "dist", "cli.js");
   const child = spawn(process.execPath, [
     cli,
     "--port", "4520",

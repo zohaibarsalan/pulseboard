@@ -18,7 +18,7 @@ test("generates a local Stripe CLI setup", () => {
       publicBaseUrl: "",
     }),
     {
-      start: "npx pulseboard --forward http://localhost:3000",
+      start: "npx @zohaibarsalan/pulseboard --forward http://localhost:3000",
       expose: "stripe listen --forward-to http://localhost:4500/hook/api/stripe",
       endpoint: "http://localhost:4500/hook/api/stripe",
     },

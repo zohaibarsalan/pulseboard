@@ -25,7 +25,7 @@ export async function healthRoute(app: FastifyInstance, ctx: AppContext): Promis
       maxDbSizeMb: ctx.config.maxDbSizeMb,
       dbSizeBytes: databaseSizeBytes(ctx.db),
       authEnabled: Boolean(ctx.config.authPassword),
-      version: "0.1.0-pre",
+      version: "0.1.0",
     };
   });
 }

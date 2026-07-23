@@ -24,7 +24,7 @@ Open [http://localhost:4500](http://localhost:4500). Development mode includes a
 For real use:
 
 ```bash
-npx pulseboard --forward http://localhost:3000
+npx @zohaibarsalan/pulseboard --forward http://localhost:3000
 ```
 
 Point your provider or tunnel at:
@@ -114,7 +114,7 @@ Route selected webhooks to one or more services:
 ```bash
 PULSEBOARD_FORWARD_TARGETS=http://localhost:3000,http://localhost:4000 \
 PULSEBOARD_ROUTING_RULES='[{"source":"stripe","targets":["http://localhost:3000"]},{"pathPrefix":"/audit","targets":["http://localhost:4000"]}]' \
-npx pulseboard
+npx @zohaibarsalan/pulseboard
 ```
 
 All matching rules are combined and de-duplicated. If no rule matches, the default targets are used. Custom targets entered in Compose or replay must use HTTP(S) and match a configured target origin or a hostname in `PULSEBOARD_ALLOWED_FORWARD_HOSTS`. Redirects are not followed, so an approved endpoint cannot redirect a server-side request to an unapproved host.

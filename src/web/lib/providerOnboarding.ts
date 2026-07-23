@@ -137,9 +137,8 @@ export function generateOnboardingCommands(input: {
   }
 
   return {
-    start: `npx pulseboard --forward ${target}`,
+    start: `npx @zohaibarsalan/pulseboard --forward ${target}`,
     expose,
     endpoint,
   };
 }
-

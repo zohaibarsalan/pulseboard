@@ -105,7 +105,7 @@ pnpm db:generate      # regenerate Drizzle migrations after schema changes
 ### Real usage
 
 ```bash
-npx pulseboard --forward http://localhost:3000
+npx @zohaibarsalan/pulseboard --forward http://localhost:3000
 # Point your tunnel at the printed capture URL, e.g.
 #   https://your-tunnel.ngrok.io/hook/stripe
 # Pulseboard captures, stores, and forwards to localhost:3000/stripe
