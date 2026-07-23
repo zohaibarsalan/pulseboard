@@ -29,7 +29,7 @@ export function PulseboardSelect({
 }): React.ReactElement {
   return (
     <Select value={value} onValueChange={(next) => next != null && onChange(next)}>
-      <SelectTrigger aria-label={ariaLabel} className={className} size="sm">
+      <SelectTrigger aria-label={ariaLabel} className={className}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent className={menuClassName}>

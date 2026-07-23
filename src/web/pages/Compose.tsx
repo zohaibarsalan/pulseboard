@@ -157,7 +157,7 @@ export function ComposePage(): React.ReactElement {
               </Field>
               <div className="pb-0.5">
                 <CossField className="w-auto">
-                  <FieldLabel className="cursor-pointer gap-2 whitespace-nowrap rounded-lg border px-3 py-2.5 text-xs">
+                  <FieldLabel className="h-8 cursor-pointer gap-2 whitespace-nowrap rounded-lg border px-3 text-xs">
                     <Checkbox checked={autoSign} onCheckedChange={(checked) => setAutoSign(checked === true)} />
                     Auto-sign
                   </FieldLabel>
@@ -198,8 +198,8 @@ export function ComposePage(): React.ReactElement {
                 </TabsList>
                 <TabsPanel value="body" className="pt-4">
                   <div className="mb-2 flex items-center gap-2">
-                    <Button onClick={formatJson} variant="outline" size="xs">Format JSON</Button>
-                    <Button onClick={minifyJson} variant="outline" size="xs">Minify</Button>
+                    <Button onClick={formatJson} variant="outline" size="sm">Format JSON</Button>
+                    <Button onClick={minifyJson} variant="outline" size="sm">Minify</Button>
                     <span className="ml-auto text-xs tabular-nums text-muted-foreground">{body.length} chars</span>
                   </div>
                   {parseError && (
@@ -229,7 +229,7 @@ export function ComposePage(): React.ReactElement {
                       <Button onClick={() => removeHeader(row.id)} variant="ghost" size="icon-xs" aria-label="Remove header"><X /></Button>
                     </div>
                   ))}
-                  <Button onClick={addHeader} variant="outline" size="xs"><Plus />Add header</Button>
+                  <Button onClick={addHeader} variant="outline" size="sm"><Plus />Add header</Button>
                 </TabsPanel>
               </Tabs>
             </div>

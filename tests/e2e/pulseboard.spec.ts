@@ -10,6 +10,7 @@ test("capture, inspect response, edit, replay, and clear", async ({ page, reques
   await page.goto("/");
   await page.getByRole("button").filter({ hasText: "e2e.created" }).click();
   await expect(page).toHaveURL(/\/webhooks\//);
+  await expect(page.getByLabel("Search webhooks…")).toBeVisible();
   await expect(page.getByText('"value": "original"')).toBeVisible();
 
   await page.getByRole("tab", { name: "Forwarding" }).click();
@@ -52,7 +53,16 @@ test("coss command, select, and checkbox primitives are operable", async ({ page
 
   await page.getByRole("link", { name: "Compose" }).click();
   await expect(page.getByRole("heading", { name: "Compose" })).toBeVisible();
-  await page.getByRole("combobox", { name: "Preset" }).click();
+  const preset = page.getByRole("combobox", { name: "Preset" });
+  await preset.click();
+  const [triggerBox, menuBox] = await Promise.all([
+    preset.boundingBox(),
+    page.getByRole("listbox").boundingBox(),
+  ]);
+  expect(triggerBox).not.toBeNull();
+  expect(menuBox).not.toBeNull();
+  expect(menuBox!.y).toBeGreaterThanOrEqual(triggerBox!.y + triggerBox!.height - 1);
+  expect(Math.abs(menuBox!.width - triggerBox!.width)).toBeLessThanOrEqual(2);
   await page.getByRole("option", { name: "GitHub: push" }).click();
   await expect(page.getByRole("combobox", { name: "Source" })).toHaveText("github");
   await page.getByRole("checkbox", { name: "Auto-sign" }).click();
