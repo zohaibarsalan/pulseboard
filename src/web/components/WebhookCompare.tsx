@@ -45,13 +45,15 @@ export function WebhookCompare({
         onValueChange={(value) => setTab(value as CompareTab)}
         className="min-h-0 flex-1 gap-0"
       >
-        <div className="flex flex-wrap items-center gap-4 border-b px-6">
-          <TabsList variant="underline" className="h-16 min-w-0 flex-1 justify-start rounded-none p-0">
+        <div className="border-b">
+          <TabsList variant="underline" className="h-16 w-full justify-start rounded-none p-0">
             <TabsTab value="body" className="h-16 rounded-none">Body <DiffCount entries={bodyDiff.entries} /></TabsTab>
             <TabsTab value="headers" className="h-16 rounded-none">Headers <DiffCount entries={headerDiff.entries} /></TabsTab>
             <TabsTab value="delivery" className="h-16 rounded-none">Delivery</TabsTab>
           </TabsList>
-          <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+        </div>
+        <div className="flex h-10 items-center justify-end border-b px-4 sm:px-6">
+          <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
             <Checkbox checked={showUnchanged} onCheckedChange={setShowUnchanged} />
             Show unchanged
           </label>
