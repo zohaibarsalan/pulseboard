@@ -154,6 +154,10 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
     void queryClient.invalidateQueries({ queryKey: ["webhook-stats"] });
     void queryClient.invalidateQueries({ queryKey: ["webhook-sources"] });
   };
+  const refreshTooltipText =
+    refreshInterval === 0
+      ? "Auto-refresh is off. Click to refresh now."
+      : `Refresh now. Auto-refreshes every ${formatWebhookRefreshInterval(refreshInterval)}.`;
   const showListOnMobile = selectedId == null;
 
   return (
@@ -188,6 +192,7 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
                         onBlur={() => setRefreshTooltipOpen(false)}
                         variant="ghost"
                         size="icon-sm"
+                        title={refreshTooltipText}
                         aria-label={`Refresh webhooks${live.newEventCount ? `, ${live.newEventCount} new events` : ""}`}
                       >
                         <RefreshCw className={cn(isRefetching && "animate-spin")} />
@@ -196,9 +201,7 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
                     )}
                   />
                   <TooltipPopup side="bottom">
-                    {refreshInterval === 0
-                      ? "Auto-refresh is off. Click to refresh now."
-                      : `Refresh now. Auto-refreshes every ${formatWebhookRefreshInterval(refreshInterval)}.`}
+                    {refreshTooltipText}
                   </TooltipPopup>
                 </Tooltip>
               </TooltipProvider>

@@ -58,7 +58,12 @@ test("capture, inspect response, edit, replay, and clear", async ({ page, reques
     controlsBox!.y + controlsBox!.height - (filtersBox!.y + filtersBox!.height);
   expect(Math.abs(controlsTopGap - controlsBottomGap)).toBeLessThanOrEqual(2);
 
-  await page.getByRole("button", { name: "Refresh webhooks" }).hover();
+  const refreshButton = page.getByRole("button", { name: "Refresh webhooks" });
+  await expect(refreshButton).toHaveAttribute(
+    "title",
+    "Refresh now. Auto-refreshes every 30 seconds.",
+  );
+  await refreshButton.hover();
   await expect(page.getByText("Refresh now. Auto-refreshes every 30 seconds.")).toBeVisible();
 
   const controlsHeight = controlsBox!.height;
