@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Check, Copy, Database, Server, Shield, ShieldCheck } from "lucide-react";
+import { ArrowRight, Check, Copy, Database, RefreshCw, Server, Shield, ShieldCheck } from "lucide-react";
 import { Topbar } from "../components/Topbar.js";
 import { SecretsManager } from "../components/SecretsManager.js";
 import { api } from "../lib/api.js";
@@ -8,10 +8,18 @@ import { formatRelativeTime } from "../lib/format.js";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { PulseboardSelect } from "../components/PulseboardSelect.js";
+import {
+  getWebhookRefreshInterval,
+  setWebhookRefreshInterval,
+  WEBHOOK_REFRESH_OPTIONS,
+  type WebhookRefreshInterval,
+} from "../lib/refreshPreference.js";
 
 export function SettingsPage(): React.ReactElement {
   const { data: health, error } = useQuery({ queryKey: ["health"], queryFn: api.health, refetchInterval: 5_000 });
   const [copied, setCopied] = useState(false);
+  const [refreshInterval, setRefreshIntervalState] = useState(getWebhookRefreshInterval);
 
   const copyCaptureUrl = (): void => {
     if (!health?.captureUrl) return;
@@ -86,6 +94,24 @@ export function SettingsPage(): React.ReactElement {
               {health?.forwardTargets.length
                 ? "Captured webhooks are routed to every matching target with the original raw body preserved."
                 : "Webhooks are captured but not forwarded. Start with --forward <url> to proxy them."}
+            </p>
+          </Section>
+
+          <Section title="Feed refresh" icon={RefreshCw}>
+            <div className="max-w-64">
+              <PulseboardSelect
+                value={String(refreshInterval)}
+                onChange={(value) => {
+                  const next = Number(value) as WebhookRefreshInterval;
+                  setRefreshIntervalState(next);
+                  setWebhookRefreshInterval(next);
+                }}
+                options={WEBHOOK_REFRESH_OPTIONS}
+                ariaLabel="Webhook auto-refresh interval"
+              />
+            </div>
+            <p className="mt-2 text-pretty text-xs text-fg-subtle">
+              The webhook feed refreshes automatically at this interval. Live events remain indicated until the next refresh.
             </p>
           </Section>
 

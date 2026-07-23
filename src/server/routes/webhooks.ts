@@ -9,6 +9,8 @@ import { deliveryFields, targetsForWebhook, validateOverrideTarget } from "../..
 type ListQuery = {
   source?: string;
   status?: "success" | "failed" | "pending";
+  method?: string;
+  signature?: "valid" | "invalid" | "no_secret" | "unverifiable" | "not_applicable";
   q?: string;
   before?: string;
   limit?: string;
@@ -30,6 +32,14 @@ export async function webhooksRoutes(app: FastifyInstance, ctx: AppContext): Pro
     if (req.query.source) {
       clauses.push("source = ?");
       params.push(req.query.source);
+    }
+    if (req.query.method) {
+      clauses.push("method = ?");
+      params.push(req.query.method.toUpperCase());
+    }
+    if (req.query.signature) {
+      clauses.push("signature_status = ?");
+      params.push(req.query.signature);
     }
     if (req.query.status === "success") {
       clauses.push("forward_status >= 200 AND forward_status < 300");

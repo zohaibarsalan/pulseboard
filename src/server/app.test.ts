@@ -129,6 +129,22 @@ test("capture preserves exact bytes, redacts client headers, and requires config
   assert.equal(JSON.parse(authorized.json().webhooks[0].deliveriesJson).length, 2);
   assert.equal(authorized.json().webhooks[0].bodyBase64, undefined);
 
+  const filterHeaders = { authorization: `Basic ${Buffer.from("pulseboard:test-password").toString("base64")}` };
+  const matchingFilters = await app.inject({
+    method: "GET",
+    url: "/api/webhooks?method=POST&signature=not_applicable",
+    headers: filterHeaders,
+  });
+  assert.equal(matchingFilters.statusCode, 200);
+  assert.equal(matchingFilters.json().webhooks.length, 1);
+  const excludedMethod = await app.inject({
+    method: "GET",
+    url: "/api/webhooks?method=GET",
+    headers: filterHeaders,
+  });
+  assert.equal(excludedMethod.statusCode, 200);
+  assert.equal(excludedMethod.json().webhooks.length, 0);
+
   const blockedOverride = await app.inject({
     method: "POST",
     url: "/api/sender/send",

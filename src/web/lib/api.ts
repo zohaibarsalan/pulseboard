@@ -120,6 +120,8 @@ export type SourceCount = { source: string; count: number };
 export type WebhookFilter = {
   source?: string;
   status?: "success" | "failed" | "pending";
+  method?: string;
+  signature?: SignatureStatus;
   q?: string;
 };
 
@@ -158,6 +160,8 @@ export const api = {
     const params = new URLSearchParams({ limit: String(limit) });
     if (filter.source) params.set("source", filter.source);
     if (filter.status) params.set("status", filter.status);
+    if (filter.method) params.set("method", filter.method);
+    if (filter.signature) params.set("signature", filter.signature);
     if (filter.q) params.set("q", filter.q);
     if (before) params.set("before", String(before));
     return get<{ webhooks: Webhook[]; nextBefore: number | null }>(`/api/webhooks?${params.toString()}`);

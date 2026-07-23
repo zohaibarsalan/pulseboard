@@ -35,11 +35,11 @@ test("capture, inspect response, edit, replay, and clear", async ({ page, reques
     data: { type: "layout.updated" },
   });
   expect(liveCapture.ok()).toBeTruthy();
-  const refresh = page.getByRole("button", { name: /new event.*refresh/ });
+  const refresh = page.getByRole("button", { name: /Refresh webhooks, .*new event/ });
   await expect(refresh).toBeVisible();
   expect((await page.getByTestId("webhook-controls").boundingBox())!.height).toBe(controlsHeight);
   await refresh.click();
-  await expect(refresh).toBeHidden();
+  await expect(page.getByRole("button", { name: "Refresh webhooks" })).toBeVisible();
   expect((await page.getByTestId("webhook-controls").boundingBox())!.height).toBe(controlsHeight);
 
   await page.getByRole("tab", { name: "Forwarding" }).click();
@@ -108,6 +108,11 @@ test("coss command, webhook search, select, and checkbox primitives are operable
   await expect(page.getByRole("combobox", { name: "Source" })).toHaveText("github");
   await page.getByRole("checkbox", { name: "Auto-sign" }).click();
   await expect(page.getByRole("checkbox", { name: "Auto-sign" })).not.toBeChecked();
+
+  await page.getByRole("link", { name: "Settings" }).click();
+  await page.getByRole("combobox", { name: "Webhook auto-refresh interval" }).click();
+  await page.getByRole("option", { name: "Every 60 seconds" }).click();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("pb-webhook-refresh-interval"))).toBe("60000");
 });
 
 test("dark mode, narrow desktop, and large payloads remain usable", async ({ page, request }) => {

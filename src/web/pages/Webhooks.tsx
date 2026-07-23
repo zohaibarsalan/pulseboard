@@ -19,8 +19,11 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PulseboardSelect } from "../components/PulseboardSelect.js";
+import { getWebhookRefreshInterval } from "../lib/refreshPreference.js";
+import type { SignatureStatus } from "../lib/api.js";
 
 type StatusFilter = "all" | "success" | "failed" | "pending";
+type SignatureFilter = "all" | SignatureStatus;
 
 export function WebhooksPage({ selectedId = null }: { selectedId?: string | null }): React.ReactElement {
   const [, navigate] = useLocation();
@@ -31,7 +34,14 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
     return status === "success" || status === "failed" || status === "pending" ? status : "all";
   });
   const [sourceFilter, setSourceFilter] = useState<string | null>(() => initialParams.get("source"));
+  const [methodFilter, setMethodFilter] = useState(() => initialParams.get("method") ?? "all");
+  const [signatureFilter, setSignatureFilter] = useState<SignatureFilter>(() => {
+    const signature = initialParams.get("signature");
+    return signature === "valid" || signature === "invalid" || signature === "no_secret" ||
+      signature === "unverifiable" || signature === "not_applicable" ? signature : "all";
+  });
   const [search, setSearch] = useState(() => initialParams.get("q") ?? "");
+  const [refreshInterval] = useState(getWebhookRefreshInterval);
   const live = useLiveEvents();
   const queryClient = useQueryClient();
 
@@ -40,14 +50,18 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
     const params = new URLSearchParams();
     if (statusFilter !== "all") params.set("status", statusFilter);
     if (sourceFilter) params.set("source", sourceFilter);
+    if (methodFilter !== "all") params.set("method", methodFilter);
+    if (signatureFilter !== "all") params.set("signature", signatureFilter);
     if (search.trim()) params.set("q", search.trim());
     const query = params.toString();
     window.history.replaceState(null, "", query ? `/?${query}` : "/");
-  }, [search, selectedId, sourceFilter, statusFilter]);
+  }, [methodFilter, search, selectedId, signatureFilter, sourceFilter, statusFilter]);
 
   const filter: WebhookFilter = {
     status: statusFilter === "all" ? undefined : statusFilter,
     source: sourceFilter ?? undefined,
+    method: methodFilter === "all" ? undefined : methodFilter,
+    signature: signatureFilter === "all" ? undefined : signatureFilter,
     q: search.trim() || undefined,
   };
 
@@ -55,12 +69,12 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
   const { data: stats } = useQuery({ queryKey: ["webhook-stats"], queryFn: api.stats, refetchInterval: 10_000 });
   const { data: sources } = useQuery({ queryKey: ["webhook-sources"], queryFn: api.sources, refetchInterval: 10_000 });
 
-  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
+  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage, isRefetching } = useInfiniteQuery({
     queryKey: ["webhooks", filter],
     queryFn: ({ pageParam }) => api.webhooks(filter, 100, pageParam),
     initialPageParam: undefined as number | undefined,
     getNextPageParam: (lastPage) => lastPage.nextBefore ?? undefined,
-    refetchInterval: live.status === "live" ? false : 3_000,
+    refetchInterval: refreshInterval || false,
   });
 
   const webhooks = data?.pages.flatMap((page) => page.webhooks) ?? [];
@@ -84,6 +98,8 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
   const refreshEvents = (): void => {
     live.acknowledge();
     void queryClient.invalidateQueries({ queryKey: ["webhooks"] });
+    void queryClient.invalidateQueries({ queryKey: ["webhook-stats"] });
+    void queryClient.invalidateQueries({ queryKey: ["webhook-sources"] });
   };
   const showListOnMobile = selectedId == null;
 
@@ -100,36 +116,35 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
             <span><span className="font-semibold tabular-nums">{stats?.total ?? 0}</span> <span className="text-fg-subtle">total</span></span>
             <span className="text-success"><span className="font-semibold tabular-nums">{stats?.succeeded ?? 0}</span> ok</span>
             <span className="text-danger"><span className="font-semibold tabular-nums">{stats?.failed ?? 0}</span> failed</span>
+            <div className="ml-auto flex items-center gap-1">
+              <Button
+                onClick={refreshEvents}
+                disabled={isRefetching}
+                variant="ghost"
+                size="icon-sm"
+                title={`Refresh webhooks${live.newEventCount ? ` · ${live.newEventCount} new` : ""}`}
+                aria-label={`Refresh webhooks${live.newEventCount ? `, ${live.newEventCount} new events` : ""}`}
+              >
+                <RefreshCw className={cn(isRefetching && "animate-spin")} />
+                {live.newEventCount > 0 && <span className="absolute right-1 top-1 size-1.5 rounded-full bg-success" />}
+              </Button>
             {stats && stats.total > 0 && (
               <Button
                 onClick={() => setClearOpen(true)}
                 disabled={clearMutation.isPending || health?.readonly}
                 variant="danger"
                 size="icon"
-                className="ml-auto h-6 w-6"
+                className="size-7"
                 title={health?.readonly ? "Read-only mode" : "Clear all"}
                 aria-label={health?.readonly ? "Clear all unavailable in read-only mode" : "Clear all webhooks"}
               >
                 <Trash2 className="h-3 w-3" />
               </Button>
             )}
+            </div>
           </div>
 
-          <div data-testid="webhook-controls" className="flex min-h-40 flex-col border-b border-border">
-            <div className="flex h-12 shrink-0 items-center px-3 pt-3">
-              {live.newEventCount > 0 && (
-                <Button
-                  onClick={refreshEvents}
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                >
-                  <RefreshCw aria-hidden="true" />
-                  {live.newEventCount} new {live.newEventCount === 1 ? "event" : "events"} · refresh
-                </Button>
-              )}
-            </div>
-            <div className="flex-1 space-y-2 p-3">
+          <div data-testid="webhook-controls" className="min-h-40 space-y-2 border-b border-border p-3">
               <SearchInput value={search} onChange={setSearch} placeholder="Search webhooks…" />
               <div className="grid grid-cols-2 gap-2">
                 <PulseboardSelect
@@ -157,8 +172,31 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
                     })),
                   ]}
                 />
+                <PulseboardSelect
+                  value={methodFilter}
+                  onChange={setMethodFilter}
+                  ariaLabel="Filter by method"
+                  className="min-w-0"
+                  options={[
+                    { value: "all", label: "All methods" },
+                    ...["POST", "PUT", "PATCH", "DELETE", "GET"].map((method) => ({ value: method, label: method })),
+                  ]}
+                />
+                <PulseboardSelect
+                  value={signatureFilter}
+                  onChange={(value) => setSignatureFilter(value as SignatureFilter)}
+                  ariaLabel="Filter by signature"
+                  className="min-w-0"
+                  options={[
+                    { value: "all", label: "All signatures" },
+                    { value: "valid", label: "Valid signature" },
+                    { value: "invalid", label: "Invalid signature" },
+                    { value: "no_secret", label: "No secret" },
+                    { value: "unverifiable", label: "Unverifiable" },
+                    { value: "not_applicable", label: "Not applicable" },
+                  ]}
+                />
               </div>
-            </div>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto">

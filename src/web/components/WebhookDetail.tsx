@@ -291,7 +291,7 @@ export function WebhookDetail({
         onValueChange={(value) => setTab(value as Tab)}
         className="min-h-0 flex-1 gap-0"
       >
-        <TabsList variant="underline" className="w-full justify-start overflow-x-auto rounded-none border-b px-5 py-0">
+        <TabsList variant="underline" className="min-h-16 w-full justify-start overflow-x-auto rounded-none border-b px-5 py-0">
           <TabsTab value="body">Body {editing && <EditedDot />}</TabsTab>
           <TabsTab value="headers">
             Headers <span className="text-muted-foreground">({editing ? editedHeaders.length : Object.keys(originalHeaders).length})</span>
