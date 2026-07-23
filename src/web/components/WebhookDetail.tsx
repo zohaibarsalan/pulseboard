@@ -111,9 +111,9 @@ export function WebhookDetail({
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="border-b border-border px-5 py-4">
+      <div data-testid="webhook-identity" className="min-h-20 border-b border-border px-5 py-4">
         <div className="flex flex-wrap items-start gap-4">
-          <div className="min-w-64 flex-1">
+          <div className="min-w-48 flex-1">
             <div className="flex min-w-0 items-center gap-2">
               <Badge variant={methodVariant(webhook.method)} size="sm" className="font-mono">
                 {webhook.method}
@@ -200,7 +200,11 @@ export function WebhookDetail({
         </div>
       </div>
 
-      <section aria-labelledby="request-details-heading" className="border-b border-border bg-bg-subtle/30 px-5 py-3">
+      <section
+        aria-labelledby="request-details-heading"
+        data-testid="request-details"
+        className="min-h-40 border-b border-border bg-bg-subtle/30 px-5 py-3"
+      >
         <h2 id="request-details-heading" className="mb-3 text-balance text-xs font-medium text-fg-muted">Request details</h2>
         <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 xl:grid-cols-4">
           <DetailItem label="Received" value={formatExactTime(webhook.receivedAt)} />

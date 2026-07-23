@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("capture, inspect response, edit, replay, and clear", async ({ page, request }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
   const capture = await request.post("/hook/e2e", {
     headers: { "content-type": "application/json" },
     data: { type: "e2e.created", value: "original" },
@@ -18,6 +19,28 @@ test("capture, inspect response, edit, replay, and clear", async ({ page, reques
   await expect(page.getByText("Source IP", { exact: true })).toBeVisible();
   await expect(page.getByText("Forward targets", { exact: true })).toBeVisible();
   await expect(page.getByText("Original request", { exact: true })).toBeVisible();
+
+  const [summaryBox, identityBox, controlsBox, detailsBox] = await Promise.all([
+    page.getByTestId("webhook-summary").boundingBox(),
+    page.getByTestId("webhook-identity").boundingBox(),
+    page.getByTestId("webhook-controls").boundingBox(),
+    page.getByTestId("request-details").boundingBox(),
+  ]);
+  expect(Math.abs((summaryBox!.y + summaryBox!.height) - (identityBox!.y + identityBox!.height))).toBeLessThanOrEqual(1);
+  expect(Math.abs((controlsBox!.y + controlsBox!.height) - (detailsBox!.y + detailsBox!.height))).toBeLessThanOrEqual(1);
+
+  const controlsHeight = controlsBox!.height;
+  const liveCapture = await request.post("/hook/live-layout", {
+    headers: { "content-type": "application/json" },
+    data: { type: "layout.updated" },
+  });
+  expect(liveCapture.ok()).toBeTruthy();
+  const refresh = page.getByRole("button", { name: /new event.*refresh/ });
+  await expect(refresh).toBeVisible();
+  expect((await page.getByTestId("webhook-controls").boundingBox())!.height).toBe(controlsHeight);
+  await refresh.click();
+  await expect(refresh).toBeHidden();
+  expect((await page.getByTestId("webhook-controls").boundingBox())!.height).toBe(controlsHeight);
 
   await page.getByRole("tab", { name: "Forwarding" }).click();
   await expect(page.getByText("Response headers")).toBeVisible();

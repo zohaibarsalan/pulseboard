@@ -96,7 +96,7 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
           "w-full min-w-0 flex-col border-r border-border bg-bg-subtle/25 md:flex md:w-[400px] md:shrink-0 xl:w-[440px]",
           showListOnMobile ? "flex" : "hidden",
         )}>
-          <div className="flex items-center gap-4 border-b border-border px-4 py-3 text-xs">
+          <div data-testid="webhook-summary" className="flex min-h-20 items-center gap-4 border-b border-border px-4 py-3 text-xs">
             <span><span className="font-semibold tabular-nums">{stats?.total ?? 0}</span> <span className="text-fg-subtle">total</span></span>
             <span className="text-success"><span className="font-semibold tabular-nums">{stats?.succeeded ?? 0}</span> ok</span>
             <span className="text-danger"><span className="font-semibold tabular-nums">{stats?.failed ?? 0}</span> failed</span>
@@ -115,46 +115,49 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
             )}
           </div>
 
-          {live.newEventCount > 0 && (
-            <Button
-              onClick={refreshEvents}
-              variant="outline"
-              size="sm"
-              className="mx-3 mt-3"
-            >
-              <RefreshCw aria-hidden="true" />
-              {live.newEventCount} new {live.newEventCount === 1 ? "event" : "events"} · refresh
-            </Button>
-          )}
-
-          <div className="space-y-2 border-b border-border p-3">
-            <SearchInput value={search} onChange={setSearch} placeholder="Search webhooks…" />
-            <div className="grid grid-cols-2 gap-2">
-            <PulseboardSelect
-              value={statusFilter}
-              onChange={(value) => setStatusFilter(value as StatusFilter)}
-              ariaLabel="Filter by status"
-              className="min-w-0 capitalize"
-              options={[
-                { value: "all", label: "All status" },
-                { value: "success", label: "Success" },
-                { value: "failed", label: "Failed" },
-                { value: "pending", label: "Pending" },
-              ]}
-            />
-            <PulseboardSelect
-              value={sourceFilter ?? "all"}
-              onChange={(value) => setSourceFilter(value === "all" ? null : value)}
-              ariaLabel="Filter by source"
-              className="min-w-0 capitalize"
-              options={[
-                { value: "all", label: "All sources" },
-                ...(sources?.sources ?? []).map((source) => ({
-                  value: source.source,
-                  label: `${source.source} · ${source.count}`,
-                })),
-              ]}
-            />
+          <div data-testid="webhook-controls" className="flex min-h-40 flex-col border-b border-border">
+            <div className="flex h-12 shrink-0 items-center px-3 pt-3">
+              {live.newEventCount > 0 && (
+                <Button
+                  onClick={refreshEvents}
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                >
+                  <RefreshCw aria-hidden="true" />
+                  {live.newEventCount} new {live.newEventCount === 1 ? "event" : "events"} · refresh
+                </Button>
+              )}
+            </div>
+            <div className="flex-1 space-y-2 p-3">
+              <SearchInput value={search} onChange={setSearch} placeholder="Search webhooks…" />
+              <div className="grid grid-cols-2 gap-2">
+                <PulseboardSelect
+                  value={statusFilter}
+                  onChange={(value) => setStatusFilter(value as StatusFilter)}
+                  ariaLabel="Filter by status"
+                  className="min-w-0 capitalize"
+                  options={[
+                    { value: "all", label: "All status" },
+                    { value: "success", label: "Success" },
+                    { value: "failed", label: "Failed" },
+                    { value: "pending", label: "Pending" },
+                  ]}
+                />
+                <PulseboardSelect
+                  value={sourceFilter ?? "all"}
+                  onChange={(value) => setSourceFilter(value === "all" ? null : value)}
+                  ariaLabel="Filter by source"
+                  className="min-w-0 capitalize"
+                  options={[
+                    { value: "all", label: "All sources" },
+                    ...(sources?.sources ?? []).map((source) => ({
+                      value: source.source,
+                      label: `${source.source} · ${source.count}`,
+                    })),
+                  ]}
+                />
+              </div>
             </div>
           </div>
 
