@@ -406,12 +406,12 @@ function BodyView({
         onClick={() => onCopy(body, "body")}
         variant="outline"
         size="xs"
-        className="absolute right-0 top-0 bg-bg"
+        className="absolute right-2 top-2 bg-bg"
         aria-label={copied === "body" ? "Body copied" : "Copy webhook body"}
       >
         {copied === "body" ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
       </Button>
-      <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-bg-muted/40 p-3 font-mono text-xs leading-relaxed">
+      <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-bg-muted/40 p-3 pr-12 font-mono text-xs leading-relaxed">
         {display}
       </pre>
     </div>
