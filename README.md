@@ -35,6 +35,20 @@ http://localhost:4500/hook/your-path
 
 Pulseboard strips `/hook` before forwarding, so `/hook/stripe` is sent to `http://localhost:3000/stripe`.
 
+### Connect a provider
+
+Open **Connect** in the dashboard to generate a setup for Stripe, GitHub, Shopify,
+Vercel, Slack, or a generic HTTP provider. The flow:
+
+- generates the Pulseboard start command for local, Vercel, AWS, Docker, and custom targets;
+- generates Stripe CLI, Cloudflare Tunnel, ngrok, or existing-public-URL instructions;
+- reports signing-secret and forwarding readiness; and
+- sends an inspectable synthetic event through the configured capture and forwarding path.
+
+The synthetic connection test verifies Pulseboard and the configured downstream
+target. Send a real provider event afterward to confirm public reachability and
+provider signature verification.
+
 ## Configuration
 
 | Variable | Default | Purpose |

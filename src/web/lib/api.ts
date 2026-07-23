@@ -156,6 +156,32 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
 export const api = {
   health: () => get<Health>("/api/health"),
 
+  testConnection: async (path: string) => {
+    const normalizedPath = `/${path.trim().replace(/^\/+/, "") || "webhook"}`;
+    const marker = `pulseboard-connection-${Date.now()}`;
+    const res = await fetch(`/hook${normalizedPath}`, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+        "x-pulseboard-connection-test": marker,
+      },
+      body: JSON.stringify({
+        type: "pulseboard.connection_test",
+        marker,
+        sentAt: new Date().toISOString(),
+      }),
+    });
+    const payload = (await res.json()) as { captured?: string };
+    if (!payload.captured) {
+      throw new Error(`Pulseboard returned ${res.status} without a captured request ID`);
+    }
+    return {
+      responseStatus: res.status,
+      webhook: await get<Webhook>(`/api/webhooks/${payload.captured}`),
+    };
+  },
+
   webhooks: (filter: WebhookFilter = {}, limit = 50, before?: number) => {
     const params = new URLSearchParams({ limit: String(limit) });
     if (filter.source) params.set("source", filter.source);

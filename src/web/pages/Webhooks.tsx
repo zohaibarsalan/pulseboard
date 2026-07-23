@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Check, Copy, Inbox, RefreshCw, Trash2, Webhook as WebhookIcon } from "lucide-react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Topbar } from "../components/Topbar.js";
 import { SourceBadge } from "../components/SourceBadge.js";
 import { SignatureBadge } from "../components/SignatureBadge.js";
@@ -399,9 +399,12 @@ function EmptyList({ captureUrl }: { captureUrl?: string }): React.ReactElement 
       <EmptyHeader>
         <EmptyMedia variant="icon"><Inbox /></EmptyMedia>
         <EmptyTitle className="text-base">Capture your first webhook</EmptyTitle>
-        <EmptyDescription>Point a provider at this URL, or copy the test command below.</EmptyDescription>
+        <EmptyDescription>Connect a provider, or copy a test command to capture a sample request.</EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
+        <Button render={<Link href="/connect" />} size="sm">
+          Connect a provider
+        </Button>
         {captureUrl && (
           <code className="break-all rounded bg-muted px-2 py-1 font-mono text-xs text-muted-foreground">
             {captureUrl}/...

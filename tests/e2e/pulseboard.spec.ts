@@ -109,6 +109,36 @@ test("authentication works through a reverse proxy in a real browser", async ({ 
   await context.close();
 });
 
+test("provider onboarding generates setup and verifies the delivery path", async ({ page, request }) => {
+  await page.goto("/connect");
+  await expect(page.getByRole("heading", { name: "Connect", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Connect a webhook provider" })).toBeVisible();
+
+  await page.getByRole("button", { name: "GitHub" }).click();
+  await expect(page.getByLabel("Webhook path")).toHaveValue("/github");
+  await expect(page.getByText("Open repository or organization Settings")).toBeVisible();
+
+  await page.getByRole("combobox", { name: "Handler environment" }).click();
+  await page.getByRole("option", { name: "AWS Lambda / API Gateway" }).click();
+  await expect(page.getByLabel("Forward target")).toHaveValue(
+    "https://abc123.execute-api.us-east-1.amazonaws.com",
+  );
+
+  await page.getByRole("combobox", { name: "Exposure method" }).click();
+  await page.getByRole("option", { name: "Cloudflare Tunnel" }).click();
+  await expect(page.getByText("cloudflared tunnel --url http://localhost:4500")).toBeVisible();
+  await expect(page.getByText("<your-trycloudflare-url>/hook/github")).toBeVisible();
+
+  await page.getByRole("button", { name: "Run connection test" }).click();
+  await expect(page.getByText("Captured by Pulseboard")).toBeVisible();
+  await expect(page.getByText("Handler returned 200")).toBeVisible();
+  await page.getByRole("link", { name: "Inspect test event" }).click();
+  await expect(page).toHaveURL(/\/webhooks\//);
+  await expect(page.getByText('"type": "pulseboard.connection_test"')).toBeVisible();
+
+  await request.post("/api/webhooks/clear");
+});
+
 test("left and right arrows move through the webhook inspector", async ({ page, request }) => {
   await request.post("/hook/keyboard-first", {
     headers: { "content-type": "application/json" },

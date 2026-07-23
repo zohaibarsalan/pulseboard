@@ -33,6 +33,8 @@ Everything after `/hook` is retained as the forwarded path.
 - Downstream status, headers, and bounded response-body inspection per delivery
 - Replay and edited replay
 - Built-in webhook sender with provider presets
+- Provider onboarding with generated local, tunnel, and hosted-target setup
+- Synthetic capture and downstream connection test with inspectable results
 - Signature verification and locally stored signing secrets
 - Source, delivery, latency, and signature analytics
 - Read-only mode, header redaction, optional password protection

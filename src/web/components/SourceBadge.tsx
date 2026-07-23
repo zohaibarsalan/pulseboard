@@ -14,6 +14,7 @@ const SOURCE_STYLES: Record<string, string> = {
   clerk: "bg-[#6c47ff]/15 text-[#6c47ff]",
   vercel: "bg-fg/10 text-fg",
   paddle: "bg-[#ffdd00]/15 text-[#d4a900]",
+  generic: "bg-bg-muted text-fg-muted",
   unknown: "bg-bg-muted text-fg-muted",
 };
 

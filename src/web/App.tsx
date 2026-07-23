@@ -7,6 +7,7 @@ import { WebhooksPage } from "./pages/Webhooks.js";
 import { ComposePage } from "./pages/Compose.js";
 import { AnalyticsPage } from "./pages/Analytics.js";
 import { SettingsPage } from "./pages/Settings.js";
+import { ConnectPage } from "./pages/Connect.js";
 import { PlaceholderPage } from "./pages/Placeholder.js";
 
 export function App(): React.ReactElement {
@@ -39,6 +40,7 @@ export function App(): React.ReactElement {
               {(params) => <WebhooksPage selectedId={params.id} />}
             </Route>
             <Route path="/compose" component={ComposePage} />
+            <Route path="/connect" component={ConnectPage} />
             <Route path="/analytics" component={AnalyticsPage} />
             <Route path="/settings" component={SettingsPage} />
             <Route>
