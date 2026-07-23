@@ -113,7 +113,7 @@ test("authentication works through a reverse proxy in a real browser", async ({ 
 test("provider onboarding generates setup and verifies the delivery path", async ({ page, request }) => {
   await page.goto("/connect");
   await expect(page.getByRole("heading", { name: "Connect", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Connect a webhook provider" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Connect" })).toBeVisible();
 
   await page.getByRole("button", { name: "GitHub" }).click();
   await expect(page.getByLabel("Webhook path")).toHaveValue("/github");
@@ -211,7 +211,7 @@ test("compare two webhooks across body, headers, and delivery", async ({ page, r
   await page.getByRole("button", { name: "Compare", exact: true }).click();
   await expect(page).toHaveURL(/\/compare\?left=/);
   await expect(page.getByRole("link", { name: "Compare", exact: true })).toHaveAttribute("aria-current", "page");
-  await expect(page.getByText("Webhook selector")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Compare" })).toBeVisible();
   await expect(page.getByPlaceholder("Search for Webhook B…")).toBeVisible();
   await page
     .getByTestId("compare-selector-list")

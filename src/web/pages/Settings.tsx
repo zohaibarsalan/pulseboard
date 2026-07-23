@@ -51,17 +51,13 @@ export function SettingsPage(): React.ReactElement {
 
   return (
     <div className="flex h-full flex-col">
-      <Topbar title="Settings" />
+      <Topbar title="Settings" subtitle="Capture endpoints, signing secrets, routing, and local instance details" />
 
       <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
         <div className="mx-auto max-w-5xl space-y-4">
           {error && (
             <Alert variant="error"><AlertDescription>Could not load settings: {error.message}</AlertDescription></Alert>
           )}
-          <div>
-            <h2 className="text-balance text-lg font-medium">Workspace settings</h2>
-            <p className="text-pretty text-sm text-muted-foreground">Capture endpoints, signing secrets, routing, and local instance details.</p>
-          </div>
           <Card className="overflow-hidden">
           {/* Capture URL */}
           <Section title="Capture URL" icon={Server}>

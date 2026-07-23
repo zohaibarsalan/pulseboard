@@ -89,13 +89,7 @@ export function ComparePage(): React.ReactElement {
 
       <div className="flex min-h-0 flex-1 flex-col xl:flex-row">
         <aside className="flex max-h-[48%] min-h-0 w-full shrink-0 flex-col border-b bg-bg-subtle/20 xl:max-h-none xl:w-[420px] xl:border-b-0 xl:border-r">
-          <div className="flex shrink-0 flex-col gap-3 border-b p-4 xl:h-44">
-            <div>
-              <h2 className="text-balance text-sm font-medium">Webhook selector</h2>
-              <p className="mt-1 text-pretty text-xs text-muted-foreground">
-                Choose a slot, then select a webhook from the list.
-              </p>
-            </div>
+          <div className="flex shrink-0 flex-col justify-center border-b p-4 xl:h-28">
             <div className="grid grid-cols-2 gap-3">
               <SelectionSlot
                 label="Webhook A"
@@ -256,7 +250,7 @@ function ComparisonSummary({
   later: Webhook;
 }): React.ReactElement {
   return (
-    <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch border-b bg-bg-subtle/15 xl:h-44">
+    <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch border-b bg-bg-subtle/15 xl:h-28">
       <SummaryWebhook label="Earlier" webhook={earlier} />
       <div className="flex items-center border-x px-4 text-muted-foreground">
         <ArrowRight className="size-4" aria-hidden="true" />

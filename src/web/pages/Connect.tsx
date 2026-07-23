@@ -115,13 +115,6 @@ export function ConnectPage(): React.ReactElement {
       <Topbar title="Connect" subtitle="Set up a provider and verify the delivery path" />
       <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
         <div className="mx-auto flex max-w-6xl flex-col gap-5">
-          <div>
-            <h2 className="text-balance text-xl font-semibold">Connect a webhook provider</h2>
-            <p className="mt-1 max-w-2xl text-pretty text-sm text-muted-foreground">
-              Choose where events come from, where your handler runs, and how the provider reaches Pulseboard.
-            </p>
-          </div>
-
           <Card>
             <CardHeader className="border-b">
               <CardTitle className="text-base">1. Provider</CardTitle>
