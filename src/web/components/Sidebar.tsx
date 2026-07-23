@@ -21,18 +21,18 @@ export function Sidebar(): React.ReactElement {
 
   return (
     <>
-    <aside className="hidden w-56 shrink-0 flex-col border-r border-border bg-bg-subtle md:flex">
-      <div className="flex h-14 items-center gap-2 px-3">
-        <div className="flex h-5 w-5 items-center justify-center rounded-md bg-fg text-bg">
-          <Webhook className="h-3 w-3" />
+    <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-bg-subtle md:flex">
+      <div className="flex h-16 items-center gap-2.5 px-4">
+        <div className="flex size-7 items-center justify-center rounded-md bg-fg text-bg">
+          <Webhook className="size-4" />
         </div>
-        <span className="text-xs font-semibold tracking-tight">Pulseboard</span>
-        <span className="ml-auto rounded border border-border px-1 font-mono text-[10px] leading-4 text-fg-subtle">
+        <span className="text-sm font-semibold">Pulseboard</span>
+        <span className="ml-auto rounded border border-border px-1.5 font-mono text-[11px] leading-5 text-fg-subtle">
           {health?.version ?? "0.1"}
         </span>
       </div>
 
-      <nav className="flex-1 space-y-px px-2 pt-2">
+      <nav className="flex-1 space-y-1 px-3 pt-2">
         {items.map((item) => {
           const isActive = item.match ? item.match(location) : location.startsWith(item.href);
           const Icon = item.icon;
@@ -41,21 +41,21 @@ export function Sidebar(): React.ReactElement {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-fg-muted transition-colors hover:bg-bg-muted hover:text-fg",
+                "flex h-9 items-center gap-3 rounded-md px-3 text-sm text-fg-muted transition-colors hover:bg-bg-muted hover:text-fg",
                 isActive && "bg-bg-muted text-fg",
               )}
             >
-              <Icon className="h-3.5 w-3.5 shrink-0 stroke-[1.75]" />
+              <Icon className="size-4 shrink-0 stroke-[1.75]" />
               <span>{item.label}</span>
             </Link>
           );
         })}
       </nav>
 
-      <div className="border-t border-border p-2.5">
+      <div className="border-t border-border p-3">
         <ForwardInfo forwardTo={health?.forwardTargets[0] ?? null} count={health?.forwardTargets.length ?? 0} />
-        <div className="mt-2 flex items-center justify-between px-1">
-          <span className="text-[10px] uppercase tracking-wider text-fg-subtle">Theme</span>
+        <div className="mt-3 flex items-center justify-between px-1">
+          <span className="text-xs text-fg-subtle">Theme</span>
           <ThemeToggle />
         </div>
       </div>
@@ -85,14 +85,14 @@ export function Sidebar(): React.ReactElement {
 
 function ForwardInfo({ forwardTo, count }: { forwardTo: string | null; count: number }): React.ReactElement {
   return (
-    <div className="flex items-start gap-1.5 rounded-md px-1 py-1">
-      <ArrowRight className="mt-0.5 h-3 w-3 shrink-0 stroke-[1.75] text-fg-subtle" />
+    <div className="flex items-start gap-2 rounded-md px-1 py-1.5">
+      <ArrowRight className="mt-0.5 size-4 shrink-0 stroke-[1.75] text-fg-subtle" />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] font-medium uppercase tracking-wider text-fg-subtle">Forwarding</span>
-          <span className={cn("size-1 rounded-full", forwardTo ? "bg-success" : "bg-fg-subtle")} />
+          <span className="text-xs font-medium text-fg-subtle">Forwarding</span>
+          <span className={cn("size-1.5 rounded-full", forwardTo ? "bg-success" : "bg-fg-subtle")} />
         </div>
-        <div className="truncate font-mono text-[11px] text-fg-muted">
+        <div className="mt-0.5 truncate font-mono text-xs text-fg-muted">
           {forwardTo ? `${forwardTo}${count > 1 ? ` +${count - 1}` : ""}` : "capture-only"}
         </div>
       </div>
@@ -115,10 +115,10 @@ function ThemeToggle(): React.ReactElement {
       onClick={toggle}
       variant="ghost"
       size="icon"
-      className="h-5 w-5"
+      className="size-8"
       aria-label="Toggle theme"
     >
-      {isDark ? <Sun className="h-3 w-3 stroke-[1.75]" /> : <Moon className="h-3 w-3 stroke-[1.75]" />}
+      {isDark ? <Sun className="size-4 stroke-[1.75]" /> : <Moon className="size-4 stroke-[1.75]" />}
     </Button>
   );
 }
