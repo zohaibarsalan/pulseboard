@@ -46,10 +46,10 @@ Building **v0.1**.
 | Component | Status | Notes |
 |---|---|---|
 | CLI (`pulseboard --forward <url>`) | done | commander; `--port`, `--forward`, `--forward-timeout`, `--readonly`, `--db` |
-| Config loader (CLI + env) | done | zod-validated; `PULSEBOARD_*` env vars, with `WEBHOOK_STUDIO_*` fallback compatibility |
+| Config loader (CLI + env) | done | zod-validated defaults, multi-target fan-out, source/path routing, and custom-target allowlist |
 | Drizzle schema + WAL SQLite | done | Single `webhooks` table; indexes on received_at, source, path |
 | Capture route (`/hook/*`) | done | `server/routes/capture.ts` — catch-all, stores raw body, detects source, forwards, publishes to bus |
-| Forwarder | done | `capture/forwarder.ts` — preserves raw bytes, strips hop-by-hop headers, records status/duration/error |
+| Forwarder | done | Preserves raw bytes, fans out concurrently, records bounded responses, and never follows redirects |
 | Source detector | done | `capture/detector.ts` — Stripe/GitHub/Shopify/Twilio/Slack/Discord/Linear/Polar/Clerk/Vercel/Paddle + unknown fallback |
 | API routes | done | `server/routes/webhooks.ts` — list (filters + cursor), get, sources, stats, replay, clear |
 | SSE live feed | done | `server/routes/live.ts` — `/api/live`, hello + 15s heartbeat, publishes every captured/replayed webhook |
@@ -57,10 +57,10 @@ Building **v0.1**.
 | Health route | done | `/api/health` — status, forwardTo, captureUrl, lastCapturedAt, readonly |
 | Web shell (sidebar + topbar + Cmd+K) | done | Reused from Pulseboard; nav trimmed to Webhooks + Settings |
 | Webhooks page | done | Split-pane: filterable live list (left) + inspect detail (right). Status + source filters, search, clear |
-| Webhook detail | done | `components/WebhookDetail.tsx` — Body/Headers/Forwarding tabs, replay, copy-as-cURL |
+| Webhook detail | done | Body/Headers/Forwarding tabs, replay/edit, copy-as-cURL, and per-target response inspection |
 | Settings page | done | Capture URL (copyable), forwarding target, system status, read-only mode |
 | Dockerfile + compose example | done | Node 20 slim; `PULSEBOARD_*` env; port 4500 |
-| Production build | done | `pnpm build` → `dist/cli.js` + `dist/web/` |
+| Release verification | done | Unit/integration, browser E2E, audit, installed npm package, and built Docker image gates |
 
 ---
 
@@ -96,6 +96,9 @@ pnpm build
 pnpm start            # = node dist/cli.js
 
 pnpm typecheck        # server + web tsconfigs
+pnpm test             # unit and server integration tests
+pnpm test:e2e         # browser workflows and reverse-proxy auth
+pnpm release:check    # all gates, including npm and Docker artifacts
 pnpm db:generate      # regenerate Drizzle migrations after schema changes
 ```
 

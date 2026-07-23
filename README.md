@@ -42,6 +42,9 @@ Pulseboard strips `/hook` before forwarding, so `/hook/stripe` is sent to `http:
 | `PULSEBOARD_HOST` | `127.0.0.1` | Bind host |
 | `PULSEBOARD_PORT` | `4500` | Bind port |
 | `PULSEBOARD_FORWARD` | — | Default forwarding target |
+| `PULSEBOARD_FORWARD_TARGETS` | — | Comma-separated default targets; each capture is sent to all of them |
+| `PULSEBOARD_ROUTING_RULES` | `[]` | JSON routing rules matched by `source` and/or `pathPrefix` |
+| `PULSEBOARD_ALLOWED_FORWARD_HOSTS` | — | Hostnames allowed for custom Compose/replay targets |
 | `PULSEBOARD_FORWARD_TIMEOUT_MS` | `30000` | Forward timeout |
 | `PULSEBOARD_DB_PATH` | `~/.pulseboard/pulseboard.db` | SQLite path |
 | `PULSEBOARD_READONLY` | `false` | Disable sends, replays, clears, and secret changes |
@@ -52,12 +55,30 @@ Pulseboard strips `/hook` before forwarding, so `/hook/stripe` is sent to `http:
 
 The `/hook/*` capture endpoint remains unauthenticated when password protection is enabled so providers can deliver webhooks.
 
+### Routing and forwarding safety
+
+Route selected webhooks to one or more services:
+
+```bash
+PULSEBOARD_FORWARD_TARGETS=http://localhost:3000,http://localhost:4000 \
+PULSEBOARD_ROUTING_RULES='[{"source":"stripe","targets":["http://localhost:3000"]},{"pathPrefix":"/audit","targets":["http://localhost:4000"]}]' \
+npx pulseboard
+```
+
+All matching rules are combined and de-duplicated. If no rule matches, the default targets are used. Custom targets entered in Compose or replay must use HTTP(S) and match a configured target origin or a hostname in `PULSEBOARD_ALLOWED_FORWARD_HOSTS`. Redirects are not followed, so an approved endpoint cannot redirect a server-side request to an unapproved host.
+
+Pulseboard records each delivery's target, status, duration, error, response headers, and the first 64 KB of its response body. Configured sensitive header names are redacted from dashboard/API responses.
+
 ## Commands
 
 ```bash
 pnpm typecheck
 pnpm test
+pnpm test:e2e
 pnpm build
+pnpm smoke:package
+pnpm smoke:docker
+pnpm release:check
 pnpm start
 ```
 
@@ -65,4 +86,4 @@ pnpm start
 
 An example is available at `docker/docker-compose.example.yml`.
 
-Pulseboard is currently pre-release software. Keep the dashboard bound to localhost unless authentication is configured and the surrounding network is trusted.
+Keep the dashboard bound to localhost unless authentication is configured and the surrounding network is trusted.

@@ -10,6 +10,9 @@ services:
       PULSEBOARD_DB_PATH: /data/pulseboard.db
       # Forward captured webhooks to your app (use the compose service name):
       PULSEBOARD_FORWARD: http://your-app:3000
+      # PULSEBOARD_FORWARD_TARGETS: http://your-app:3000,http://audit-app:3000
+      # PULSEBOARD_ROUTING_RULES: '[{"source":"stripe","targets":["http://billing-app:3000"]}]'
+      # PULSEBOARD_ALLOWED_FORWARD_HOSTS: your-app,billing-app
       # PULSEBOARD_READONLY: "true"
       # PULSEBOARD_AUTH_PASSWORD: changeme
     volumes:

@@ -25,15 +25,18 @@ Everything after `/hook` is retained as the forwarded path.
 ## v0.1 scope
 
 - Exact-byte request capture and forwarding
+- Multi-target fan-out and source/path-prefix routing
 - SQLite-backed, retention-limited history
 - Live event feed over server-sent events
 - Search and filters with cursor pagination
 - Body, header, forwarding, and signature inspection
+- Downstream status, headers, and bounded response-body inspection per delivery
 - Replay and edited replay
 - Built-in webhook sender with provider presets
 - Signature verification and locally stored signing secrets
 - Source, delivery, latency, and signature analytics
 - Read-only mode, header redaction, optional password protection
+- Allowlisted custom forwarding targets with redirects disabled
 - npm and Docker distribution
 
 ## Product principles
@@ -59,5 +62,8 @@ Everything after `/hook` is retained as the forwarded path.
 - Sensitive configured headers are redacted from UI/API/SSE responses
 - Retention and database-size limits are enforced
 - Password protection covers dashboard and API while leaving `/hook/*` available
+- Custom targets cannot reach unconfigured hosts or escape the allowlist through redirects
 - Desktop and narrow-screen capture, inspection, compose, analytics, and settings flows are usable
+- Browser E2E covers capture, inspect, edit, replay, clear, reverse-proxy auth, dark mode, narrow desktop, and large payloads
 - npm package and Docker image pass smoke tests
+- Production dependency audit has no known vulnerabilities

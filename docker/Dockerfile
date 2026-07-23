@@ -15,7 +15,7 @@ WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-    pnpm install --frozen-lockfile
+    pnpm install --frozen-lockfile --ignore-scripts
 
 COPY tsconfig.json tsconfig.build.json tsconfig.web.json ./
 COPY vite.config.ts tailwind.config.ts postcss.config.js drizzle.config.ts ./
@@ -23,10 +23,12 @@ COPY src ./src
 
 RUN pnpm build
 
-# Strip dev deps for a smaller runtime install
+# Strip dev deps for a smaller runtime install. Compile against this image's
+# glibc instead of copying a prebuild that may require a newer runtime.
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     pnpm install --frozen-lockfile --prod --ignore-scripts \
-    && pnpm rebuild better-sqlite3
+    && pnpm --dir node_modules/better-sqlite3 run build-release \
+    && rm -rf node_modules/better-sqlite3/prebuilds
 
 # ---------- runtime ----------
 FROM node:20-bookworm-slim AS runtime
