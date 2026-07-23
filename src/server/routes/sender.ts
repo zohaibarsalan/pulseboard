@@ -24,11 +24,11 @@ export async function senderRoutes(app: FastifyInstance, ctx: AppContext): Promi
   app.post("/api/sender/send", async (req, reply) => {
     if (ctx.config.readonly) return reply.code(403).send({ error: "readonly" });
 
-    // Body comes in as a raw string (global content-type parser).
+    // Body comes in as a Buffer (global content-type parser).
     let input: SendBody = {};
-    if (typeof req.body === "string" && req.body.length > 0) {
+    if (Buffer.isBuffer(req.body) && req.body.length > 0) {
       try {
-        input = JSON.parse(req.body) as SendBody;
+        input = JSON.parse(req.body.toString("utf8")) as SendBody;
       } catch {
         return reply.code(400).send({ error: "invalid_json_body" });
       }
@@ -96,6 +96,7 @@ export async function senderRoutes(app: FastifyInstance, ctx: AppContext): Promi
       path,
       headersJson: JSON.stringify(headers),
       body,
+      bodyBase64: Buffer.from(body).toString("base64"),
       queryParams: null,
       contentType: headers["content-type"] ?? null,
       contentLength: Buffer.byteLength(body),

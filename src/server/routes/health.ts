@@ -1,5 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { AppContext } from "../context.js";
+import { databaseSizeBytes } from "../../db/maintenance.js";
+import { redactUrl } from "../serialize.js";
 
 export async function healthRoute(app: FastifyInstance, ctx: AppContext): Promise<void> {
   app.get("/api/health", async () => {
@@ -8,11 +10,15 @@ export async function healthRoute(app: FastifyInstance, ctx: AppContext): Promis
     return {
       status: sqliteOk ? "ok" : "degraded",
       sqlite: sqliteOk ? "open" : "closed",
-      forwardTo: ctx.config.forwardTo ?? null,
+      forwardTo: redactUrl(ctx.config.forwardTo),
       captureUrl: `http://${ctx.config.host}:${ctx.config.port}/hook`,
       uptimeSeconds: Math.round((Date.now() - ctx.startedAt) / 1000),
       lastCapturedAt: ctx.lastCapturedAt.value,
       readonly: ctx.config.readonly,
+      retentionDays: ctx.config.retentionDays,
+      maxDbSizeMb: ctx.config.maxDbSizeMb,
+      dbSizeBytes: databaseSizeBytes(ctx.db),
+      authEnabled: Boolean(ctx.config.authPassword),
       version: "0.1.0-pre",
     };
   });

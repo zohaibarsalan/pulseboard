@@ -3,7 +3,7 @@ import { nanoid } from "nanoid";
 import type { AppContext } from "../context.js";
 import { webhooks, type NewWebhook, type Webhook } from "../../db/schema.js";
 import { forwardWebhook } from "../../capture/forwarder.js";
-import { rowToWebhook } from "../serialize.js";
+import { rowToWebhook, webhookForClient } from "../serialize.js";
 
 type ListQuery = {
   source?: string;
@@ -48,7 +48,8 @@ export async function webhooksRoutes(app: FastifyInstance, ctx: AppContext): Pro
       .prepare(`SELECT * FROM webhooks ${where} ORDER BY received_at DESC LIMIT ?`)
       .all(...params, limit) as Record<string, unknown>[];
 
-    const mapped = rows.map(rowToWebhook);
+    const mappedInternal = rows.map(rowToWebhook);
+    const mapped = mappedInternal.map((webhook) => webhookForClient(webhook, ctx.config.redactHeaders));
     const nextBefore = mapped.length === limit ? mapped[mapped.length - 1]?.receivedAt ?? null : null;
 
     return { webhooks: mapped, nextBefore };
@@ -87,11 +88,11 @@ export async function webhooksRoutes(app: FastifyInstance, ctx: AppContext): Pro
       .prepare("SELECT * FROM webhooks WHERE id = ?")
       .get(req.params.id) as Record<string, unknown> | undefined;
     if (!row) return reply.code(404).send({ error: "not_found" });
-    return rowToWebhook(row);
+    return webhookForClient(rowToWebhook(row), ctx.config.redactHeaders);
   });
 
   // Replay: re-forward a stored webhook to the configured target (or an override).
-  // Body is delivered as a raw string (global raw-body parser), so parse it here.
+  // Body is delivered as a Buffer (global raw-body parser), so parse it here.
   app.post<{ Params: { id: string } }>(
     "/api/webhooks/:id/replay",
     async (req, reply) => {
@@ -111,9 +112,9 @@ export async function webhooksRoutes(app: FastifyInstance, ctx: AppContext): Pro
       let overrideTarget: string | undefined;
       let overrideBody: string | undefined;
       let overrideHeaders: Record<string, string> | undefined;
-      if (typeof req.body === "string" && req.body.length > 0) {
+      if (Buffer.isBuffer(req.body) && req.body.length > 0) {
         try {
-          const parsed = JSON.parse(req.body) as {
+          const parsed = JSON.parse(req.body.toString("utf8")) as {
             forwardTo?: string;
             body?: string;
             headers?: Record<string, string>;
@@ -131,10 +132,17 @@ export async function webhooksRoutes(app: FastifyInstance, ctx: AppContext): Pro
       }
 
       const originalHeaders = JSON.parse(original.headersJson) as Record<string, string>;
-      const headers = overrideHeaders
-        ? { ...originalHeaders, ...overrideHeaders }
+      const safeOverrideHeaders = overrideHeaders
+        ? Object.fromEntries(Object.entries(overrideHeaders).filter(([, value]) => value !== "••••••••"))
+        : undefined;
+      const headers = safeOverrideHeaders
+        ? { ...originalHeaders, ...safeOverrideHeaders }
         : originalHeaders;
-      const body = overrideBody !== undefined ? overrideBody : original.body;
+      const body = overrideBody !== undefined
+        ? overrideBody
+        : original.bodyBase64
+          ? Buffer.from(original.bodyBase64, "base64")
+          : original.body;
       const wasEdited = overrideBody !== undefined || overrideHeaders !== undefined;
 
       const result = await forwardWebhook({
@@ -156,7 +164,8 @@ export async function webhooksRoutes(app: FastifyInstance, ctx: AppContext): Pro
         method: original.method,
         path: original.path,
         headersJson: JSON.stringify(headers),
-        body,
+        body: typeof body === "string" ? body : body?.toString("utf8") ?? null,
+        bodyBase64: body == null ? null : Buffer.from(body).toString("base64"),
         queryParams: original.queryParams,
         contentType: headers["content-type"] ?? original.contentType,
         contentLength: body ? Buffer.byteLength(body) : 0,

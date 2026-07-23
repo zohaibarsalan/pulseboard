@@ -24,7 +24,8 @@ function normalizeHeaders(raw: FastifyRequest["headers"]): Record<string, string
 export async function captureRoute(app: FastifyInstance, ctx: AppContext): Promise<void> {
   app.all(`${HOOK_PREFIX}/*`, async (req, reply) => {
     const headers = normalizeHeaders(req.headers);
-    const rawBody = typeof req.body === "string" ? req.body : null;
+    const rawBody = Buffer.isBuffer(req.body) ? req.body : null;
+    const bodyPreview = rawBody ? rawBody.toString("utf8") : null;
 
     // Strip the /hook prefix so the recorded path matches what the user's app expects.
     const fullPath = req.url.split("?")[0] ?? req.url;
@@ -32,7 +33,7 @@ export async function captureRoute(app: FastifyInstance, ctx: AppContext): Promi
     const queryIndex = req.url.indexOf("?");
     const queryParams = queryIndex >= 0 ? req.url.slice(queryIndex + 1) : null;
 
-    const detected = detectSource(headers, rawBody);
+    const detected = detectSource(headers, bodyPreview);
 
     // Look up the signing secret (if any) for this source and verify.
     const secretRow = ctx.db.$client
@@ -52,10 +53,11 @@ export async function captureRoute(app: FastifyInstance, ctx: AppContext): Promi
       method: req.method,
       path,
       headersJson: JSON.stringify(headers),
-      body: rawBody,
+      body: bodyPreview,
+      bodyBase64: rawBody?.toString("base64") ?? null,
       queryParams,
       contentType: headers["content-type"] ?? null,
-      contentLength: rawBody ? Buffer.byteLength(rawBody) : 0,
+      contentLength: rawBody?.byteLength ?? 0,
       sourceIp: req.ip,
       receivedAt: now,
       source: detected.source,

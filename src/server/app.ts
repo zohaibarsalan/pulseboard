@@ -5,7 +5,9 @@ import Fastify, { type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
 import proxy from "@fastify/http-proxy";
 import staticPlugin from "@fastify/static";
+import { timingSafeEqual } from "node:crypto";
 import type { AppContext } from "./context.js";
+import { maintainDatabase } from "../db/maintenance.js";
 import { healthRoute } from "./routes/health.js";
 import { webhooksRoutes } from "./routes/webhooks.js";
 import { liveRoute } from "./routes/live.js";
@@ -28,15 +30,47 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
     disableRequestLogging: false,
   });
 
-  // Capture the raw body for EVERY content type as an unparsed string. This is
+  // Capture the raw body for EVERY content type as an unparsed Buffer. This is
   // essential: webhook signatures are HMACs of the exact raw bytes, so we must
   // never re-serialize. Remove Fastify's built-in JSON/text parsers first so the
-  // wildcard parser claims every content type. Our /api routes carry no request
-  // bodies (GET + param-only POST), so a global raw parser is safe.
+  // wildcard parser claims every content type. JSON API routes parse their
+  // Buffer bodies explicitly.
   app.removeAllContentTypeParsers();
-  app.addContentTypeParser("*", { parseAs: "string" }, (_req, body, done) => {
+  app.addContentTypeParser("*", { parseAs: "buffer" }, (_req, body, done) => {
     done(null, body);
   });
+
+  app.addHook("onRequest", async (req, reply) => {
+    if (!ctx.config.authPassword || req.url.startsWith("/hook/")) return;
+    const raw = req.headers.authorization;
+    const expected = `pulseboard:${ctx.config.authPassword}`;
+    let supplied = "";
+    if (raw?.startsWith("Basic ")) {
+      try {
+        supplied = Buffer.from(raw.slice(6), "base64").toString("utf8");
+      } catch {
+        supplied = "";
+      }
+    }
+    const suppliedBuffer = Buffer.from(supplied);
+    const expectedBuffer = Buffer.from(expected);
+    const valid =
+      suppliedBuffer.length === expectedBuffer.length &&
+      timingSafeEqual(suppliedBuffer, expectedBuffer);
+    if (!valid) {
+      return reply
+        .header("WWW-Authenticate", 'Basic realm="Pulseboard", charset="UTF-8"')
+        .code(401)
+        .send({ error: "authentication_required" });
+    }
+  });
+
+  maintainDatabase(ctx.db, ctx.config);
+  const maintenanceTimer = setInterval(() => {
+    maintainDatabase(ctx.db, ctx.config);
+  }, 60 * 60 * 1000);
+  maintenanceTimer.unref();
+  app.addHook("onClose", async () => clearInterval(maintenanceTimer));
 
   const devProxyTarget = process.env.PULSEBOARD_DEV_PROXY ?? process.env.WEBHOOK_STUDIO_DEV_PROXY;
 

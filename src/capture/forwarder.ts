@@ -27,7 +27,7 @@ export async function forwardWebhook(opts: {
   queryParams: string | null;
   headers: Record<string, string>;
   /** The exact raw body bytes as received — never re-serialized. */
-  body: string | null;
+  body: string | Buffer | null;
   timeoutMs: number;
 }): Promise<ForwardResult> {
   const start = Date.now();

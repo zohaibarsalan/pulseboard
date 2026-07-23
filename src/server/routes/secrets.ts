@@ -34,7 +34,7 @@ export async function secretsRoutes(app: FastifyInstance, ctx: AppContext): Prom
   });
 
   // Upsert a secret for a source. Body is the raw secret string (parsed manually
-  // because the global content-type parser delivers raw strings).
+  // because the global content-type parser delivers Buffers).
   app.post<{ Params: { source: string } }>(
     "/api/secrets/:source",
     async (req, reply) => {
@@ -44,9 +44,9 @@ export async function secretsRoutes(app: FastifyInstance, ctx: AppContext): Prom
       }
 
       let secret: string | undefined;
-      if (typeof req.body === "string" && req.body.length > 0) {
+      if (Buffer.isBuffer(req.body) && req.body.length > 0) {
         try {
-          secret = (JSON.parse(req.body) as { secret?: string }).secret;
+          secret = (JSON.parse(req.body.toString("utf8")) as { secret?: string }).secret;
         } catch {
           // ignore — secret stays undefined
         }

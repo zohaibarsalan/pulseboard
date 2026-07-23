@@ -1,0 +1,1 @@
+ALTER TABLE `webhooks` ADD `body_base64` text;

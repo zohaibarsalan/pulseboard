@@ -14,7 +14,8 @@ export type SignatureResult = {
 
 // A Verifier returns valid/invalid given the headers, body, and a secret.
 // It can also return unverifiable with notes if the input shape is wrong.
-type Verifier = (headers: Record<string, string>, body: string, secret: string) => SignatureResult;
+type WebhookBody = string | Buffer;
+type Verifier = (headers: Record<string, string>, body: WebhookBody, secret: string) => SignatureResult;
 
 function safeEqualString(a: string, b: string): boolean {
   // Length mismatch always fails — timingSafeEqual requires equal-length buffers.
@@ -26,11 +27,11 @@ function safeEqualString(a: string, b: string): boolean {
   }
 }
 
-function hmacHex(secret: string, body: string, algo: "sha256" | "sha1" = "sha256"): string {
+function hmacHex(secret: string, body: WebhookBody, algo: "sha256" | "sha1" = "sha256"): string {
   return createHmac(algo, secret).update(body).digest("hex");
 }
 
-function hmacBase64(secret: string, body: string, algo: "sha256" | "sha1" = "sha256"): string {
+function hmacBase64(secret: string, body: WebhookBody, algo: "sha256" | "sha1" = "sha256"): string {
   return createHmac(algo, secret).update(body).digest("base64");
 }
 
@@ -50,7 +51,11 @@ const stripe: Verifier = (headers, body, secret) => {
   const v1 = parts.v1;
   if (!timestamp || !v1) return { status: "unverifiable", notes: "Malformed stripe-signature" };
 
-  const expected = hmacHex(secret, `${timestamp}.${body}`);
+  const expected = createHmac("sha256", secret)
+    .update(timestamp)
+    .update(".")
+    .update(body)
+    .digest("hex");
   return safeEqualString(expected, v1)
     ? { status: "valid" }
     : { status: "invalid", notes: "Computed HMAC does not match v1" };
@@ -86,7 +91,7 @@ const slack: Verifier = (headers, body, secret) => {
   const ts = headers["x-slack-request-timestamp"];
   if (!sig || !ts) return { status: "unverifiable", notes: "Missing slack signature headers" };
   if (!sig.startsWith("v0=")) return { status: "unverifiable", notes: "Expected v0= prefix" };
-  const expected = `v0=${hmacHex(secret, `v0:${ts}:${body}`)}`;
+  const expected = `v0=${createHmac("sha256", secret).update(`v0:${ts}:`).update(body).digest("hex")}`;
   return safeEqualString(expected, sig)
     ? { status: "valid" }
     : { status: "invalid", notes: "Computed HMAC does not match signature" };
@@ -104,7 +109,7 @@ const svix: Verifier = (headers, body, secret) => {
     return { status: "unverifiable", notes: "Missing svix-id, svix-timestamp, or svix-signature" };
   }
   const rawSecret = secret.startsWith("whsec_") ? Buffer.from(secret.slice(6), "base64") : Buffer.from(secret);
-  const expected = createHmac("sha256", rawSecret).update(`${id}.${ts}.${body}`).digest("base64");
+  const expected = createHmac("sha256", rawSecret).update(`${id}.${ts}.`).update(body).digest("base64");
   const candidates = sig.split(" ").map((s) => s.replace(/^v1,/, ""));
   const matched = candidates.some((c) => safeEqualString(c, expected));
   return matched
@@ -143,7 +148,7 @@ const paddle: Verifier = (headers, body, secret) => {
     }),
   );
   if (!parts.ts || !parts.h1) return { status: "unverifiable", notes: "Malformed paddle-signature" };
-  const expected = hmacHex(secret, `${parts.ts}:${body}`);
+  const expected = createHmac("sha256", secret).update(`${parts.ts}:`).update(body).digest("hex");
   return safeEqualString(expected, parts.h1)
     ? { status: "valid" }
     : { status: "invalid", notes: "Computed HMAC does not match h1" };
@@ -172,7 +177,7 @@ export const SUPPORTED_SOURCES = Object.keys(VERIFIERS);
 export function verifySignature(opts: {
   source: string;
   headers: Record<string, string>;
-  body: string | null;
+  body: string | Buffer | null;
   secret: string | null;
 }): SignatureResult {
   // Unknown sources never get a verification attempt.

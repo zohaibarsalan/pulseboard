@@ -11,6 +11,9 @@ export const webhooks = sqliteTable(
     path: text("path").notNull(),
     headersJson: text("headers_json").notNull(),
     body: text("body"),
+    // Exact request bytes, base64 encoded. `body` remains a UTF-8 preview for
+    // display/search while forwarding and signature verification use this.
+    bodyBase64: text("body_base64"),
     queryParams: text("query_params"),
     contentType: text("content_type"),
     contentLength: integer("content_length"),

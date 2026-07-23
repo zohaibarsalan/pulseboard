@@ -12,6 +12,7 @@ export function rowToWebhook(row: Row): Webhook {
     path: row.path as string,
     headersJson: row.headers_json as string,
     body: (row.body as string | null) ?? null,
+    bodyBase64: (row.body_base64 as string | null) ?? null,
     queryParams: (row.query_params as string | null) ?? null,
     contentType: (row.content_type as string | null) ?? null,
     contentLength: (row.content_length as number | null) ?? null,
@@ -29,4 +30,34 @@ export function rowToWebhook(row: Row): Webhook {
     signatureStatus: row.signature_status as string,
     signatureNotes: (row.signature_notes as string | null) ?? null,
   };
+}
+
+export function webhookForClient(webhook: Webhook, redactedHeaderTokens: string[]): Omit<Webhook, "bodyBase64"> {
+  const headers = JSON.parse(webhook.headersJson) as Record<string, string>;
+  const loweredTokens = redactedHeaderTokens.map((token) => token.toLowerCase());
+  for (const key of Object.keys(headers)) {
+    const loweredKey = key.toLowerCase();
+    if (loweredTokens.some((token) => loweredKey.includes(token))) {
+      headers[key] = "••••••••";
+    }
+  }
+  const { bodyBase64: _bodyBase64, ...clientWebhook } = webhook;
+  return {
+    ...clientWebhook,
+    headersJson: JSON.stringify(headers),
+    forwardedTo: redactUrl(clientWebhook.forwardedTo),
+  };
+}
+
+export function redactUrl(value: string | null | undefined): string | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    if (url.username) url.username = "redacted";
+    if (url.password) url.password = "redacted";
+    for (const key of url.searchParams.keys()) url.searchParams.set(key, "redacted");
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return value;
+  }
 }
