@@ -73,6 +73,7 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
   const clearMutation = useMutation({
     mutationFn: () => api.clear(),
     onSuccess: () => {
+      setClearOpen(false);
       navigate("/");
       void queryClient.invalidateQueries({ queryKey: ["webhooks"] });
       void queryClient.invalidateQueries({ queryKey: ["webhook-stats"] });

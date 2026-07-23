@@ -32,6 +32,7 @@ test("capture, inspect response, edit, replay, and clear", async ({ page, reques
   await page.getByRole("button", { name: "Clear all webhooks" }).click();
   await expect(page.getByRole("alertdialog")).toBeVisible();
   await page.getByRole("button", { name: "Clear all", exact: true }).click();
+  await expect(page.getByRole("alertdialog")).toBeHidden();
   await expect(page.getByText("Capture your first webhook")).toBeVisible();
 });
 
