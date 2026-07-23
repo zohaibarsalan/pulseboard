@@ -487,7 +487,7 @@ function BreakdownList({
         <div className="px-4 py-8 text-center text-sm text-fg-subtle">No data</div>
       ) : (
         <ul className="divide-y divide-border">
-          {items.map((item, index) => {
+          {items.map((item) => {
             const failedPct = item.total > 0 ? (item.failed / item.total) * 100 : 0;
             const isCurrent = currentKey === item.key;
             const volumePct = (item.total / maxTotal) * 100;
@@ -509,9 +509,7 @@ function BreakdownList({
             return (
               <li key={item.key}>
                 <Wrapper>
-                  <div className="grid w-full grid-cols-[1.5rem_minmax(0,1fr)] items-center gap-3">
-                    <span className="text-xs tabular-nums text-fg-subtle">{index + 1}</span>
-                    <div className="min-w-0">
+                  <div className="w-full min-w-0">
                       <div className="flex min-w-0 flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-5">
                         <div className="flex min-w-0 items-center">{renderKey(item.key)}</div>
                         <div className="flex shrink-0 items-center gap-4 sm:gap-5">
@@ -538,7 +536,6 @@ function BreakdownList({
                       <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
                         <div className="h-full rounded-full bg-foreground/25" style={{ width: `${volumePct}%` }} />
                       </div>
-                    </div>
                   </div>
                 </Wrapper>
               </li>
