@@ -210,6 +210,7 @@ test("compare two webhooks across body, headers, and delivery", async ({ page, r
   await page.getByTestId("webhook-row").first().click();
   await page.getByRole("button", { name: "Compare", exact: true }).click();
   await expect(page).toHaveURL(/\/compare\?left=/);
+  await expect(page.getByRole("link", { name: "Compare", exact: true })).toHaveAttribute("aria-current", "page");
   await expect(page.getByText("Webhook selector")).toBeVisible();
   await expect(page.getByPlaceholder("Search for Webhook B…")).toBeVisible();
   await page

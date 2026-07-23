@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Activity, ArrowRight, Moon, PlugZap, Send, Settings, Sun, Webhook, type LucideIcon } from "lucide-react";
+import { Activity, ArrowRight, GitCompareArrows, Moon, PlugZap, Send, Settings, Sun, Webhook, type LucideIcon } from "lucide-react";
 import { cn } from "../lib/cn.js";
 import { api } from "../lib/api.js";
 import { Button } from "@/components/ui/button";
@@ -17,9 +17,9 @@ const items: NavItem[] = [
     match: (location) =>
       location === "/" ||
       location === "/webhooks" ||
-      location.startsWith("/webhooks/") ||
-      location === "/compare",
+      location.startsWith("/webhooks/"),
   },
+  { href: "/compare", label: "Compare", icon: GitCompareArrows },
   { href: "/connect", label: "Connect", icon: PlugZap },
   { href: "/compose", label: "Compose", icon: Send },
   { href: "/analytics", label: "Analytics", icon: Activity },
@@ -80,7 +80,7 @@ export function Sidebar(): React.ReactElement {
             href={item.href}
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "flex min-w-16 flex-col items-center gap-1 rounded-md px-2 py-1 text-[10px] text-fg-muted",
+              "flex min-w-0 flex-1 flex-col items-center gap-1 rounded-md px-1 py-1 text-[10px] text-fg-muted",
               isActive && "bg-bg-muted text-fg",
             )}
           >

@@ -62,8 +62,8 @@ events that need attention. Every issue links back to the captured webhook.
 
 ### Compare webhook requests
 
-Open any captured webhook and choose **Compare** to diff it against another
-request in a dedicated comparison workspace. The selected pair is kept in the
+Open **Compare** from the sidebar, or choose **Compare** on a captured webhook
+to preload it as Webhook A in the dedicated workspace. The selected pair is kept in the
 URL, so the comparison can be bookmarked or shared with someone using the same
 Pulseboard instance. A persistent selector lets you switch either side and
 search captured events without opening the command palette. The workspace shows:

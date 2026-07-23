@@ -1,7 +1,7 @@
 import { useDeferredValue, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Activity, ArrowRight, Moon, PlugZap, Send, Settings, Sun, Webhook, type LucideIcon } from "lucide-react";
+import { Activity, ArrowRight, GitCompareArrows, Moon, PlugZap, Send, Settings, Sun, Webhook, type LucideIcon } from "lucide-react";
 import {
   Command,
   CommandDialog,
@@ -48,7 +48,7 @@ export function CommandPalette({ open, onClose }: Props): React.ReactElement {
 
   const isDark = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
   const normalizedSearch = search.trim().toLowerCase();
-  const labels = ["webhooks", "connect", "compose", "analytics", "settings", isDark ? "switch to light mode" : "switch to dark mode"];
+  const labels = ["webhooks", "compare", "connect", "compose", "analytics", "settings", isDark ? "switch to light mode" : "switch to dark mode"];
   const hasPageMatches = labels.some((label) => label.includes(normalizedSearch));
   const { data: webhookResults, isFetching } = useQuery({
     queryKey: ["command-webhooks", deferredSearch],
@@ -101,6 +101,7 @@ export function CommandPalette({ open, onClose }: Props): React.ReactElement {
               <CommandGroup>
                 <CommandGroupLabel>Navigate</CommandGroupLabel>
                 <PaletteItem icon={Webhook} label="Webhooks" onSelect={() => go("/")} />
+                <PaletteItem icon={GitCompareArrows} label="Compare" onSelect={() => go("/compare")} />
                 <PaletteItem icon={PlugZap} label="Connect" onSelect={() => go("/connect")} />
                 <PaletteItem icon={Send} label="Compose" onSelect={() => go("/compose")} />
                 <PaletteItem icon={Activity} label="Analytics" onSelect={() => go("/analytics")} />
