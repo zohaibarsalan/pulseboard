@@ -64,6 +64,7 @@ function SecretRow({ info, readonly }: { info: SecretInfo; readonly: boolean }):
     mutationFn: () => api.deleteSecret(info.source),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["secrets"] });
+      setRemoveOpen(false);
     },
   });
 
@@ -127,7 +128,7 @@ function SecretRow({ info, readonly }: { info: SecretInfo; readonly: boolean }):
           <Button
             onClick={() => setEditing(true)}
             variant={info.configured ? "ghost" : "outline"}
-            size="xs"
+            size="sm"
             disabled={readonly}
           >
             {info.configured ? "Edit" : "Add"}
@@ -137,7 +138,7 @@ function SecretRow({ info, readonly }: { info: SecretInfo; readonly: boolean }):
               onClick={() => setRemoveOpen(true)}
               disabled={remove.isPending}
               variant="ghost"
-              size="icon-xs"
+              size="icon-sm"
               className="text-muted-foreground hover:text-danger"
               title="Remove secret"
               aria-label={`Remove ${info.source} signing secret`}

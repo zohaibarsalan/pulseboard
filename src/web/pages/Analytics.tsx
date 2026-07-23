@@ -42,7 +42,7 @@ const RANGES: { id: Range; label: string; days: number; bucket: "hour" | "day" }
 ];
 
 type StatusFilter = "all" | "success" | "failed" | "pending";
-type SignatureFilter = "all" | "valid" | "invalid" | "no_secret";
+type SignatureFilter = "all" | "valid" | "invalid" | "no_secret" | "unverifiable" | "not_applicable";
 
 export function AnalyticsPage(): React.ReactElement {
   const [, navigate] = useLocation();
@@ -197,7 +197,7 @@ function Kpis({ summary }: { summary: AnalyticsSummary | undefined }): React.Rea
       <KpiCard
         label="Success rate"
         value={derived ? `${derived.successRate.toFixed(1)}%` : "—"}
-        subtext={cur ? `${formatNumber(cur.succeeded)} of ${formatNumber(cur.total)} forwarded ok` : undefined}
+        subtext={cur ? `${formatNumber(cur.succeeded)} of ${formatNumber(cur.forwardedTotal)} forwarded ok` : undefined}
         icon={CheckCircle2}
         trend={
           derived?.successRateTrendPct != null
@@ -501,7 +501,7 @@ function FilterBar({
         <PulseboardSelect value={range} onChange={(value) => onRange(value as Range)} ariaLabel="Analytics range" className="min-w-28" options={RANGES.map((item) => ({ value: item.id, label: item.label === "24h" ? "Last 24 hours" : `Last ${item.label}` }))} />
         <PulseboardSelect value={source ?? "all"} onChange={(value) => onSource(value === "all" ? null : value)} ariaLabel="Analytics source" className="min-w-32 capitalize" options={[{ value: "all", label: "All sources" }, ...sources.map((item) => ({ value: item.source, label: `${item.source} · ${item.count}` }))]} />
         <PulseboardSelect value={statusFilter} onChange={(value) => onStatus(value as StatusFilter)} ariaLabel="Analytics status" className="min-w-32 capitalize" options={["all", "success", "failed", "pending"].map((value) => ({ value, label: value === "all" ? "All status" : value }))} />
-        <PulseboardSelect value={sigFilter} onChange={(value) => onSig(value as SignatureFilter)} ariaLabel="Analytics signature" className="min-w-36 capitalize" options={[{ value: "all", label: "All signatures" }, { value: "valid", label: "Valid" }, { value: "invalid", label: "Invalid" }, { value: "no_secret", label: "No secret" }]} />
+        <PulseboardSelect value={sigFilter} onChange={(value) => onSig(value as SignatureFilter)} ariaLabel="Analytics signature" className="min-w-36 capitalize" options={[{ value: "all", label: "All signatures" }, { value: "valid", label: "Valid" }, { value: "invalid", label: "Invalid" }, { value: "no_secret", label: "No secret" }, { value: "unverifiable", label: "Unverifiable" }, { value: "not_applicable", label: "Not applicable" }]} />
       </div>
     </div>
   );

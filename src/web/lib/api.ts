@@ -64,6 +64,7 @@ export type AnalyticsSummary = {
   rangeDays: number;
   current: {
     total: number;
+    forwardedTotal: number;
     succeeded: number;
     failed: number;
     pending: number;
@@ -99,6 +100,7 @@ export type AnalyticsTimeseries = {
 export type AnalyticsBreakdownItem = {
   key: string;
   total: number;
+  forwardedTotal: number;
   succeeded: number;
   failed: number;
   successRate: number;

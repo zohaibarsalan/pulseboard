@@ -1,7 +1,8 @@
 import { EventEmitter } from "node:events";
 import type { Webhook } from "../db/schema.js";
 
-export type WebhookEventListener = (webhook: Webhook) => void;
+export type WebhookEventKind = "created" | "updated";
+export type WebhookEventListener = (webhook: Webhook, kind: WebhookEventKind) => void;
 
 export class LiveEventBus {
   private readonly emitter = new EventEmitter();
@@ -11,8 +12,8 @@ export class LiveEventBus {
     this.emitter.setMaxListeners(200);
   }
 
-  publish(webhook: Webhook): void {
-    this.emitter.emit("webhook", webhook);
+  publish(webhook: Webhook, kind: WebhookEventKind = "created"): void {
+    this.emitter.emit("webhook", webhook, kind);
   }
 
   subscribe(listener: WebhookEventListener): () => void {

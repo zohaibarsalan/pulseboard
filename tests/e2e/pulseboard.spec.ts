@@ -162,12 +162,35 @@ test("left and right arrows move through the webhook inspector", async ({ page, 
   await expect(rows).toHaveCount(2);
   await rows.first().click();
   await expect(rows.first()).toHaveAttribute("aria-current", "true");
+  await page.getByRole("tab", { name: "Headers" }).click();
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
 
   await page.keyboard.press("ArrowRight");
   await expect(rows.nth(1)).toHaveAttribute("aria-current", "true");
+  await expect(page.getByRole("tab", { name: /Headers/ })).toHaveAttribute("aria-selected", "true");
 
   await page.keyboard.press("ArrowLeft");
   await expect(rows.first()).toHaveAttribute("aria-current", "true");
+  await expect(page.getByRole("tab", { name: /Headers/ })).toHaveAttribute("aria-selected", "true");
+});
+
+test("tablet layouts do not squeeze desktop rails into the content", async ({ page }) => {
+  await page.setViewportSize({ width: 768, height: 900 });
+
+  for (const path of ["/", "/compose", "/connect", "/compare", "/analytics", "/settings"]) {
+    await page.goto(path);
+    await expect.poll(async () =>
+      page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+    await expect(page.getByRole("button", { name: "Go to page or action…" })).toBeHidden();
+  }
+
+  await page.goto("/compose");
+  const preset = await page.getByLabel("Preset").boundingBox();
+  const source = await page.getByLabel("Source").boundingBox();
+  expect(preset).not.toBeNull();
+  expect(source).not.toBeNull();
+  expect(preset!.x + preset!.width).toBeLessThanOrEqual(source!.x);
 });
 
 test("failed deliveries explain the fix and roll up into developer analytics", async ({ page, request }) => {
@@ -300,6 +323,11 @@ test("coss command, webhook search, select, and checkbox primitives are operable
   const firstAdd = secretActions.indexOf("Add");
   expect(firstAdd).toBeGreaterThan(0);
   expect(secretActions.slice(firstAdd)).not.toContain("Edit");
+  await page.getByRole("button", { name: "Remove clerk signing secret" }).click();
+  const removeDialog = page.getByRole("alertdialog");
+  await expect(removeDialog).toBeVisible();
+  await removeDialog.getByRole("button", { name: "Remove" }).click();
+  await expect(removeDialog).toBeHidden();
 
   const refreshInterval = page.getByRole("combobox", { name: "Webhook auto-refresh interval" });
   await refreshInterval.click();

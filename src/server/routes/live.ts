@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { AppContext } from "../context.js";
 import type { Webhook } from "../../db/schema.js";
+import type { WebhookEventKind } from "../../capture/event-bus.js";
 import { webhookForClient } from "../serialize.js";
 
 export async function liveRoute(app: FastifyInstance, ctx: AppContext): Promise<void> {
@@ -16,8 +17,8 @@ export async function liveRoute(app: FastifyInstance, ctx: AppContext): Promise<
     });
     res.write(`event: hello\ndata: ${JSON.stringify({ ts: Date.now() })}\n\n`);
 
-    const unsubscribe = ctx.bus.subscribe((webhook: Webhook) => {
-      res.write(`data: ${JSON.stringify(webhookForClient(webhook, ctx.config.redactHeaders))}\n\n`);
+    const unsubscribe = ctx.bus.subscribe((webhook: Webhook, kind: WebhookEventKind) => {
+      res.write(`event: webhook-${kind}\ndata: ${JSON.stringify(webhookForClient(webhook, ctx.config.redactHeaders))}\n\n`);
     });
 
     const heartbeat = setInterval(() => {

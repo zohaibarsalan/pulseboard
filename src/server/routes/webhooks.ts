@@ -119,8 +119,8 @@ export async function webhooksRoutes(app: FastifyInstance, ctx: AppContext): Pro
       const original = rowToWebhook(originalRow);
 
       // Replay accepts three optional overrides: forwardTo, body, and headers.
-      // headers is merged into the original (override matching keys, keep others)
-      // so callers can tweak one header without resending all of them.
+      // When headers are supplied they are authoritative, which lets the editor
+      // remove a header instead of silently inheriting it from the original.
       let overrideTarget: string | undefined;
       let overrideBody: string | undefined;
       let overrideHeaders: Record<string, string> | undefined;
@@ -157,11 +157,16 @@ export async function webhooksRoutes(app: FastifyInstance, ctx: AppContext): Pro
       }
 
       const originalHeaders = JSON.parse(original.headersJson) as Record<string, string>;
-      const safeOverrideHeaders = overrideHeaders
-        ? Object.fromEntries(Object.entries(overrideHeaders).filter(([, value]) => value !== "••••••••"))
-        : undefined;
-      const headers = safeOverrideHeaders
-        ? { ...originalHeaders, ...safeOverrideHeaders }
+      const headers = overrideHeaders !== undefined
+        ? Object.fromEntries(
+            Object.entries(overrideHeaders).flatMap(([key, value]) => {
+              if (value !== "••••••••") return [[key, value]];
+              const originalKey = Object.keys(originalHeaders).find(
+                (candidate) => candidate.toLowerCase() === key.toLowerCase(),
+              );
+              return originalKey ? [[key, originalHeaders[originalKey] ?? ""]] : [];
+            }),
+          )
         : originalHeaders;
       const body = overrideBody !== undefined
         ? overrideBody
@@ -215,6 +220,10 @@ export async function webhooksRoutes(app: FastifyInstance, ctx: AppContext): Pro
       ctx.db.$client
         .prepare("UPDATE webhooks SET replay_count = replay_count + 1, last_replayed_at = ? WHERE id = ?")
         .run(now, original.id);
+      const updatedOriginal = ctx.db.$client
+        .prepare("SELECT * FROM webhooks WHERE id = ?")
+        .get(original.id) as Record<string, unknown>;
+      ctx.bus.publish(rowToWebhook(updatedOriginal), "updated");
 
       const stored = ctx.db.$client
         .prepare("SELECT * FROM webhooks WHERE id = ?")

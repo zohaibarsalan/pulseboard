@@ -54,12 +54,14 @@ function createContext(configOverrides: Partial<Config> = {}) {
 
 test("capture preserves exact bytes, redacts client headers, and requires configured auth", async () => {
   let received = Buffer.alloc(0);
+  let receivedHeaders: Record<string, string | string[] | undefined> = {};
   let secondReceived = Buffer.alloc(0);
   const target = createServer((req, res) => {
     const chunks: Buffer[] = [];
     req.on("data", (chunk: Buffer) => chunks.push(chunk));
     req.on("end", () => {
       received = Buffer.concat(chunks);
+      receivedHeaders = req.headers;
       if (req.url === "/redirect") {
         res.writeHead(302, { location: "http://169.254.169.254/latest/meta-data" });
         res.end();
@@ -168,6 +170,22 @@ test("capture preserves exact bytes, redacts client headers, and requires config
   assert.equal(retriedDeliveries.json().targets[0].attempts[0].trigger, "manual");
   assert.equal(retriedDeliveries.json().targets[0].attempts[0].state, "delivered");
 
+  const editedReplay = await app.inject({
+    method: "POST",
+    url: `/api/webhooks/${storedWebhook.id}/replay`,
+    headers: {
+      authorization: `Basic ${Buffer.from("pulseboard:test-password").toString("base64")}`,
+      "content-type": "application/json",
+    },
+    payload: JSON.stringify({
+      headers: { "content-type": "application/octet-stream" },
+    }),
+  });
+  assert.equal(editedReplay.statusCode, 200);
+  assert.equal(receivedHeaders["content-type"], "application/octet-stream");
+  assert.equal(receivedHeaders["x-token"], undefined);
+  assert.equal(receivedHeaders.authorization, undefined);
+
   const policyUpdate = await app.inject({
     method: "PUT",
     url: "/api/delivery-policy",
@@ -193,7 +211,7 @@ test("capture preserves exact bytes, redacts client headers, and requires config
     headers: filterHeaders,
   });
   assert.equal(matchingFilters.statusCode, 200);
-  assert.equal(matchingFilters.json().webhooks.length, 1);
+  assert.equal(matchingFilters.json().webhooks.length, 2);
   const excludedMethod = await app.inject({
     method: "GET",
     url: "/api/webhooks?method=GET",

@@ -383,7 +383,7 @@ async function executeDeliveryAttempt(ctx: AppContext, attemptId: string): Promi
   const stored = ctx.db.$client
     .prepare("SELECT * FROM webhooks WHERE id = ?")
     .get(row.webhook_id as string) as Record<string, unknown> | undefined;
-  if (stored) ctx.bus.publish(rowToWebhook(stored));
+  if (stored) ctx.bus.publish(rowToWebhook(stored), "updated");
   return getAttempt(ctx.db, attemptId)!;
 }
 

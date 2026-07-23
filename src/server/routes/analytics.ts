@@ -108,6 +108,7 @@ export async function analyticsRoutes(app: FastifyInstance, ctx: AppContext): Pr
 
     const queryPeriod = (start: number, end: number): {
       total: number;
+      forwardedTotal: number;
       succeeded: number;
       failed: number;
       pending: number;
@@ -122,8 +123,9 @@ export async function analyticsRoutes(app: FastifyInstance, ctx: AppContext): Pr
         .prepare(
           `SELECT
             COUNT(*) AS total,
+            SUM(CASE WHEN forwarded_to IS NOT NULL THEN 1 ELSE 0 END) AS forwarded_total,
             SUM(CASE WHEN forward_status >= 200 AND forward_status < 300 THEN 1 ELSE 0 END) AS succeeded,
-            SUM(CASE WHEN forward_error IS NOT NULL OR forward_status >= 400 THEN 1 ELSE 0 END) AS failed,
+            SUM(CASE WHEN forward_error IS NOT NULL OR (forward_status IS NOT NULL AND (forward_status < 200 OR forward_status >= 300)) THEN 1 ELSE 0 END) AS failed,
             SUM(CASE WHEN forwarded_to IS NULL THEN 1 ELSE 0 END) AS pending,
             AVG(forward_duration_ms) AS avg_forward_ms,
             SUM(CASE WHEN forward_duration_ms >= 5000 THEN 1 ELSE 0 END) AS slow_deliveries,
@@ -144,6 +146,7 @@ export async function analyticsRoutes(app: FastifyInstance, ctx: AppContext): Pr
         : undefined;
       return {
         total: row.total ?? 0,
+        forwardedTotal: row.forwarded_total ?? 0,
         succeeded: row.succeeded ?? 0,
         failed: row.failed ?? 0,
         pending: row.pending ?? 0,
@@ -158,8 +161,10 @@ export async function analyticsRoutes(app: FastifyInstance, ctx: AppContext): Pr
     const current = queryPeriod(since, now);
     const previous = queryPeriod(prevSince, since);
 
-    const successRate = current.total > 0 ? (current.succeeded / current.total) * 100 : 0;
-    const prevSuccessRate = previous.total > 0 ? (previous.succeeded / previous.total) * 100 : 0;
+    const successRate = current.forwardedTotal > 0 ? (current.succeeded / current.forwardedTotal) * 100 : 0;
+    const prevSuccessRate = previous.forwardedTotal > 0
+      ? (previous.succeeded / previous.forwardedTotal) * 100
+      : 0;
     const sigValidRate =
       current.verifiableTotal > 0 ? (current.validSignatures / current.verifiableTotal) * 100 : 0;
     const prevSigValidRate =
@@ -267,15 +272,16 @@ export async function analyticsRoutes(app: FastifyInstance, ctx: AppContext): Pr
         `SELECT
           COALESCE(${column}, '(none)') AS key,
           COUNT(*) AS total,
+          SUM(CASE WHEN forwarded_to IS NOT NULL THEN 1 ELSE 0 END) AS forwarded_total,
           SUM(CASE WHEN forward_status >= 200 AND forward_status < 300 THEN 1 ELSE 0 END) AS succeeded,
-          SUM(CASE WHEN forward_error IS NOT NULL OR forward_status >= 400 THEN 1 ELSE 0 END) AS failed
+          SUM(CASE WHEN forward_error IS NOT NULL OR (forward_status IS NOT NULL AND (forward_status < 200 OR forward_status >= 300)) THEN 1 ELSE 0 END) AS failed
         FROM webhooks
         ${range.where}
         GROUP BY ${column}
         ORDER BY total DESC
         LIMIT ?`,
       )
-      .all(...range.params, limit) as { key: string; total: number; succeeded: number; failed: number }[];
+      .all(...range.params, limit) as { key: string; total: number; forwarded_total: number; succeeded: number; failed: number }[];
 
     return {
       rangeDays: days,
@@ -283,9 +289,10 @@ export async function analyticsRoutes(app: FastifyInstance, ctx: AppContext): Pr
       items: rows.map((r) => ({
         key: r.key,
         total: r.total,
+        forwardedTotal: r.forwarded_total,
         succeeded: r.succeeded,
         failed: r.failed,
-        successRate: r.total > 0 ? (r.succeeded / r.total) * 100 : 0,
+        successRate: r.forwarded_total > 0 ? (r.succeeded / r.forwarded_total) * 100 : 0,
       })),
     };
   });

@@ -21,7 +21,7 @@ import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Spinner } from "@/components/ui/spinner";
 
-type Tab = "body" | "headers" | "forward";
+export type WebhookDetailTab = "body" | "headers" | "forward";
 
 type HeaderRow = { id: number; key: string; value: string };
 
@@ -40,11 +40,14 @@ const fromRows = (rows: HeaderRow[]): Record<string, string> => {
 export function WebhookDetail({
   webhook,
   readonly,
+  tab,
+  onTabChange,
 }: {
   webhook: Webhook;
   readonly: boolean;
+  tab: WebhookDetailTab;
+  onTabChange: (tab: WebhookDetailTab) => void;
 }): React.ReactElement {
-  const [tab, setTab] = useState<Tab>("body");
   const [copied, setCopied] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [editedBody, setEditedBody] = useState<string>("");
@@ -59,7 +62,6 @@ export function WebhookDetail({
     setEditing(false);
     setEditedBody(webhook.body ?? "");
     setEditedHeaders(toRows(originalHeaders));
-    setTab("body");
     // Re-running this when headersJson changes covers replays/new captures.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [webhook.id]);
@@ -69,16 +71,17 @@ export function WebhookDetail({
       api.replay(webhook.id, overrides),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["webhooks"] });
+      void queryClient.invalidateQueries({ queryKey: ["webhook", webhook.id] });
       void queryClient.invalidateQueries({ queryKey: ["webhook-stats"] });
+      void queryClient.invalidateQueries({ queryKey: ["webhook-sources"] });
+      void queryClient.invalidateQueries({ queryKey: ["analytics"] });
     },
   });
 
   const sendEdited = (): void => {
     const headers = fromRows(editedHeaders);
-    // Only include keys that actually changed or were added — but for v1 we
-    // just send everything edited. The server merges into the original, so
-    // unchanged keys are still preserved if we don't send them. Keep it simple
-    // by sending all current rows: the user's intent is "these are the headers".
+    // The current rows are authoritative, so removing a row removes that
+    // header from the replay. Redacted values are restored server-side.
     replay.mutate(
       { body: editedBody, headers },
       {
@@ -100,7 +103,7 @@ export function WebhookDetail({
     setEditing(true);
     setEditedBody(webhook.body ?? "");
     setEditedHeaders(toRows(originalHeaders));
-    if (tab === "forward") setTab("body");
+    if (tab === "forward") onTabChange("body");
     replay.reset();
   };
 
@@ -297,7 +300,7 @@ export function WebhookDetail({
 
       <Tabs
         value={tab}
-        onValueChange={(value) => setTab(value as Tab)}
+        onValueChange={(value) => onTabChange(value as WebhookDetailTab)}
         className="min-h-0 flex-1 gap-0"
       >
         <TabsList

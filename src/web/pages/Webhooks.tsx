@@ -5,7 +5,7 @@ import { Link, useLocation } from "wouter";
 import { Topbar } from "../components/Topbar.js";
 import { SourceBadge } from "../components/SourceBadge.js";
 import { SignatureBadge } from "../components/SignatureBadge.js";
-import { WebhookDetail } from "../components/WebhookDetail.js";
+import { WebhookDetail, type WebhookDetailTab } from "../components/WebhookDetail.js";
 import { SearchInput } from "../components/SearchInput.js";
 import { api, type Webhook, type WebhookFilter } from "../lib/api.js";
 import { formatRelativeTime, formatDuration } from "../lib/format.js";
@@ -50,6 +50,7 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
       signature === "unverifiable" || signature === "not_applicable" ? signature : "all";
   });
   const [search, setSearch] = useState(() => initialParams.get("q") ?? "");
+  const [detailTab, setDetailTab] = useState<WebhookDetailTab>("body");
   const [refreshInterval] = useState(getWebhookRefreshInterval);
   const live = useLiveEvents();
   const queryClient = useQueryClient();
@@ -152,6 +153,10 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
     void queryClient.invalidateQueries({ queryKey: ["webhooks"] });
     void queryClient.invalidateQueries({ queryKey: ["webhook-stats"] });
     void queryClient.invalidateQueries({ queryKey: ["webhook-sources"] });
+    if (selectedId) {
+      void queryClient.invalidateQueries({ queryKey: ["webhook", selectedId] });
+      void queryClient.invalidateQueries({ queryKey: ["delivery-attempts", selectedId] });
+    }
   };
   const refreshTooltipText =
     refreshInterval === 0
@@ -165,7 +170,7 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
 
       <div className="flex min-h-0 flex-1">
         <aside className={cn(
-          "w-full min-w-0 flex-col border-r border-border bg-bg-subtle/25 md:flex md:w-[400px] md:shrink-0 xl:w-[440px]",
+          "w-full min-w-0 flex-col border-r border-border bg-bg-subtle/25 lg:flex lg:w-[400px] lg:shrink-0 xl:w-[440px]",
           showListOnMobile ? "flex" : "hidden",
         )}>
           <div data-testid="webhook-summary" className="flex min-h-20 items-center gap-4 border-b border-border px-4 py-3 text-xs">
@@ -286,9 +291,14 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
           </div>
         </aside>
 
-        <section className={cn("min-w-0 flex-1", showListOnMobile ? "hidden md:block" : "block")}>
+        <section className={cn("min-w-0 flex-1", showListOnMobile ? "hidden lg:block" : "block")}>
           {selected ? (
-            <WebhookDetail webhook={selected} readonly={health?.readonly ?? false} />
+            <WebhookDetail
+              webhook={selected}
+              readonly={health?.readonly ?? false}
+              tab={detailTab}
+              onTabChange={setDetailTab}
+            />
           ) : selectedLoading ? (
             <DetailSkeleton />
           ) : selectedError ? (
