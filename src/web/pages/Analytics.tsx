@@ -78,12 +78,12 @@ export function AnalyticsPage(): React.ReactElement {
   });
   const { data: bySource } = useQuery({
     queryKey: ["analytics-breakdown", "source", filter],
-    queryFn: () => api.analyticsBreakdown("source", filter),
+    queryFn: () => api.analyticsBreakdown("source", filter, 5),
     refetchInterval: 30_000,
   });
   const { data: byEventType } = useQuery({
     queryKey: ["analytics-breakdown", "event_type", filter],
-    queryFn: () => api.analyticsBreakdown("event_type", filter),
+    queryFn: () => api.analyticsBreakdown("event_type", filter, 5),
     refetchInterval: 30_000,
   });
   const { data: diagnostics, error: diagnosticsError } = useQuery({
@@ -97,46 +97,45 @@ export function AnalyticsPage(): React.ReactElement {
       <Topbar title="Analytics" subtitle="Webhook delivery and verification health" />
 
       <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
-        <div className="mx-auto max-w-7xl space-y-5">
+        <div className="mx-auto max-w-7xl space-y-10 pb-6">
           {(summaryError || timeseriesError || diagnosticsError) && (
             <Alert variant="error"><AlertDescription>Could not load analytics: {(summaryError ?? timeseriesError ?? diagnosticsError)?.message}</AlertDescription></Alert>
           )}
-          {/* Filters */}
-          <FilterBar
-            range={range}
-            onRange={setRange}
-            sources={sources?.sources ?? []}
-            source={source}
-            onSource={setSource}
-            statusFilter={statusFilter}
-            onStatus={setStatusFilter}
-            sigFilter={sigFilter}
-            onSig={setSigFilter}
-          />
-
-          {/* KPIs */}
-          <Kpis summary={summary} />
-
-          {/* Charts */}
-          <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-            <ThroughputChart
-              buckets={timeseries?.buckets ?? []}
-              bucketSeconds={timeseries?.bucketSizeSeconds ?? 3600}
+          <section className="space-y-4" aria-labelledby="analytics-overview-heading">
+            <FilterBar
+              range={range}
+              onRange={setRange}
+              sources={sources?.sources ?? []}
+              source={source}
+              onSource={setSource}
+              statusFilter={statusFilter}
+              onStatus={setStatusFilter}
+              sigFilter={sigFilter}
+              onSig={setSigFilter}
             />
-            <LatencyChart
-              buckets={timeseries?.buckets ?? []}
-              bucketSeconds={timeseries?.bucketSizeSeconds ?? 3600}
-            />
-          </div>
 
-          <section className="flex flex-col gap-3" aria-labelledby="developer-insights-heading">
+            <Kpis summary={summary} />
+
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+              <ThroughputChart
+                buckets={timeseries?.buckets ?? []}
+                bucketSeconds={timeseries?.bucketSizeSeconds ?? 3600}
+              />
+              <LatencyChart
+                buckets={timeseries?.buckets ?? []}
+                bucketSeconds={timeseries?.bucketSizeSeconds ?? 3600}
+              />
+            </div>
+          </section>
+
+          <section className="space-y-4" aria-labelledby="developer-insights-heading">
             <div>
               <h2 id="developer-insights-heading" className="text-balance text-lg font-medium">Developer insights</h2>
               <p className="text-pretty text-sm text-muted-foreground">
                 Failure causes, response classes, slow handlers, and the latest events that need attention.
               </p>
             </div>
-            <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+            <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
               <FailureCauses diagnostics={diagnostics} />
               <StatusDistribution diagnostics={diagnostics} />
               <SlowestEndpoints diagnostics={diagnostics} />
@@ -145,26 +144,30 @@ export function AnalyticsPage(): React.ReactElement {
           </section>
 
           {/* Breakdowns */}
-          <section className="flex flex-col gap-3" aria-labelledby="traffic-breakdown-heading">
-          <div>
-            <h2 id="traffic-breakdown-heading" className="text-balance text-lg font-medium">Traffic breakdown</h2>
-            <p className="text-pretty text-sm text-muted-foreground">Volume and delivery success across providers and event types.</p>
-          </div>
-          <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-            <BreakdownList
-              title="By source"
-              items={bySource?.items ?? []}
-              onItemClick={(key) => navigate(`/?source=${encodeURIComponent(key)}`)}
-              currentKey={source}
-              renderKey={(k) => <SourceBadge source={k} />}
-            />
-            <BreakdownList
-              title="By event type"
-              items={byEventType?.items ?? []}
-              renderKey={(k) => <span className="font-mono text-xs">{k}</span>}
-              onItemClick={(key) => navigate(`/?q=${encodeURIComponent(key)}`)}
-            />
-          </div>
+          <section className="space-y-4" aria-labelledby="traffic-breakdown-heading">
+            <div>
+              <h2 id="traffic-breakdown-heading" className="text-balance text-lg font-medium">Traffic breakdown</h2>
+              <p className="text-pretty text-sm text-muted-foreground">The busiest providers and event types in this period.</p>
+            </div>
+            <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
+              <BreakdownList
+                title="Top sources"
+                items={bySource?.items ?? []}
+                onItemClick={(key) => navigate(`/?source=${encodeURIComponent(key)}`)}
+                currentKey={source}
+                renderKey={(k) => <SourceBadge source={k} />}
+              />
+              <BreakdownList
+                title="Top event types"
+                items={byEventType?.items ?? []}
+                renderKey={(k) => (
+                  <span className="truncate font-mono text-xs font-medium">
+                    {k === "(none)" ? "No event type" : k}
+                  </span>
+                )}
+                onItemClick={(key) => navigate(`/?q=${encodeURIComponent(key)}`)}
+              />
+            </div>
           </section>
         </div>
       </div>
@@ -360,7 +363,7 @@ function SlowestEndpoints({ diagnostics }: { diagnostics: AnalyticsDiagnostics |
 }
 
 function RecentIssues({ diagnostics }: { diagnostics: AnalyticsDiagnostics | undefined }): React.ReactElement {
-  const items = diagnostics?.recentIssues ?? [];
+  const items = diagnostics?.recentIssues.slice(0, 5) ?? [];
   return (
     <InsightCard title="Recent issues" description="Latest deliveries with an actionable diagnosis" icon={Route}>
       {items.length === 0 ? (
@@ -443,7 +446,7 @@ function FilterBar({
   return (
     <div className="flex flex-col gap-3 border-b pb-5 lg:flex-row lg:items-end">
       <div className="mr-auto">
-        <h2 className="text-balance text-lg font-medium">Overview</h2>
+        <h2 id="analytics-overview-heading" className="text-balance text-lg font-medium">Overview</h2>
         <p className="text-pretty text-sm text-muted-foreground">Delivery volume, latency, and signature verification.</p>
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -469,32 +472,32 @@ function BreakdownList({
   onItemClick?: (key: string) => void;
   currentKey?: string | null;
 }): React.ReactElement {
+  const maxTotal = Math.max(...items.map((item) => item.total), 1);
+
   return (
     <Card className="overflow-hidden p-0">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <h3 className="text-sm font-medium">{title}</h3>
-        <span className="text-2xs text-fg-subtle">top {items.length}</span>
+        <div>
+          <h3 className="text-sm font-medium">{title}</h3>
+          <p className="text-xs text-muted-foreground">Ranked by captured volume</p>
+        </div>
+        <span className="text-xs tabular-nums text-fg-subtle">{items.length} shown</span>
       </div>
       {items.length === 0 ? (
         <div className="px-4 py-8 text-center text-sm text-fg-subtle">No data</div>
       ) : (
-        <>
-        <div className="grid grid-cols-[minmax(0,1fr)_5rem_5rem] gap-3 border-b bg-muted/20 px-4 py-2 text-xs text-muted-foreground">
-          <span>{title === "By source" ? "Source" : "Event"}</span>
-          <span className="text-right">Total</span>
-          <span className="text-right">Success</span>
-        </div>
         <ul className="divide-y divide-border">
-          {items.map((item) => {
+          {items.map((item, index) => {
             const failedPct = item.total > 0 ? (item.failed / item.total) * 100 : 0;
             const isCurrent = currentKey === item.key;
+            const volumePct = (item.total / maxTotal) * 100;
             const Wrapper = ({ children }: { children: React.ReactNode }): React.ReactElement =>
               onItemClick ? (
                 <Button
                   onClick={() => onItemClick(item.key)}
                   variant="ghost"
                   className={cn(
-                    "block w-full text-left transition-colors hover:bg-bg-muted/40",
+                    "h-auto w-full rounded-none px-4 py-3 text-left hover:bg-bg-muted/40",
                     isCurrent && "bg-bg-muted/60",
                   )}
                 >
@@ -506,14 +509,23 @@ function BreakdownList({
             return (
               <li key={item.key}>
                 <Wrapper>
-                  <div className="grid grid-cols-[minmax(0,1fr)_5rem_5rem] items-center gap-3 px-4 py-2.5">
-                      <div className="min-w-0">{renderKey(item.key)}</div>
-                        <span className="font-mono text-xs tabular-nums text-fg-muted">
-                          {formatNumber(item.total)}
-                        </span>
-                        <span
+                  <div className="grid w-full grid-cols-[1.5rem_minmax(0,1fr)_auto] items-center gap-3">
+                    <span className="text-xs tabular-nums text-fg-subtle">{index + 1}</span>
+                    <div className="min-w-0">
+                      <div className="flex min-w-0 items-center">{renderKey(item.key)}</div>
+                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                        <div className="h-full rounded-full bg-foreground/25" style={{ width: `${volumePct}%` }} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-[4.5rem_4.5rem] gap-3 text-right">
+                      <div>
+                        <p className="font-mono text-xs tabular-nums text-fg-muted">{formatNumber(item.total)}</p>
+                        <p className="text-2xs text-fg-subtle">events</p>
+                      </div>
+                      <div>
+                        <p
                           className={cn(
-                            "relative text-right text-xs font-medium tabular-nums",
+                            "text-xs font-medium tabular-nums",
                             item.successRate >= 95
                               ? "text-success"
                               : item.successRate >= 80
@@ -522,20 +534,21 @@ function BreakdownList({
                           )}
                         >
                           {item.successRate.toFixed(0)}%
+                        </p>
+                        <p className="flex items-center justify-end gap-1 text-2xs text-fg-subtle">
+                          delivery
                           {failedPct > 0 && (
-                            <AlertTriangle
-                              className="absolute -right-3 top-0 size-3 text-danger"
-                              aria-label={`${item.failed} failures`}
-                            />
+                            <AlertTriangle className="size-3 text-danger" aria-label={`${item.failed} failures`} />
                           )}
-                        </span>
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </Wrapper>
               </li>
             );
           })}
         </ul>
-        </>
       )}
       {onItemClick && currentKey && (
         <div className="border-t border-border px-4 py-2 text-2xs text-fg-subtle">
