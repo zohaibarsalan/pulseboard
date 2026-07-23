@@ -115,87 +115,91 @@ export function WebhookDetail({
             Back to webhooks
           </Button>
         )}
-        <div className="flex min-w-0 items-center gap-2">
-          <Badge variant={methodVariant(webhook.method)} size="sm" className="font-mono">
-            {webhook.method}
-          </Badge>
-          <span className="min-w-0 break-all font-mono text-sm font-medium">{webhook.path}</span>
-        </div>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <SourceBadge source={webhook.source} />
-          {webhook.eventType && (
-            <Badge variant="secondary" size="sm" className="font-mono">
-              {webhook.eventType}
-            </Badge>
-          )}
-          <SignatureBadge status={webhook.signatureStatus} notes={webhook.signatureNotes} />
-          <span className="text-2xs text-fg-subtle">{formatRelativeTime(webhook.receivedAt)}</span>
-          {webhook.replayOf && (
-            <Badge variant="info" size="sm">
-              {webhook.sourceIp === "replay-edited" ? "edited replay" : "replay"}
-            </Badge>
-          )}
-        </div>
-
-        {/* Actions */}
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          {editing ? (
-            <>
-              <Button
-                onClick={sendEdited}
-                disabled={replay.isPending}
-                variant="default"
-                size="sm"
-              >
-                <Send className={cn("h-3 w-3", replay.isPending && "animate-pulse")} />
-                {replay.isPending ? "Sending…" : "Send edited"}
-              </Button>
-              <Button
-                onClick={cancelEdit}
-                disabled={replay.isPending}
-                variant="outline"
-                size="sm"
-              >
-                <X className="h-3 w-3" />
-                Cancel
-              </Button>
-              <span className="basis-full text-2xs text-fg-subtle sm:ml-1 sm:basis-auto">
-                Editing — signature will be marked invalid
-              </span>
-            </>
-          ) : (
-            <>
-              {!readonly && (
-                <>
-                  <Button
-                    onClick={() => replay.mutate(undefined)}
-                    disabled={replay.isPending}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <RefreshCw className={cn("h-3 w-3", replay.isPending && "animate-spin")} />
-                    Replay
-                  </Button>
-                  <Button
-                    onClick={startEdit}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <Pencil className="h-3 w-3" />
-                    Edit & Replay
-                  </Button>
-                </>
+        <div className="flex flex-wrap items-start gap-4">
+          <div className="min-w-64 flex-1">
+            <div className="flex min-w-0 items-center gap-2">
+              <Badge variant={methodVariant(webhook.method)} size="sm" className="font-mono">
+                {webhook.method}
+              </Badge>
+              <span className="min-w-0 break-all font-mono text-sm font-medium">{webhook.path}</span>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <SourceBadge source={webhook.source} />
+              {webhook.eventType && (
+                <Badge variant="secondary" size="sm" className="font-mono">
+                  {webhook.eventType}
+                </Badge>
               )}
-              <Button
-                onClick={() => copy(asCurl, "curl")}
-                variant="outline"
-                size="sm"
-              >
-                {copied === "curl" ? <Check className="h-3 w-3 text-success" /> : <Terminal className="h-3 w-3" />}
-                {copied === "curl" ? "Copied!" : "Copy as cURL"}
-              </Button>
-            </>
-          )}
+              <SignatureBadge status={webhook.signatureStatus} notes={webhook.signatureNotes} />
+              <span className="text-2xs text-fg-subtle">{formatRelativeTime(webhook.receivedAt)}</span>
+              {webhook.replayOf && (
+                <Badge variant="info" size="sm">
+                  {webhook.sourceIp === "replay-edited" ? "edited replay" : "replay"}
+                </Badge>
+              )}
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+            {editing ? (
+              <>
+                <Button
+                  onClick={sendEdited}
+                  disabled={replay.isPending}
+                  variant="default"
+                  size="sm"
+                >
+                  <Send className={cn("h-3 w-3", replay.isPending && "animate-pulse")} />
+                  {replay.isPending ? "Sending…" : "Send edited"}
+                </Button>
+                <Button
+                  onClick={cancelEdit}
+                  disabled={replay.isPending}
+                  variant="outline"
+                  size="sm"
+                >
+                  <X className="h-3 w-3" />
+                  Cancel
+                </Button>
+                <span className="basis-full text-right text-2xs text-fg-subtle">
+                  Editing — signature will be marked invalid
+                </span>
+              </>
+            ) : (
+              <>
+                {!readonly && (
+                  <>
+                    <Button
+                      onClick={() => replay.mutate(undefined)}
+                      disabled={replay.isPending}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <RefreshCw className={cn("h-3 w-3", replay.isPending && "animate-spin")} />
+                      Replay
+                    </Button>
+                    <Button
+                      onClick={startEdit}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <Pencil className="h-3 w-3" />
+                      Edit & Replay
+                    </Button>
+                  </>
+                )}
+                <Button
+                  onClick={() => copy(asCurl, "curl")}
+                  variant="outline"
+                  size="sm"
+                >
+                  {copied === "curl" ? <Check className="h-3 w-3 text-success" /> : <Terminal className="h-3 w-3" />}
+                  {copied === "curl" ? "Copied!" : "Copy as cURL"}
+                </Button>
+              </>
+            )}
+          </div>
         </div>
 
         {replay.data && !editing && (
