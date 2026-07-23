@@ -24,6 +24,7 @@ import { cn } from "../lib/cn.js";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { PulseboardSelect } from "../components/PulseboardSelect.js";
 
 type Range = "24h" | "7d" | "30d";
 const RANGES: { id: Range; label: string; days: number; bucket: "hour" | "day" }[] = [
@@ -81,24 +82,7 @@ export function AnalyticsPage(): React.ReactElement {
 
   return (
     <div className="flex h-full flex-col">
-      <Topbar
-        title="Analytics"
-        subtitle={
-          <div className="flex items-center gap-1">
-            {RANGES.map((r) => (
-              <Button
-                key={r.id}
-                onClick={() => setRange(r.id)}
-                variant="pill"
-                size="xs"
-                active={range === r.id}
-              >
-                {r.label}
-              </Button>
-            ))}
-          </div>
-        }
-      />
+      <Topbar title="Analytics" subtitle="Webhook delivery and verification health" />
 
       <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
         <div className="mx-auto max-w-7xl space-y-5">
@@ -107,6 +91,8 @@ export function AnalyticsPage(): React.ReactElement {
           )}
           {/* Filters */}
           <FilterBar
+            range={range}
+            onRange={setRange}
             sources={sources?.sources ?? []}
             source={source}
             onSource={setSource}
@@ -214,6 +200,8 @@ function Kpis({ summary }: { summary: AnalyticsSummary | undefined }): React.Rea
 }
 
 function FilterBar({
+  range,
+  onRange,
   sources,
   source,
   onSource,
@@ -222,6 +210,8 @@ function FilterBar({
   sigFilter,
   onSig,
 }: {
+  range: Range;
+  onRange: (next: Range) => void;
   sources: { source: string; count: number }[];
   source: string | null;
   onSource: (next: string | null) => void;
@@ -231,78 +221,18 @@ function FilterBar({
   onSig: (next: SignatureFilter) => void;
 }): React.ReactElement {
   return (
-    <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1.5fr_1fr_1fr]">
-      <FilterCard title="Source">
-        <FilterPill active={source === null} onClick={() => onSource(null)}>All</FilterPill>
-        {sources.map((s) => (
-          <FilterPill key={s.source} active={source === s.source} onClick={() => onSource(s.source)}>
-            <span className="capitalize">{s.source}</span>
-            <span className="ml-1 text-fg-subtle">{s.count}</span>
-          </FilterPill>
-        ))}
-      </FilterCard>
-
-      <FilterCard title="Status">
-        {(["all", "success", "failed", "pending"] as StatusFilter[]).map((s) => (
-          <FilterPill key={s} active={statusFilter === s} onClick={() => onStatus(s)} tone={
-            s === "failed" ? "danger" : s === "success" ? "success" : "neutral"
-          }>
-            <span className="capitalize">{s}</span>
-          </FilterPill>
-        ))}
-      </FilterCard>
-
-      <FilterCard title="Signature">
-        {(["all", "valid", "invalid", "no_secret"] as SignatureFilter[]).map((s) => (
-          <FilterPill key={s} active={sigFilter === s} onClick={() => onSig(s)} tone={
-            s === "invalid" ? "danger" : s === "valid" ? "success" : "neutral"
-          }>
-            {s === "no_secret" ? "no secret" : <span className="capitalize">{s}</span>}
-          </FilterPill>
-        ))}
-      </FilterCard>
+    <div className="flex flex-col gap-3 border-b pb-5 lg:flex-row lg:items-end">
+      <div className="mr-auto">
+        <h2 className="text-balance text-lg font-medium">Overview</h2>
+        <p className="text-pretty text-sm text-muted-foreground">Delivery volume, latency, and signature verification.</p>
+      </div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <PulseboardSelect value={range} onChange={(value) => onRange(value as Range)} ariaLabel="Analytics range" className="min-w-28" options={RANGES.map((item) => ({ value: item.id, label: item.label === "24h" ? "Last 24 hours" : `Last ${item.label}` }))} />
+        <PulseboardSelect value={source ?? "all"} onChange={(value) => onSource(value === "all" ? null : value)} ariaLabel="Analytics source" className="min-w-32 capitalize" options={[{ value: "all", label: "All sources" }, ...sources.map((item) => ({ value: item.source, label: `${item.source} · ${item.count}` }))]} />
+        <PulseboardSelect value={statusFilter} onChange={(value) => onStatus(value as StatusFilter)} ariaLabel="Analytics status" className="min-w-32 capitalize" options={["all", "success", "failed", "pending"].map((value) => ({ value, label: value === "all" ? "All status" : value }))} />
+        <PulseboardSelect value={sigFilter} onChange={(value) => onSig(value as SignatureFilter)} ariaLabel="Analytics signature" className="min-w-36 capitalize" options={[{ value: "all", label: "All signatures" }, { value: "valid", label: "Valid" }, { value: "invalid", label: "Invalid" }, { value: "no_secret", label: "No secret" }]} />
+      </div>
     </div>
-  );
-}
-
-function FilterCard({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}): React.ReactElement {
-  return (
-    <Card className="p-3">
-      <div className="mb-2 text-2xs font-medium uppercase tracking-wider text-fg-subtle">{title}</div>
-      <div className="flex flex-wrap gap-1.5">{children}</div>
-    </Card>
-  );
-}
-
-function FilterPill({
-  active,
-  onClick,
-  tone = "neutral",
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  tone?: "neutral" | "success" | "danger";
-  children: React.ReactNode;
-}): React.ReactElement {
-  const activeClass =
-    tone === "success" ? "bg-success/15 text-success" : tone === "danger" ? "bg-danger/15 text-danger" : "bg-fg/10 text-fg";
-  return (
-    <Button
-      onClick={onClick}
-      variant="pill"
-      size="xs"
-      active={active}
-      className={active ? activeClass : undefined}
-    >
-      {children}
-    </Button>
   );
 }
 

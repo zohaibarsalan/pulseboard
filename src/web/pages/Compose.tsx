@@ -16,6 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field as CossField, FieldLabel } from "@/components/ui/field";
+import { Tabs, TabsList, TabsPanel, TabsTab } from "@/components/ui/tabs";
 import { PulseboardSelect as Select } from "../components/PulseboardSelect.js";
 
 type HeaderRow = { id: number; key: string; value: string };
@@ -55,6 +56,7 @@ export function ComposePage(): React.ReactElement {
   const [headers, setHeaders] = useState<HeaderRow[]>([newRow("content-type", "application/json")]);
   const [body, setBody] = useState("{}");
   const [parseError, setParseError] = useState<string | null>(null);
+  const [editorTab, setEditorTab] = useState<"body" | "headers">("body");
 
   const { data: health } = useQuery({ queryKey: ["health"], queryFn: api.health });
   const { data: secretsData } = useQuery({ queryKey: ["secrets"], queryFn: api.secrets });
@@ -129,204 +131,139 @@ export function ComposePage(): React.ReactElement {
     <div className="flex h-full flex-col">
       <Topbar title="Compose" subtitle="Send a webhook to your local app" />
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
-        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6 lg:py-8">
+        <div className="mx-auto max-w-5xl space-y-4">
           {readonly && (
-            <Alert variant="warning" className="xl:col-span-2">
+            <Alert variant="warning">
               <AlertDescription>Pulseboard is running in read-only mode — sending is disabled.</AlertDescription>
             </Alert>
           )}
 
-          <div className="space-y-5">
-            <Section title="Request">
-              <div className="grid gap-3">
-                <Field label="Preset">
-                  <Select
-                    value={presetId}
-                    options={PRESETS.map((preset) => ({ value: preset.id, label: preset.label }))}
-                    onChange={(next) => {
-                      const preset = findPreset(next);
-                      if (preset) applyPreset(preset);
-                    }}
-                    className="w-full"
-                    ariaLabel="Webhook preset"
-                  />
-                </Field>
-                <div className="grid grid-cols-[7rem_1fr] gap-2">
-                  <Select value={method} options={METHOD_OPTIONS} onChange={setMethod} className="font-mono text-xs" ariaLabel="HTTP method" />
-                  <Input
-                    aria-label="Request path"
-                    type="text"
-                    value={path}
-                    onChange={(e) => setPath(e.target.value)}
-                    placeholder="/path"
-                    className="font-mono"
-                  />
-                </div>
-
-                <Field label="Target">
-                  <Input
-                    aria-label="Forward target"
-                    type="text"
-                    value={target}
-                    onChange={(e) => setTarget(e.target.value)}
-                    placeholder={targetPlaceholder}
-                    className="w-full font-mono text-xs"
-                  />
-                  <p className="mt-1 text-2xs text-fg-subtle">
-                    Leave empty to use configured routing. Custom targets must match a configured or allowlisted host.
-                  </p>
-                </Field>
-              </div>
-            </Section>
-
-            <Section title={`Headers (${headers.length})`}>
-              <div className="space-y-1.5">
-                {headers.map((row, index) => (
-                  <div key={row.id} className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <Input
-                      aria-label={`Header ${index + 1} name`}
-                      type="text"
-                      value={row.key}
-                      onChange={(e) => updateHeader(row.id, { key: e.target.value })}
-                      placeholder="header name"
-                      className="w-full shrink-0 font-mono text-xs sm:w-48"
-                    />
-                    <Input
-                      aria-label={`Header ${index + 1} value`}
-                      type="text"
-                      value={row.value}
-                      onChange={(e) => updateHeader(row.id, { value: e.target.value })}
-                      placeholder="value"
-                      className="flex-1 font-mono text-xs"
-                    />
-                    <Button
-                      onClick={() => removeHeader(row.id)}
-                      variant="danger"
-                      size="icon"
-                      className="h-7 w-7"
-                      aria-label="Remove header"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                ))}
-                <Button onClick={addHeader} variant="outline" size="xs" className="mt-1 border-dashed">
-                  <Plus className="h-3 w-3" />
-                  Add header
-                </Button>
-              </div>
-              <p className="mt-2 text-2xs text-fg-subtle">
-                Signature headers are added automatically when auto-sign is on.
-              </p>
-            </Section>
-
-            <Section title="Body">
-              <div className="mb-2 flex items-center gap-2">
-                <Button onClick={formatJson} variant="outline" size="xs">
-                  Format JSON
-                </Button>
-                <Button onClick={minifyJson} variant="outline" size="xs">
-                  Minify
-                </Button>
-                <span className="ml-auto text-2xs text-fg-subtle">{body.length} chars</span>
-              </div>
-              {parseError && (
-                <Alert id="compose-body-error" variant="error" className="mb-2 py-2 text-xs">
-                  <AlertDescription>{parseError}</AlertDescription>
-                </Alert>
-              )}
-              <Textarea
-                aria-label="Webhook request body"
-                aria-invalid={parseError ? true : undefined}
-                aria-describedby={parseError ? "compose-body-error" : undefined}
-                value={body}
-                onChange={(e) => {
-                  setBody(e.target.value);
-                  if (parseError) setParseError(null);
+          <Card className="overflow-hidden">
+            <div className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center">
+              <Select
+                value={presetId}
+                options={PRESETS.map((preset) => ({ value: preset.id, label: preset.label }))}
+                onChange={(next) => {
+                  const preset = findPreset(next);
+                  if (preset) applyPreset(preset);
                 }}
-                rows={14}
-                spellCheck={false}
-                className="font-mono text-xs leading-relaxed"
-                placeholder="Request body"
+                className="w-full sm:w-56"
+                ariaLabel="Webhook preset"
               />
-            </Section>
-          </div>
-
-          <div className="space-y-5">
-            <Section title="Identity">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <SourceBadge source={source} />
-                  <Select
-                    value={source}
-                    options={SOURCE_SELECT_OPTIONS}
-                    onChange={setSource}
-                    className="w-40 text-xs"
-                    ariaLabel="Webhook source"
-                  />
-                </div>
-
-                <CossField>
-                  <FieldLabel className="flex w-full cursor-pointer items-center justify-between rounded-lg border bg-muted/40 px-3 py-2 text-xs">
-                    <span>Auto-sign with stored secret</span>
+              <div className="flex items-center gap-2 sm:ml-auto">
+                <SourceBadge source={source} />
+                <Select
+                  value={source}
+                  options={SOURCE_SELECT_OPTIONS}
+                  onChange={setSource}
+                  className="w-36 text-xs"
+                  ariaLabel="Webhook source"
+                />
+                <CossField className="w-auto">
+                  <FieldLabel className="cursor-pointer gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-xs">
                     <Checkbox checked={autoSign} onCheckedChange={(checked) => setAutoSign(checked === true)} />
+                    Auto-sign
                   </FieldLabel>
                 </CossField>
               </div>
+            </div>
+
+            <div className="space-y-4 p-4 sm:p-5">
+              <div className="grid grid-cols-[7rem_minmax(0,1fr)] gap-2">
+                <Select value={method} options={METHOD_OPTIONS} onChange={setMethod} className="font-mono text-xs" ariaLabel="HTTP method" />
+                <Input aria-label="Request path" value={path} onChange={(event) => setPath(event.target.value)} className="font-mono" />
+              </div>
+              <Field label="Forward target">
+                <Input
+                  aria-label="Forward target"
+                  value={target}
+                  onChange={(event) => setTarget(event.target.value)}
+                  placeholder={targetPlaceholder}
+                  className="font-mono text-xs"
+                />
+              </Field>
 
               {autoSign && source !== "unknown" && !sourceHasSecret && (
-                <Alert variant="warning" className="mt-3 py-2 text-xs">
-                  <ShieldOff className="h-3 w-3" />
-                  <AlertDescription>No <span className="font-mono">{source}</span> secret in Settings.</AlertDescription>
+                <Alert variant="warning" className="py-2 text-xs">
+                  <ShieldOff className="size-3" />
+                  <AlertDescription>No <span className="font-mono">{source}</span> secret configured.</AlertDescription>
                 </Alert>
               )}
-            </Section>
 
-            <Section title="Send">
+              <Tabs value={editorTab} onValueChange={(value) => setEditorTab(value as "body" | "headers")} className="gap-0">
+                <TabsList variant="underline" className="w-full justify-start rounded-none border-b">
+                  <TabsTab value="body">Body</TabsTab>
+                  <TabsTab value="headers">Headers <span className="text-muted-foreground">({headers.length})</span></TabsTab>
+                </TabsList>
+                <TabsPanel value="body" className="pt-4">
+                  <div className="mb-2 flex items-center gap-2">
+                    <Button onClick={formatJson} variant="outline" size="xs">Format JSON</Button>
+                    <Button onClick={minifyJson} variant="outline" size="xs">Minify</Button>
+                    <span className="ml-auto text-xs tabular-nums text-muted-foreground">{body.length} chars</span>
+                  </div>
+                  {parseError && (
+                    <Alert id="compose-body-error" variant="error" className="mb-2 py-2 text-xs">
+                      <AlertDescription>{parseError}</AlertDescription>
+                    </Alert>
+                  )}
+                  <Textarea
+                    aria-label="Webhook request body"
+                    aria-invalid={parseError ? true : undefined}
+                    aria-describedby={parseError ? "compose-body-error" : undefined}
+                    value={body}
+                    onChange={(event) => {
+                      setBody(event.target.value);
+                      if (parseError) setParseError(null);
+                    }}
+                    rows={12}
+                    spellCheck={false}
+                    className="min-h-56 resize-y font-mono text-xs leading-relaxed"
+                  />
+                </TabsPanel>
+                <TabsPanel value="headers" className="space-y-2 pt-4">
+                  {headers.map((row, index) => (
+                    <div key={row.id} className="grid grid-cols-[minmax(9rem,0.4fr)_minmax(0,1fr)_2rem] gap-2">
+                      <Input aria-label={`Header ${index + 1} name`} value={row.key} onChange={(event) => updateHeader(row.id, { key: event.target.value })} placeholder="Header" className="font-mono text-xs" />
+                      <Input aria-label={`Header ${index + 1} value`} value={row.value} onChange={(event) => updateHeader(row.id, { value: event.target.value })} placeholder="Value" className="font-mono text-xs" />
+                      <Button onClick={() => removeHeader(row.id)} variant="ghost" size="icon-xs" aria-label="Remove header"><X /></Button>
+                    </div>
+                  ))}
+                  <Button onClick={addHeader} variant="outline" size="xs"><Plus />Add header</Button>
+                </TabsPanel>
+              </Tabs>
+            </div>
+
+            <div className="flex flex-col gap-3 border-t bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-pretty text-xs text-muted-foreground">
+                {target.trim() || health?.forwardTargets[0] || "Choose a target before sending"}
+              </p>
               <Button
                 onClick={() => send.mutate()}
                 disabled={!canSend || readonly}
-                variant="default"
                 size="md"
-                className="w-full justify-center"
+                className="justify-center sm:min-w-32"
               >
                 <Send className={cn("h-3.5 w-3.5", send.isPending && "animate-pulse")} />
                 {send.isPending ? "Sending…" : "Send"}
               </Button>
-              {!health?.forwardTargets.length && !target.trim() && (
-                <div className="mt-3 text-xs text-warning">Set a target or configure --forward to send.</div>
-              )}
-            </Section>
+            </div>
+          </Card>
 
-            {send.data && (
-              <ResultPanel
-                status={send.data.result.status}
-                durationMs={send.data.result.durationMs}
-                error={send.data.result.error}
-                signedWith={send.data.signedWith}
-                id={send.data.id}
-                onInspect={() => navigate(`/webhooks/${send.data.id}`)}
-              />
-            )}
-            {send.error && (
-              <Alert variant="error">
-                <AlertDescription>{(send.error as Error).message}</AlertDescription>
-              </Alert>
-            )}
-          </div>
+          {send.data && (
+            <ResultPanel
+              status={send.data.result.status}
+              durationMs={send.data.result.durationMs}
+              error={send.data.result.error}
+              signedWith={send.data.signedWith}
+              id={send.data.id}
+              onInspect={() => navigate(`/webhooks/${send.data.id}`)}
+            />
+          )}
+          {send.error && <Alert variant="error"><AlertDescription>{(send.error as Error).message}</AlertDescription></Alert>}
         </div>
       </div>
     </div>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }): React.ReactElement {
-  return (
-    <Card className="p-4">
-      <h2 className="mb-3 text-2xs font-medium uppercase tracking-wider text-fg-subtle">{title}</h2>
-      {children}
-    </Card>
   );
 }
 
@@ -339,7 +276,7 @@ function Field({
 }): React.ReactElement {
   return (
     <CossField>
-      <FieldLabel className="text-2xs uppercase tracking-wider text-muted-foreground">{label}</FieldLabel>
+      <FieldLabel className="text-xs text-muted-foreground">{label}</FieldLabel>
       {children}
     </CossField>
   );

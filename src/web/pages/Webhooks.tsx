@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PulseboardSelect } from "../components/PulseboardSelect.js";
 
 type StatusFilter = "all" | "success" | "failed" | "pending";
 
@@ -62,10 +63,13 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
     refetchInterval: live.status === "live" ? false : 3_000,
   });
 
+  const webhooks = data?.pages.flatMap((page) => page.webhooks) ?? [];
+  const inspectedId = selectedId ?? webhooks[0]?.id ?? null;
+
   const { data: selected, isLoading: selectedLoading, error: selectedError } = useQuery({
-    queryKey: ["webhook", selectedId],
-    queryFn: () => api.webhook(selectedId!),
-    enabled: selectedId != null,
+    queryKey: ["webhook", inspectedId],
+    queryFn: () => api.webhook(inspectedId!),
+    enabled: inspectedId != null,
   });
 
   const clearMutation = useMutation({
@@ -78,7 +82,6 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
     },
   });
 
-  const webhooks = data?.pages.flatMap((page) => page.webhooks) ?? [];
   const showListOnMobile = selectedId == null;
 
   const refreshEvents = (): void => {
@@ -128,46 +131,33 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
             </Button>
           )}
 
-          <div className="border-b border-border p-3">
-            <div className="rounded-lg border border-border bg-bg p-3">
-              <SearchInput value={search} onChange={setSearch} placeholder="Search payloads, paths…" />
-              <div className="mt-3 grid gap-3">
-                <FilterGroup label="Status">
-                  {(["all", "success", "failed", "pending"] as StatusFilter[]).map((s) => (
-                    <Button
-                      key={s}
-                      onClick={() => setStatusFilter(s)}
-                      variant="pill"
-                      size="xs"
-                      active={statusFilter === s}
-                      className="capitalize"
-                    >
-                      {s}
-                    </Button>
-                  ))}
-                </FilterGroup>
-
-                {sources && sources.sources.length > 0 && (
-                  <FilterGroup label="Source">
-                    <Button onClick={() => setSourceFilter(null)} variant="pill" size="xs" active={sourceFilter === null}>
-                      all
-                    </Button>
-                    {sources.sources.map((s) => (
-                      <Button
-                        key={s.source}
-                        onClick={() => setSourceFilter(s.source === sourceFilter ? null : s.source)}
-                        variant="pill"
-                        size="xs"
-                        active={sourceFilter === s.source}
-                        className="capitalize"
-                      >
-                        {s.source} <span className="text-fg-subtle">{s.count}</span>
-                      </Button>
-                    ))}
-                  </FilterGroup>
-                )}
-              </div>
-            </div>
+          <div className="grid grid-cols-[minmax(0,1fr)_7.5rem_8.5rem] gap-2 border-b border-border p-3">
+            <SearchInput value={search} onChange={setSearch} placeholder="Search webhooks…" />
+            <PulseboardSelect
+              value={statusFilter}
+              onChange={(value) => setStatusFilter(value as StatusFilter)}
+              ariaLabel="Filter by status"
+              className="min-w-0 capitalize"
+              options={[
+                { value: "all", label: "All status" },
+                { value: "success", label: "Success" },
+                { value: "failed", label: "Failed" },
+                { value: "pending", label: "Pending" },
+              ]}
+            />
+            <PulseboardSelect
+              value={sourceFilter ?? "all"}
+              onChange={(value) => setSourceFilter(value === "all" ? null : value)}
+              ariaLabel="Filter by source"
+              className="min-w-0 capitalize"
+              options={[
+                { value: "all", label: "All sources" },
+                ...(sources?.sources ?? []).map((source) => ({
+                  value: source.source,
+                  label: `${source.source} · ${source.count}`,
+                })),
+              ]}
+            />
           </div>
 
           {/* List */}
@@ -178,7 +168,7 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
               <WebhookRow
                 key={wh.id}
                 webhook={wh}
-                selected={wh.id === selectedId}
+                selected={wh.id === inspectedId}
                 onClick={() => navigate(`/webhooks/${wh.id}`)}
               />
             ))}
@@ -222,21 +212,6 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
           <AlertDescription>Could not clear webhooks: {clearMutation.error.message}</AlertDescription>
         </Alert>
       )}
-    </div>
-  );
-}
-
-function FilterGroup({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}): React.ReactElement {
-  return (
-    <div className="grid grid-cols-[4.5rem_1fr] items-start gap-2">
-      <span className="pt-1 text-2xs font-medium uppercase tracking-wider text-fg-subtle">{label}</span>
-      <div className="flex min-w-0 flex-wrap gap-1.5">{children}</div>
     </div>
   );
 }

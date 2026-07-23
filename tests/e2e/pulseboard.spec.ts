@@ -8,7 +8,7 @@ test("capture, inspect response, edit, replay, and clear", async ({ page, reques
   expect(capture.ok()).toBeTruthy();
 
   await page.goto("/");
-  await page.getByText("e2e.created", { exact: true }).click();
+  await page.getByRole("button").filter({ hasText: "e2e.created" }).click();
   await expect(page).toHaveURL(/\/webhooks\//);
   await expect(page.getByText('"value": "original"')).toBeVisible();
 
@@ -52,11 +52,11 @@ test("coss command, select, and checkbox primitives are operable", async ({ page
 
   await page.getByRole("link", { name: "Compose" }).click();
   await expect(page.getByRole("heading", { name: "Compose" })).toBeVisible();
-  await page.getByRole("combobox", { name: "Preset" }).click();
+  await page.getByLabel("Webhook preset").click();
   await page.getByRole("option", { name: "GitHub: push" }).click();
   await expect(page.getByLabel("Webhook source")).toHaveText("github");
-  await page.getByRole("checkbox", { name: "Auto-sign with stored secret" }).click();
-  await expect(page.getByRole("checkbox", { name: "Auto-sign with stored secret" })).not.toBeChecked();
+  await page.getByRole("checkbox", { name: "Auto-sign" }).click();
+  await expect(page.getByRole("checkbox", { name: "Auto-sign" })).not.toBeChecked();
 });
 
 test("dark mode, narrow desktop, and large payloads remain usable", async ({ page, request }) => {
@@ -73,7 +73,7 @@ test("dark mode, narrow desktop, and large payloads remain usable", async ({ pag
   await page.setViewportSize({ width: 900, height: 700 });
   await page.addInitScript(() => localStorage.setItem("pb-theme", "dark"));
   await page.goto("/");
-  await page.getByText("large.payload", { exact: true }).click();
+  await page.getByRole("button").filter({ hasText: "large.payload" }).click();
 
   await expect(page.locator("html")).toHaveClass(/dark/);
   await expect(page.getByText('"type": "large.payload"')).toBeVisible();

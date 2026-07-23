@@ -13,7 +13,7 @@ export function SecretsManager({ readonly }: { readonly: boolean }): React.React
   const { data, isLoading, error } = useQuery({ queryKey: ["secrets"], queryFn: api.secrets });
 
   return (
-    <div className="space-y-1.5">
+    <div>
       <p className="mb-3 text-xs text-fg-subtle">
         Add the signing secret for each provider you want Pulseboard to verify. Secrets are stored
         locally in your SQLite database and never leave your machine.
@@ -31,7 +31,9 @@ export function SecretsManager({ readonly }: { readonly: boolean }): React.React
         </div>
       )}
       {error && <p role="alert" className="text-xs text-danger">Could not load signing secrets: {error.message}</p>}
-      {data?.secrets.map((s) => <SecretRow key={s.source} info={s} readonly={readonly} />)}
+      <div className="divide-y divide-border">
+        {data?.secrets.map((s) => <SecretRow key={s.source} info={s} readonly={readonly} />)}
+      </div>
     </div>
   );
 }
@@ -61,7 +63,7 @@ function SecretRow({ info, readonly }: { info: SecretInfo; readonly: boolean }):
   });
 
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-bg-muted/20 px-3 py-2 sm:flex-nowrap">
+    <div className="flex flex-wrap items-center gap-3 py-3 sm:flex-nowrap">
       <div className="w-24 shrink-0">
         <SourceBadge source={info.source} />
       </div>
@@ -119,6 +121,7 @@ function SecretRow({ info, readonly }: { info: SecretInfo; readonly: boolean }):
           </div>
           <Button
             onClick={() => setEditing(true)}
+            variant="outline"
             size="sm"
             disabled={readonly}
           >

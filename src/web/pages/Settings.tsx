@@ -6,7 +6,7 @@ import { SecretsManager } from "../components/SecretsManager.js";
 import { api } from "../lib/api.js";
 import { formatRelativeTime } from "../lib/format.js";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function SettingsPage(): React.ReactElement {
@@ -25,10 +25,15 @@ export function SettingsPage(): React.ReactElement {
       <Topbar title="Settings" />
 
       <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
-        <div className="mx-auto max-w-3xl space-y-6">
+        <div className="mx-auto max-w-5xl space-y-4">
           {error && (
             <Alert variant="error"><AlertDescription>Could not load settings: {error.message}</AlertDescription></Alert>
           )}
+          <div>
+            <h2 className="text-balance text-lg font-medium">Workspace settings</h2>
+            <p className="text-pretty text-sm text-muted-foreground">Capture endpoints, signing secrets, routing, and local instance details.</p>
+          </div>
+          <Card className="overflow-hidden">
           {/* Capture URL */}
           <Section title="Capture URL" icon={Server}>
             <p className="mb-2 text-sm text-fg-muted">
@@ -121,6 +126,7 @@ export function SettingsPage(): React.ReactElement {
               <code className="font-mono text-fg-muted">PULSEBOARD_READONLY=true</code> to enable.
             </p>
           </Section>
+          </Card>
         </div>
       </div>
     </div>
@@ -137,13 +143,15 @@ function Section({
   children: React.ReactNode;
 }): React.ReactElement {
   return (
-    <Card>
-      <CardHeader className="flex grid-cols-none flex-row items-center gap-2 p-4 pb-3">
-        <Icon className="size-4 text-muted-foreground" />
-        <CardTitle className="text-sm">{title}</CardTitle>
-      </CardHeader>
-      <CardPanel className="p-4 pt-0">{children}</CardPanel>
-    </Card>
+    <section className="grid gap-4 border-b p-5 last:border-b-0 md:grid-cols-[13rem_minmax(0,1fr)] md:p-6">
+      <div>
+        <div className="flex items-center gap-2">
+          <Icon className="size-4 text-muted-foreground" />
+          <h2 className="text-sm font-medium">{title}</h2>
+        </div>
+      </div>
+      <div className="min-w-0">{children}</div>
+    </section>
   );
 }
 

@@ -135,13 +135,13 @@ export function ThroughputChart({ buckets, bucketSeconds, rangeControl }: Props)
               {points && (
                 <>
                   {/* Order matters: paint from bottom of stack up so layers stack correctly */}
-                  <path d={points.succeededArea} fill="hsl(var(--success))" fillOpacity={0.45} />
-                  <path d={points.failedArea} fill="hsl(var(--danger))" fillOpacity={0.55} />
-                  <path d={points.pendingArea} fill="hsl(var(--fg-subtle))" fillOpacity={0.35} />
+                  <path d={points.succeededArea} fill="var(--success)" fillOpacity={0.32} />
+                  <path d={points.failedArea} fill="var(--danger)" fillOpacity={0.42} />
+                  <path d={points.pendingArea} fill="var(--fg-subtle)" fillOpacity={0.24} />
                   <polyline
                     points={points.succeededLine}
                     fill="none"
-                    stroke="hsl(var(--success))"
+                    stroke="var(--success)"
                     strokeWidth={0.4}
                     strokeLinejoin="round"
                   />

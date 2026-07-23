@@ -99,7 +99,7 @@ export function LatencyChart({ buckets, bucketSeconds }: Props): React.ReactElem
               <polyline
                 points={points}
                 fill="none"
-                stroke="hsl(var(--info))"
+                stroke="var(--info)"
                 strokeWidth={0.5}
                 strokeLinejoin="round"
                 strokeLinecap="round"
