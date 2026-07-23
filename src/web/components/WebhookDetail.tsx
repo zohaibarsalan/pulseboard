@@ -7,6 +7,7 @@ import { formatRelativeTime, formatDuration } from "../lib/format.js";
 import { SourceBadge } from "./SourceBadge.js";
 import { SignatureBadge } from "./SignatureBadge.js";
 import { cn } from "../lib/cn.js";
+import { formatJsonForDisplay } from "../lib/formatJson.js";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -299,7 +300,7 @@ export function WebhookDetail({
           {editing ? (
           <BodyEditor body={editedBody} onChange={setEditedBody} />
         ) : (
-          <BodyView body={webhook.body} contentType={webhook.contentType} onCopy={copy} copied={copied} />
+          <BodyView body={webhook.body} onCopy={copy} copied={copied} />
           )}
         </TabsPanel>
         <TabsPanel value="headers" className="min-w-0 overflow-y-auto p-4 sm:p-5">
@@ -368,26 +369,16 @@ function EditedDot(): React.ReactElement {
 
 function BodyView({
   body,
-  contentType,
   onCopy,
   copied,
 }: {
   body: string | null;
-  contentType: string | null;
   onCopy: (text: string, key: string) => void;
   copied: string | null;
 }): React.ReactElement {
   if (!body) return <div className="text-sm text-fg-subtle">No body</div>;
 
-  const isJson = contentType?.includes("json") ?? false;
-  let display = body;
-  if (isJson) {
-    try {
-      display = JSON.stringify(JSON.parse(body), null, 2);
-    } catch {
-      display = body;
-    }
-  }
+  const display = formatJsonForDisplay(body);
 
   return (
     <div className="relative">
@@ -604,7 +595,9 @@ function ForwardView({ webhook }: { webhook: Webhook }): React.ReactElement {
                     {delivery.responseBodyTruncated && <span className="normal-case text-warning">First 64 KB shown</span>}
                   </div>
                   <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md bg-bg-muted/40 p-3 font-mono text-xs text-fg">
-                    {delivery.responseBody ?? "No response body"}
+                    {delivery.responseBody
+                      ? formatJsonForDisplay(delivery.responseBody)
+                      : "No response body"}
                   </pre>
                 </div>
               </div>

@@ -53,7 +53,7 @@ test("capture, inspect response, edit, replay, and clear", async ({ page, reques
 
   await page.getByRole("tab", { name: "Forwarding" }).click();
   await expect(page.getByText("Response headers")).toBeVisible();
-  await expect(page.getByText(/"received":true/)).toBeVisible();
+  await expect(page.getByText(/"received": true/)).toBeVisible();
 
   await page.getByRole("button", { name: "Edit & Replay" }).click();
   await page.getByPlaceholder("Body (raw)").fill('{"type":"e2e.updated","value":"edited"}');
