@@ -142,6 +142,21 @@ test("coss command, webhook search, select, and checkbox primitives are operable
   await expect(page.getByRole("checkbox", { name: "Auto-sign" })).not.toBeChecked();
 
   await page.getByRole("link", { name: "Settings" }).click();
+  const secretsSection = page
+    .getByRole("heading", { name: "Signing Secrets" })
+    .locator("xpath=../../..");
+  await secretsSection.getByRole("button", { name: "Add" }).nth(4).click();
+  await page.getByRole("textbox", { name: "clerk signing secret" }).fill("whsec_e2e-secret");
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(secretsSection.getByRole("button", { name: "Edit" })).toBeVisible();
+
+  const secretActions = await secretsSection
+    .getByRole("button", { name: /^(Edit|Add)$/ })
+    .allTextContents();
+  const firstAdd = secretActions.indexOf("Add");
+  expect(firstAdd).toBeGreaterThan(0);
+  expect(secretActions.slice(firstAdd)).not.toContain("Edit");
+
   const refreshInterval = page.getByRole("combobox", { name: "Webhook auto-refresh interval" });
   await refreshInterval.click();
   await expect(page.getByRole("option", { name: "Every 5 seconds" })).toBeVisible();

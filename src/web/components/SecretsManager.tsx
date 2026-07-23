@@ -11,6 +11,9 @@ import { ConfirmDialog } from "./ConfirmDialog.js";
 
 export function SecretsManager({ readonly }: { readonly: boolean }): React.ReactElement {
   const { data, isLoading, error } = useQuery({ queryKey: ["secrets"], queryFn: api.secrets });
+  const secrets = data
+    ? [...data.secrets].sort((a, b) => Number(b.configured) - Number(a.configured))
+    : [];
 
   return (
     <div>
@@ -32,7 +35,9 @@ export function SecretsManager({ readonly }: { readonly: boolean }): React.React
       )}
       {error && <p role="alert" className="text-xs text-danger">Could not load signing secrets: {error.message}</p>}
       <div className="divide-y divide-border">
-        {data?.secrets.map((s) => <SecretRow key={s.source} info={s} readonly={readonly} />)}
+        {secrets.map((secret) => (
+          <SecretRow key={secret.source} info={secret} readonly={readonly} />
+        ))}
       </div>
     </div>
   );
