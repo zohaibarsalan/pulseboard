@@ -15,7 +15,10 @@ const items: NavItem[] = [
     label: "Webhooks",
     icon: Webhook,
     match: (location) =>
-      location === "/" || location === "/webhooks" || location.startsWith("/webhooks/"),
+      location === "/" ||
+      location === "/webhooks" ||
+      location.startsWith("/webhooks/") ||
+      location === "/compare",
   },
   { href: "/connect", label: "Connect", icon: PlugZap },
   { href: "/compose", label: "Compose", icon: Send },

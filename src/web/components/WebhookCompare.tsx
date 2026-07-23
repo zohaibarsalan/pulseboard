@@ -1,16 +1,14 @@
 import { useMemo, useState } from "react";
-import { ArrowRight, GitCompareArrows } from "lucide-react";
+import { GitCompareArrows } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Tabs, TabsList, TabsPanel, TabsTab } from "@/components/ui/tabs";
 import { diffHeaders, diffJsonBodies, type DiffEntry, type DiffKind } from "../../shared/webhookDiff.js";
 import type { Webhook } from "../lib/api.js";
-import { formatDuration, formatRelativeTime } from "../lib/format.js";
+import { formatDuration } from "../lib/format.js";
 import { cn } from "../lib/cn.js";
-import { SourceBadge } from "./SourceBadge.js";
 import { SignatureBadge } from "./SignatureBadge.js";
 
 type CompareTab = "body" | "headers" | "delivery";
@@ -18,13 +16,9 @@ type CompareTab = "body" | "headers" | "delivery";
 export function WebhookCompare({
   current,
   comparison,
-  onChooseAnother,
-  onClose,
 }: {
   current: Webhook;
   comparison: Webhook;
-  onChooseAnother: () => void;
-  onClose: () => void;
 }): React.ReactElement {
   const [tab, setTab] = useState<CompareTab>("body");
   const [showUnchanged, setShowUnchanged] = useState(false);
@@ -44,41 +38,8 @@ export function WebhookCompare({
     () => diffJsonBodies(earlier.responseBody, later.responseBody),
     [earlier.responseBody, later.responseBody],
   );
-  const changedCount =
-    bodyDiff.summary.added +
-    bodyDiff.summary.removed +
-    bodyDiff.summary.changed +
-    headerDiff.summary.added +
-    headerDiff.summary.removed +
-    headerDiff.summary.changed;
-
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="webhook-compare">
-      <div className="flex flex-wrap items-center gap-3 border-b px-5 py-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <GitCompareArrows className="size-4 text-muted-foreground" aria-hidden="true" />
-            <h2 className="text-balance text-sm font-medium">Webhook comparison</h2>
-            <Badge variant={changedCount > 0 ? "warning" : "success"} size="sm">
-              {changedCount === 0 ? "No request changes" : `${changedCount} request changes`}
-            </Badge>
-          </div>
-          <p className="mt-1 text-pretty text-xs text-muted-foreground">
-            Changes are shown chronologically from the earlier request to the later request.
-          </p>
-        </div>
-        <Button onClick={onChooseAnother} variant="outline" size="sm">Choose another</Button>
-        <Button onClick={onClose} variant="ghost" size="sm">Done</Button>
-      </div>
-
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch border-b bg-bg-subtle/30">
-        <WebhookSide label="Earlier" webhook={earlier} />
-        <div className="flex items-center border-x px-3 text-muted-foreground">
-          <ArrowRight className="size-4" aria-hidden="true" />
-        </div>
-        <WebhookSide label="Later" webhook={later} />
-      </div>
-
       <Tabs
         value={tab}
         onValueChange={(value) => setTab(value as CompareTab)}
@@ -122,24 +83,6 @@ export function WebhookCompare({
           <DeliveryComparison earlier={earlier} later={later} responseEntries={responseDiff.entries} />
         </TabsPanel>
       </Tabs>
-    </div>
-  );
-}
-
-function WebhookSide({ label, webhook }: { label: string; webhook: Webhook }): React.ReactElement {
-  return (
-    <div className="min-w-0 px-5 py-4">
-      <p className="text-2xs font-medium uppercase text-fg-subtle">{label}</p>
-      <div className="mt-2 flex min-w-0 items-center gap-2">
-        <SourceBadge source={webhook.source} />
-        <span className="truncate font-mono text-sm font-medium">{webhook.eventType || webhook.path}</span>
-      </div>
-      <p className="mt-2 truncate font-mono text-xs text-muted-foreground">
-        {webhook.method} {webhook.path}
-      </p>
-      <p className="mt-1 text-xs tabular-nums text-fg-subtle">
-        {new Date(webhook.receivedAt).toLocaleString()} · {formatRelativeTime(webhook.receivedAt)}
-      </p>
     </div>
   );
 }

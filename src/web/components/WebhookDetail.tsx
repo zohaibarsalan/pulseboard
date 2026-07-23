@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, Copy, GitCompareArrows, Pencil, Plus, RefreshCw, Send, Terminal, X } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { api, type DeliveryResult, type Webhook } from "../lib/api.js";
 import { formatRelativeTime, formatDuration } from "../lib/format.js";
 import { SourceBadge } from "./SourceBadge.js";
@@ -16,8 +16,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsPanel, TabsTab } from "@/components/ui/tabs";
 import { diagnoseDelivery } from "../../shared/deliveryDiagnostics.js";
 import { DeliveryDiagnostic } from "./DeliveryDiagnostic.js";
-import { WebhookCompare } from "./WebhookCompare.js";
-import { WebhookComparePicker } from "./WebhookComparePicker.js";
 
 type Tab = "body" | "headers" | "forward";
 
@@ -47,8 +45,7 @@ export function WebhookDetail({
   const [editing, setEditing] = useState(false);
   const [editedBody, setEditedBody] = useState<string>("");
   const [editedHeaders, setEditedHeaders] = useState<HeaderRow[]>([]);
-  const [compareOpen, setCompareOpen] = useState(false);
-  const [comparison, setComparison] = useState<Webhook | null>(null);
+  const [, navigate] = useLocation();
   const queryClient = useQueryClient();
 
   const originalHeaders = JSON.parse(webhook.headersJson) as Record<string, string>;
@@ -59,8 +56,6 @@ export function WebhookDetail({
     setEditedBody(webhook.body ?? "");
     setEditedHeaders(toRows(originalHeaders));
     setTab("body");
-    setComparison(null);
-    setCompareOpen(false);
     // Re-running this when headersJson changes covers replays/new captures.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [webhook.id]);
@@ -171,7 +166,7 @@ export function WebhookDetail({
             ) : (
               <>
                 <Button
-                  onClick={() => setCompareOpen(true)}
+                  onClick={() => navigate(`/compare?left=${encodeURIComponent(webhook.id)}`)}
                   variant="outline"
                   size="sm"
                 >
@@ -213,15 +208,6 @@ export function WebhookDetail({
         </div>
       </div>
 
-      {comparison ? (
-        <WebhookCompare
-          current={webhook}
-          comparison={comparison}
-          onChooseAnother={() => setCompareOpen(true)}
-          onClose={() => setComparison(null)}
-        />
-      ) : (
-        <>
       <section
         aria-labelledby="request-details-heading"
         data-testid="request-details"
@@ -343,14 +329,6 @@ export function WebhookDetail({
           </TabsPanel>
         )}
       </Tabs>
-        </>
-      )}
-      <WebhookComparePicker
-        open={compareOpen}
-        current={webhook}
-        onClose={() => setCompareOpen(false)}
-        onSelect={setComparison}
-      />
     </div>
   );
 }
