@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Clock } from "lucide-react";
 import { formatDuration } from "../lib/format.js";
+import { Card } from "@/components/ui/card";
 
 export type LatencyBucket = {
   ts: number;
@@ -56,7 +57,7 @@ export function LatencyChart({ buckets, bucketSeconds }: Props): React.ReactElem
   const hovered = hoverIdx != null ? buckets[hoverIdx] : null;
 
   return (
-    <div className="pb-card flex flex-col p-4">
+    <Card className="flex flex-col p-4">
       <div className="mb-4 flex items-center gap-2">
         <Clock className="h-4 w-4 text-fg-subtle" />
         <h3 className="text-sm font-medium">Forwarding latency</h3>
@@ -154,6 +155,6 @@ export function LatencyChart({ buckets, bucketSeconds }: Props): React.ReactElem
           )}
         </div>
       )}
-    </div>
+    </Card>
   );
 }

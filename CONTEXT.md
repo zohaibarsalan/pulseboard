@@ -126,7 +126,7 @@ npx pulseboard --forward http://localhost:3000
 | Package manager | pnpm |
 | Server | Fastify |
 | Database | SQLite via better-sqlite3 + Drizzle ORM |
-| UI | React + Vite + Tailwind 3 |
+| UI | React + Vite + Tailwind 4 + canonical coss-ui components (Base UI) |
 | Routing | wouter |
 | Data fetching | TanStack Query |
 | Live updates | SSE (not WebSocket) |
@@ -160,7 +160,7 @@ src/
     migrations/           ← drizzle-kit generated SQL
   web/                    ← React UI (served by Fastify)
     pages/                ← Webhooks, Settings, Placeholder
-    components/           ← Sidebar, Topbar, WebhookDetail, SourceBadge, SearchInput, CommandPalette
+    components/           ← Product compositions plus canonical coss-ui primitives in `components/ui`
     lib/                  ← api, format, cn, hooks
 scripts/
   dev-sender.ts           ← echo target + fake webhook generator

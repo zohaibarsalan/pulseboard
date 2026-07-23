@@ -5,7 +5,9 @@ import { Topbar } from "../components/Topbar.js";
 import { SecretsManager } from "../components/SecretsManager.js";
 import { api } from "../lib/api.js";
 import { formatRelativeTime } from "../lib/format.js";
-import { Button, Card, CardHeader } from "../components/coss-ui/index.js";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardPanel, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function SettingsPage(): React.ReactElement {
   const { data: health, error } = useQuery({ queryKey: ["health"], queryFn: api.health, refetchInterval: 5_000 });
@@ -25,9 +27,7 @@ export function SettingsPage(): React.ReactElement {
       <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
         <div className="mx-auto max-w-3xl space-y-6">
           {error && (
-            <div role="alert" className="rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">
-              Could not load settings: {error.message}
-            </div>
+            <Alert variant="error"><AlertDescription>Could not load settings: {error.message}</AlertDescription></Alert>
           )}
           {/* Capture URL */}
           <Section title="Capture URL" icon={Server}>
@@ -138,11 +138,11 @@ function Section({
 }): React.ReactElement {
   return (
     <Card>
-      <CardHeader>
-        <Icon className="h-4 w-4 text-fg-subtle" />
-        <h2 className="text-sm font-medium">{title}</h2>
+      <CardHeader className="flex grid-cols-none flex-row items-center gap-2 p-4 pb-3">
+        <Icon className="size-4 text-muted-foreground" />
+        <CardTitle className="text-sm">{title}</CardTitle>
       </CardHeader>
-      {children}
+      <CardPanel className="p-4 pt-0">{children}</CardPanel>
     </Card>
   );
 }

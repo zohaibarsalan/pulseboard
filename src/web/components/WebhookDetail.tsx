@@ -6,7 +6,12 @@ import { formatRelativeTime, formatDuration } from "../lib/format.js";
 import { SourceBadge } from "./SourceBadge.js";
 import { SignatureBadge } from "./SignatureBadge.js";
 import { cn } from "../lib/cn.js";
-import { Button, Input, Textarea } from "./coss-ui/index.js";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsList, TabsPanel, TabsTab } from "@/components/ui/tabs";
 
 type Tab = "body" | "headers" | "forward";
 
@@ -111,24 +116,24 @@ export function WebhookDetail({
           </Button>
         )}
         <div className="flex min-w-0 items-center gap-2">
-          <span className={cn("rounded px-1.5 py-0.5 font-mono text-2xs font-semibold", methodColor(webhook.method))}>
+          <Badge variant={methodVariant(webhook.method)} size="sm" className="font-mono">
             {webhook.method}
-          </span>
+          </Badge>
           <span className="min-w-0 break-all font-mono text-sm font-medium">{webhook.path}</span>
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <SourceBadge source={webhook.source} />
           {webhook.eventType && (
-            <span className="rounded bg-bg-muted px-1.5 py-0.5 font-mono text-2xs text-fg-muted">
+            <Badge variant="secondary" size="sm" className="font-mono">
               {webhook.eventType}
-            </span>
+            </Badge>
           )}
           <SignatureBadge status={webhook.signatureStatus} notes={webhook.signatureNotes} />
           <span className="text-2xs text-fg-subtle">{formatRelativeTime(webhook.receivedAt)}</span>
           {webhook.replayOf && (
-            <span className="rounded bg-info/15 px-1.5 py-0.5 text-2xs text-info">
+            <Badge variant="info" size="sm">
               {webhook.sourceIp === "replay-edited" ? "edited replay" : "replay"}
-            </span>
+            </Badge>
           )}
         </div>
 
@@ -205,69 +210,52 @@ export function WebhookDetail({
           </div>
         )}
         {replay.error && (
-          <div role="alert" className="mt-2 text-xs text-danger">
-            Replay failed: {replay.error.message}
-          </div>
+          <Alert variant="error" className="mt-2 py-2 text-xs">
+            <AlertDescription>Replay failed: {replay.error.message}</AlertDescription>
+          </Alert>
         )}
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 overflow-x-auto border-b border-border px-5">
-        <TabButton active={tab === "body"} onClick={() => setTab("body")}>
-          Body {editing && <EditedDot />}
-        </TabButton>
-        <TabButton active={tab === "headers"} onClick={() => setTab("headers")}>
-          Headers <span className="text-fg-subtle">({editing ? editedHeaders.length : Object.keys(originalHeaders).length})</span>
-          {editing && <EditedDot />}
-        </TabButton>
-        {!editing && (
-          <TabButton active={tab === "forward"} onClick={() => setTab("forward")}>Forwarding</TabButton>
-        )}
-      </div>
+      <Tabs
+        value={tab}
+        onValueChange={(value) => setTab(value as Tab)}
+        className="min-h-0 flex-1 gap-0"
+      >
+        <TabsList variant="underline" className="w-full justify-start overflow-x-auto rounded-none border-b px-5 py-0">
+          <TabsTab value="body">Body {editing && <EditedDot />}</TabsTab>
+          <TabsTab value="headers">
+            Headers <span className="text-muted-foreground">({editing ? editedHeaders.length : Object.keys(originalHeaders).length})</span>
+            {editing && <EditedDot />}
+          </TabsTab>
+          {!editing && <TabsTab value="forward">Forwarding</TabsTab>}
+        </TabsList>
 
-      {/* Content */}
-      <div className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-5">
-        {tab === "body" && (editing ? (
+        <TabsPanel value="body" className="min-w-0 overflow-y-auto p-4 sm:p-5">
+          {editing ? (
           <BodyEditor body={editedBody} onChange={setEditedBody} />
         ) : (
           <BodyView body={webhook.body} contentType={webhook.contentType} onCopy={copy} copied={copied} />
-        ))}
-        {tab === "headers" && (editing ? (
+          )}
+        </TabsPanel>
+        <TabsPanel value="headers" className="min-w-0 overflow-y-auto p-4 sm:p-5">
+          {editing ? (
           <HeadersEditor rows={editedHeaders} onChange={setEditedHeaders} />
         ) : (
           <HeadersView headers={originalHeaders} />
-        ))}
-        {tab === "forward" && !editing && <ForwardView webhook={webhook} />}
-      </div>
+          )}
+        </TabsPanel>
+        {!editing && (
+          <TabsPanel value="forward" className="min-w-0 overflow-y-auto p-4 sm:p-5">
+            <ForwardView webhook={webhook} />
+          </TabsPanel>
+        )}
+      </Tabs>
     </div>
   );
 }
 
 function EditedDot(): React.ReactElement {
   return <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-warning" title="Editable" />;
-}
-
-function TabButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}): React.ReactElement {
-  return (
-    <Button
-      onClick={onClick}
-      variant="ghost"
-      className={cn(
-        "border-b-2 px-2 py-2.5 text-xs font-medium transition-colors",
-        active ? "border-fg text-fg" : "border-transparent text-fg-muted hover:text-fg",
-      )}
-    >
-      {children}
-    </Button>
-  );
 }
 
 function BodyView({
@@ -360,9 +348,9 @@ function BodyEditor({
         <span className="ml-auto text-2xs text-fg-subtle">{body.length} chars</span>
       </div>
       {parseError && (
-        <div className="rounded border border-danger/30 bg-danger/5 px-2 py-1 text-2xs text-danger">
-          {parseError}
-        </div>
+        <Alert variant="error" className="py-2 text-xs">
+          <AlertDescription>{parseError}</AlertDescription>
+        </Alert>
       )}
       <Textarea
         value={body}
@@ -488,9 +476,9 @@ function ForwardView({ webhook }: { webhook: Webhook }): React.ReactElement {
             </div>
             <Row label="Duration" value={formatDuration(delivery.durationMs)} />
             {delivery.error && (
-              <div className="mt-3 rounded-md border border-danger/30 bg-danger/5 p-3 font-mono text-xs text-danger">
-                {delivery.error}
-              </div>
+              <Alert variant="error" className="mt-3 font-mono text-xs">
+                <AlertDescription>{delivery.error}</AlertDescription>
+              </Alert>
             )}
             {!delivery.error && (
               <div className="mt-3 space-y-3 border-t border-border pt-3">
@@ -532,13 +520,13 @@ function Row({ label, value }: { label: string; value: React.ReactNode }): React
   );
 }
 
-function methodColor(method: string): string {
+function methodVariant(method: string): "info" | "success" | "warning" | "error" | "secondary" {
   switch (method) {
-    case "GET": return "bg-info/15 text-info";
-    case "POST": return "bg-success/15 text-success";
-    case "PUT": return "bg-warning/15 text-warning";
-    case "DELETE": return "bg-danger/15 text-danger";
-    default: return "bg-bg-muted text-fg-muted";
+    case "GET": return "info";
+    case "POST": return "success";
+    case "PUT": return "warning";
+    case "DELETE": return "error";
+    default: return "secondary";
   }
 }
 

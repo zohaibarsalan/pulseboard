@@ -12,8 +12,12 @@ import { formatRelativeTime, formatDuration } from "../lib/format.js";
 import { useLiveEvents } from "../lib/useLiveEvents.js";
 import { cn } from "../lib/cn.js";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "../components/coss-ui/index.js";
+import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "../components/ConfirmDialog.js";
+import { Badge } from "@/components/ui/badge";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type StatusFilter = "all" | "success" | "failed" | "pending";
 
@@ -113,14 +117,15 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
           </div>
 
           {live.newEventCount > 0 && (
-            <button
-              type="button"
+            <Button
               onClick={refreshEvents}
-              className="mx-3 mt-3 flex items-center justify-center gap-2 rounded-md border border-border bg-bg px-3 py-2 text-xs font-medium hover:bg-bg-muted focus:outline-none focus:ring-1 focus:ring-fg"
+              variant="outline"
+              size="sm"
+              className="mx-3 mt-3"
             >
-              <RefreshCw className="size-3.5" aria-hidden="true" />
+              <RefreshCw aria-hidden="true" />
               {live.newEventCount} new {live.newEventCount === 1 ? "event" : "events"} · refresh
-            </button>
+            </Button>
           )}
 
           <div className="border-b border-border p-3">
@@ -197,9 +202,7 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
           ) : selectedLoading ? (
             <DetailSkeleton />
           ) : selectedError ? (
-            <div role="alert" className="m-5 rounded-md border border-danger/30 bg-danger/5 p-4 text-sm text-danger">
-              Could not load this webhook: {selectedError.message}
-            </div>
+            <Alert variant="error" className="m-5"><AlertDescription>Could not load this webhook: {selectedError.message}</AlertDescription></Alert>
           ) : (
             <EmptyDetail />
           )}
@@ -215,9 +218,9 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
         onConfirm={() => clearMutation.mutate()}
       />
       {clearMutation.error && (
-        <div role="alert" className="fixed bottom-20 right-4 z-30 rounded-md border border-danger/30 bg-bg px-3 py-2 text-xs text-danger shadow-lg md:bottom-4">
-          Could not clear webhooks: {clearMutation.error.message}
-        </div>
+        <Alert variant="error" className="fixed bottom-20 right-4 z-30 w-auto shadow-lg md:bottom-4">
+          <AlertDescription>Could not clear webhooks: {clearMutation.error.message}</AlertDescription>
+        </Alert>
       )}
     </div>
   );
@@ -294,10 +297,10 @@ function LiveBadge({ status }: { status: "connecting" | "live" | "error" }): Rea
         ? { label: "Reconnecting", dotClass: "bg-warning animate-pulse" }
         : { label: "Connecting", dotClass: "bg-fg-subtle" };
   return (
-    <span className="pb-pill pb-pill-neutral">
-      <span className={cn("pb-dot", cfg.dotClass)} />
+    <Badge variant="outline">
+      <span className={cn("size-1.5 rounded-full", cfg.dotClass)} />
       {cfg.label}
-    </span>
+    </Badge>
   );
 }
 
@@ -313,22 +316,24 @@ function EmptyList({ captureUrl }: { captureUrl?: string }): React.ReactElement 
   };
 
   return (
-    <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border bg-bg p-6 text-center">
-      <Inbox className="h-6 w-6 text-fg-subtle" />
-      <div>
-        <p className="text-sm font-medium text-balance">Capture your first webhook</p>
-        <p className="mt-1 text-xs text-fg-subtle text-pretty">Point a provider at this URL, or copy the test command below.</p>
-      </div>
-      {captureUrl && (
-        <code className="break-all rounded bg-bg-muted px-2 py-1 font-mono text-2xs text-fg-muted">
-          {captureUrl}/...
-        </code>
-      )}
-      <Button onClick={() => void copyTest()} variant="outline" size="sm">
-        {copied ? <Check className="size-3.5 text-success" aria-hidden="true" /> : <Copy className="size-3.5" aria-hidden="true" />}
-        {copied ? "Copied test cURL" : "Copy test cURL"}
-      </Button>
-    </div>
+    <Empty className="m-3 rounded-lg border border-dashed py-10">
+      <EmptyHeader>
+        <EmptyMedia variant="icon"><Inbox /></EmptyMedia>
+        <EmptyTitle className="text-base">Capture your first webhook</EmptyTitle>
+        <EmptyDescription>Point a provider at this URL, or copy the test command below.</EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent>
+        {captureUrl && (
+          <code className="break-all rounded bg-muted px-2 py-1 font-mono text-xs text-muted-foreground">
+            {captureUrl}/...
+          </code>
+        )}
+        <Button onClick={() => void copyTest()} variant="outline" size="sm">
+          {copied ? <Check className="text-success" aria-hidden="true" /> : <Copy aria-hidden="true" />}
+          {copied ? "Copied test cURL" : "Copy test cURL"}
+        </Button>
+      </EmptyContent>
+    </Empty>
   );
 }
 
@@ -344,9 +349,9 @@ function EmptyDetail(): React.ReactElement {
 
 function WebhookListSkeleton(): React.ReactElement {
   return (
-    <div aria-label="Loading webhooks" role="status" className="space-y-2">
+    <div aria-label="Loading webhooks" role="status" className="flex flex-col gap-2">
       {Array.from({ length: 6 }, (_, index) => (
-        <div key={index} className="h-16 animate-pulse rounded-lg border border-border bg-bg-muted/50 motion-reduce:animate-none" />
+        <Skeleton key={index} className="h-16 rounded-lg" />
       ))}
     </div>
   );
@@ -354,10 +359,10 @@ function WebhookListSkeleton(): React.ReactElement {
 
 function DetailSkeleton(): React.ReactElement {
   return (
-    <div aria-label="Loading webhook details" role="status" className="space-y-4 p-5">
-      <div className="h-8 w-56 animate-pulse rounded bg-bg-muted motion-reduce:animate-none" />
-      <div className="h-10 animate-pulse rounded bg-bg-muted motion-reduce:animate-none" />
-      <div className="h-48 animate-pulse rounded-lg bg-bg-muted motion-reduce:animate-none" />
+    <div aria-label="Loading webhook details" role="status" className="flex flex-col gap-4 p-5">
+      <Skeleton className="h-8 w-56" />
+      <Skeleton className="h-10" />
+      <Skeleton className="h-48 rounded-lg" />
     </div>
   );
 }

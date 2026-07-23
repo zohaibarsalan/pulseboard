@@ -1,4 +1,5 @@
 import { cn } from "../lib/cn.js";
+import { Badge } from "@/components/ui/badge";
 
 // Per-source accent colors. Unknown falls back to neutral.
 const SOURCE_STYLES: Record<string, string> = {
@@ -19,8 +20,8 @@ const SOURCE_STYLES: Record<string, string> = {
 export function SourceBadge({ source }: { source: string }): React.ReactElement {
   const style = SOURCE_STYLES[source] ?? SOURCE_STYLES.unknown;
   return (
-    <span className={cn("inline-flex items-center rounded px-1.5 py-0.5 text-2xs font-medium capitalize", style)}>
+    <Badge variant="secondary" size="sm" className={cn("capitalize", style)}>
       {source}
-    </span>
+    </Badge>
   );
 }

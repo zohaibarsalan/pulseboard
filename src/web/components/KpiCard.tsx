@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { cn } from "../lib/cn.js";
+import { Card } from "@/components/ui/card";
 
 type Trend = {
   // "good" tells the card which direction is positive — for "error rate" up is
@@ -20,7 +21,7 @@ type Props = {
 
 export function KpiCard({ label, value, subtext, icon: Icon, trend }: Props): React.ReactElement {
   return (
-    <div className="pb-card flex min-h-[100px] flex-col p-4">
+    <Card className="flex min-h-[100px] flex-col p-4">
       <div className="flex items-start justify-between">
         <span className="text-[10px] font-medium uppercase tracking-wider text-fg-subtle">{label}</span>
         {Icon && <Icon className="h-3.5 w-3.5 stroke-[1.75] text-fg-subtle" />}
@@ -30,7 +31,7 @@ export function KpiCard({ label, value, subtext, icon: Icon, trend }: Props): Re
         {trend && <TrendBadge trend={trend} />}
       </div>
       {subtext && <span className="mt-auto pt-2 text-xs text-fg-subtle">{subtext}</span>}
-    </div>
+    </Card>
   );
 }
 

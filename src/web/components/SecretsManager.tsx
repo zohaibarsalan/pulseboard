@@ -3,7 +3,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Eye, EyeOff, Key, Save, Trash2, X } from "lucide-react";
 import { api, type SecretInfo } from "../lib/api.js";
 import { SourceBadge } from "./SourceBadge.js";
-import { Button, Input } from "./coss-ui/index.js";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "./ConfirmDialog.js";
 
 export function SecretsManager({ readonly }: { readonly: boolean }): React.ReactElement {
@@ -16,14 +19,14 @@ export function SecretsManager({ readonly }: { readonly: boolean }): React.React
         locally in your SQLite database and never leave your machine.
       </p>
       {readonly && (
-        <p className="mb-3 rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning">
-          Secret changes are disabled in read-only mode.
-        </p>
+        <Alert variant="warning" className="mb-3">
+          <AlertDescription>Secret changes are disabled in read-only mode.</AlertDescription>
+        </Alert>
       )}
       {isLoading && (
-        <div role="status" aria-label="Loading signing secrets" className="space-y-1.5">
+        <div role="status" aria-label="Loading signing secrets" className="flex flex-col gap-1.5">
           {Array.from({ length: 4 }, (_, index) => (
-            <div key={index} className="h-11 animate-pulse rounded-md bg-bg-muted motion-reduce:animate-none" />
+            <Skeleton key={index} className="h-11 rounded-md" />
           ))}
         </div>
       )}

@@ -1,14 +1,27 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { Command } from "cmdk";
-import { Activity, Moon, Search, Send, Settings, Sun, Webhook, type LucideIcon } from "lucide-react";
+import { Activity, Moon, Send, Settings, Sun, Webhook, type LucideIcon } from "lucide-react";
+import {
+  Command,
+  CommandDialog,
+  CommandDialogPopup,
+  CommandEmpty,
+  CommandFooter,
+  CommandGroup,
+  CommandGroupLabel,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandPanel,
+} from "@/components/ui/command";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
 
 type Props = {
   open: boolean;
   onClose: () => void;
 };
 
-export function CommandPalette({ open, onClose }: Props): React.ReactElement | null {
+export function CommandPalette({ open, onClose }: Props): React.ReactElement {
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
 
@@ -30,65 +43,42 @@ export function CommandPalette({ open, onClose }: Props): React.ReactElement | n
 
   const isDark = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
 
-  if (!open) return null;
-
   return (
-    <>
-      <div className="fixed inset-0 z-40 bg-bg/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed inset-0 z-50 flex items-start justify-center pt-24">
-        <Command
-          shouldFilter
-          label="Command palette"
-          className="w-full max-w-xl overflow-hidden rounded-lg border border-border bg-bg shadow-2xl"
-          loop
-        >
-          <div className="flex items-center gap-2 border-b border-border px-3">
-            <Search className="h-3.5 w-3.5 stroke-[1.75] text-fg-subtle" />
-            <Command.Input
-              value={search}
-              onValueChange={setSearch}
-              placeholder="Go to a page or action…"
-              autoFocus
-              className="h-11 flex-1 bg-transparent text-sm text-fg placeholder:text-fg-subtle focus:outline-none"
-            />
-            <span className="pb-kbd">Esc</span>
-          </div>
-
-          <Command.List className="max-h-[420px] overflow-y-auto p-1.5">
-            <Command.Empty className="p-6 text-center text-xs text-fg-subtle">No matches.</Command.Empty>
-
-            <Command.Group heading="Pages">
-              <PaletteItem icon={Webhook} label="Webhooks" onSelect={() => go("/")} />
-              <PaletteItem icon={Send} label="Compose" onSelect={() => go("/compose")} />
-              <PaletteItem icon={Activity} label="Analytics" onSelect={() => go("/analytics")} />
-              <PaletteItem icon={Settings} label="Settings" onSelect={() => go("/settings")} />
-            </Command.Group>
-
-            <Command.Group heading="Preferences">
-              <PaletteItem
-                icon={isDark ? Sun : Moon}
-                label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-                onSelect={toggleTheme}
-              />
-            </Command.Group>
-          </Command.List>
-
-          <div className="flex items-center justify-between border-t border-border bg-bg-subtle px-3 py-1.5 text-[10px] text-fg-subtle">
-            <div className="flex items-center gap-2">
-              <span className="pb-kbd">↑</span>
-              <span className="pb-kbd">↓</span>
-              <span>navigate</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="pb-kbd">↵</span>
-              <span>select</span>
-              <span className="pb-kbd">esc</span>
-              <span>close</span>
-            </div>
-          </div>
+    <CommandDialog open={open} onOpenChange={(next) => !next && onClose()}>
+      <CommandDialogPopup>
+        <Command>
+          <CommandInput
+            value={search}
+            onChange={(event) => setSearch(event.currentTarget.value)}
+            placeholder="Go to a page or action…"
+          />
+          <CommandPanel>
+            <CommandList>
+              <CommandEmpty>No matches.</CommandEmpty>
+              <CommandGroup>
+                <CommandGroupLabel>Pages</CommandGroupLabel>
+                <PaletteItem icon={Webhook} label="Webhooks" onSelect={() => go("/")} />
+                <PaletteItem icon={Send} label="Compose" onSelect={() => go("/compose")} />
+                <PaletteItem icon={Activity} label="Analytics" onSelect={() => go("/analytics")} />
+                <PaletteItem icon={Settings} label="Settings" onSelect={() => go("/settings")} />
+              </CommandGroup>
+              <CommandGroup>
+                <CommandGroupLabel>Preferences</CommandGroupLabel>
+                <PaletteItem
+                  icon={isDark ? Sun : Moon}
+                  label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+                  onSelect={toggleTheme}
+                />
+              </CommandGroup>
+            </CommandList>
+          </CommandPanel>
+          <CommandFooter>
+            <KbdGroup><Kbd>↑</Kbd><Kbd>↓</Kbd><span>navigate</span></KbdGroup>
+            <KbdGroup><Kbd>↵</Kbd><span>select</span><Kbd>esc</Kbd><span>close</span></KbdGroup>
+          </CommandFooter>
         </Command>
-      </div>
-    </>
+      </CommandDialogPopup>
+    </CommandDialog>
   );
 }
 
@@ -102,13 +92,9 @@ function PaletteItem({
   onSelect: () => void;
 }): React.ReactElement {
   return (
-    <Command.Item
-      onSelect={onSelect}
-      value={label}
-      className="flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm text-fg-muted data-[selected=true]:bg-bg-muted data-[selected=true]:text-fg"
-    >
-      <Icon className="h-3.5 w-3.5 shrink-0 stroke-[1.75]" />
+    <CommandItem value={label} onClick={onSelect}>
+      <Icon />
       <span className="flex-1 truncate">{label}</span>
-    </Command.Item>
+    </CommandItem>
   );
 }

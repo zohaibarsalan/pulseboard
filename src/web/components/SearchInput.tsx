@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
-import { Button, Input } from "./coss-ui/index.js";
+import { Button } from "@/components/ui/button";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 
 type Props = {
   value: string;
@@ -23,17 +24,19 @@ export function SearchInput({ value, onChange, placeholder, hint, autoFocus }: P
   };
 
   return (
-    <div className="space-y-1.5">
-      <div className="pb-search w-full max-w-2xl">
-        <Search className="h-3.5 w-3.5 stroke-[1.75] text-fg-subtle" />
-        <Input
+    <div className="flex flex-col gap-1.5">
+      <InputGroup className="max-w-2xl">
+        <InputGroupAddon>
+          <Search />
+        </InputGroupAddon>
+        <InputGroupInput
           aria-label={placeholder ?? "Search"}
           type="search"
           value={local}
           onChange={(e) => flush(e.target.value)}
           placeholder={placeholder ?? "Search jobs…"}
           autoFocus={autoFocus}
-          className="h-auto flex-1 border-0 bg-transparent px-0 text-sm focus:ring-0"
+          size="sm"
         />
         {local && (
           <Button
@@ -43,14 +46,13 @@ export function SearchInput({ value, onChange, placeholder, hint, autoFocus }: P
               onChange("");
             }}
             variant="ghost"
-            size="icon"
-            className="h-5 w-5"
+            size="icon-xs"
             aria-label="Clear search"
           >
-            <X className="h-3 w-3" />
+            <X />
           </Button>
         )}
-      </div>
+      </InputGroup>
       {hint && <p className="ml-1 text-2xs text-fg-subtle">{hint}</p>}
     </div>
   );

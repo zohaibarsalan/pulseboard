@@ -12,7 +12,7 @@ test("capture, inspect response, edit, replay, and clear", async ({ page, reques
   await expect(page).toHaveURL(/\/webhooks\//);
   await expect(page.getByText('"value": "original"')).toBeVisible();
 
-  await page.getByRole("button", { name: "Forwarding" }).click();
+  await page.getByRole("tab", { name: "Forwarding" }).click();
   await expect(page.getByText("Response headers")).toBeVisible();
   await expect(page.getByText(/"received":true/)).toBeVisible();
 
@@ -42,6 +42,23 @@ test("authentication works through a reverse proxy in a real browser", async ({ 
   await context.close();
 });
 
+test("coss command, select, and checkbox primitives are operable", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Open command palette" }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.getByPlaceholder("Go to a page or action…").fill("Analytics");
+  await page.getByRole("dialog").getByText("Analytics", { exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Analytics" })).toBeVisible();
+
+  await page.getByRole("link", { name: "Compose" }).click();
+  await expect(page.getByRole("heading", { name: "Compose" })).toBeVisible();
+  await page.getByRole("combobox", { name: "Preset" }).click();
+  await page.getByRole("option", { name: "GitHub: push" }).click();
+  await expect(page.getByLabel("Webhook source")).toHaveText("github");
+  await page.getByRole("checkbox", { name: "Auto-sign with stored secret" }).click();
+  await expect(page.getByRole("checkbox", { name: "Auto-sign with stored secret" })).not.toBeChecked();
+});
+
 test("dark mode, narrow desktop, and large payloads remain usable", async ({ page, request }) => {
   const largeValue = "pulseboard-".repeat(8_000);
   const capture = await request.post("/hook/a/very/long/path/that/must/wrap/without/widening/the/dashboard", {
@@ -62,11 +79,11 @@ test("dark mode, narrow desktop, and large payloads remain usable", async ({ pag
   await expect(page.getByText('"type": "large.payload"')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
 
-  await page.getByRole("button", { name: "Headers" }).click();
+  await page.getByRole("tab", { name: "Headers" }).click();
   await expect(page.getByText("x-very-long-header-name-that-tests-narrow-layouts")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
 
-  await page.getByRole("button", { name: "Forwarding" }).click();
+  await page.getByRole("tab", { name: "Forwarding" }).click();
   await expect(page.getByText("Response body")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
 });

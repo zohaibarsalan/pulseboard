@@ -8,7 +8,15 @@ import { api } from "../lib/api.js";
 import { formatDuration } from "../lib/format.js";
 import { PRESETS, findPreset, type Preset } from "../lib/presets.js";
 import { cn } from "../lib/cn.js";
-import { Button, Card, Checkbox, Input, Select, Textarea } from "../components/coss-ui/index.js";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Field as CossField, FieldLabel } from "@/components/ui/field";
+import { PulseboardSelect as Select } from "../components/PulseboardSelect.js";
 
 type HeaderRow = { id: number; key: string; value: string };
 let headerRowCounter = 0;
@@ -124,9 +132,9 @@ export function ComposePage(): React.ReactElement {
       <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
         <div className="mx-auto grid max-w-6xl grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
           {readonly && (
-            <div className="rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning xl:col-span-2">
-              Pulseboard is running in read-only mode — sending is disabled.
-            </div>
+            <Alert variant="warning" className="xl:col-span-2">
+              <AlertDescription>Pulseboard is running in read-only mode — sending is disabled.</AlertDescription>
+            </Alert>
           )}
 
           <div className="space-y-5">
@@ -224,9 +232,9 @@ export function ComposePage(): React.ReactElement {
                 <span className="ml-auto text-2xs text-fg-subtle">{body.length} chars</span>
               </div>
               {parseError && (
-                <div id="compose-body-error" role="alert" className="mb-2 rounded border border-danger/30 bg-danger/5 px-2 py-1 text-2xs text-danger">
-                  {parseError}
-                </div>
+                <Alert id="compose-body-error" variant="error" className="mb-2 py-2 text-xs">
+                  <AlertDescription>{parseError}</AlertDescription>
+                </Alert>
               )}
               <Textarea
                 aria-label="Webhook request body"
@@ -259,17 +267,19 @@ export function ComposePage(): React.ReactElement {
                   />
                 </div>
 
-                <label className="flex cursor-pointer items-center justify-between gap-3 rounded-md border border-border bg-bg-muted/30 px-3 py-2 text-xs">
-                  <span>Auto-sign with stored secret</span>
-                  <Checkbox checked={autoSign} onChange={(e) => setAutoSign(e.target.checked)} />
-                </label>
+                <CossField>
+                  <FieldLabel className="flex w-full cursor-pointer items-center justify-between rounded-lg border bg-muted/40 px-3 py-2 text-xs">
+                    <span>Auto-sign with stored secret</span>
+                    <Checkbox checked={autoSign} onCheckedChange={(checked) => setAutoSign(checked === true)} />
+                  </FieldLabel>
+                </CossField>
               </div>
 
               {autoSign && source !== "unknown" && !sourceHasSecret && (
-                <div className="mt-3 flex items-center gap-2 rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-2xs text-warning">
+                <Alert variant="warning" className="mt-3 py-2 text-xs">
                   <ShieldOff className="h-3 w-3" />
-                  No <span className="font-mono">{source}</span> secret in Settings.
-                </div>
+                  <AlertDescription>No <span className="font-mono">{source}</span> secret in Settings.</AlertDescription>
+                </Alert>
               )}
             </Section>
 
@@ -300,9 +310,9 @@ export function ComposePage(): React.ReactElement {
               />
             )}
             {send.error && (
-              <div className="rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-xs text-danger">
-                {(send.error as Error).message}
-              </div>
+              <Alert variant="error">
+                <AlertDescription>{(send.error as Error).message}</AlertDescription>
+              </Alert>
             )}
           </div>
         </div>
@@ -313,7 +323,7 @@ export function ComposePage(): React.ReactElement {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }): React.ReactElement {
   return (
-    <Card>
+    <Card className="p-4">
       <h2 className="mb-3 text-2xs font-medium uppercase tracking-wider text-fg-subtle">{title}</h2>
       {children}
     </Card>
@@ -328,10 +338,10 @@ function Field({
   children: React.ReactNode;
 }): React.ReactElement {
   return (
-    <label className="block">
-      <span className="mb-1 block text-2xs font-medium uppercase tracking-wider text-fg-subtle">{label}</span>
+    <CossField>
+      <FieldLabel className="text-2xs uppercase tracking-wider text-muted-foreground">{label}</FieldLabel>
       {children}
-    </label>
+    </CossField>
   );
 }
 
@@ -373,9 +383,9 @@ function ResultPanel({
           </span>
           <span className="text-xs text-fg-subtle">{formatDuration(durationMs)}</span>
           {signedWith && (
-            <span className="rounded bg-success/15 px-1.5 py-0.5 text-2xs text-success">
+            <Badge variant="success" size="sm">
               signed with {signedWith}
-            </span>
+            </Badge>
           )}
         </div>
         <Button

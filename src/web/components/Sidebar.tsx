@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Activity, ArrowRight, Moon, Send, Settings, Sun, Webhook, type LucideIcon } from "lucide-react";
 import { cn } from "../lib/cn.js";
 import { api } from "../lib/api.js";
-import { Button } from "./coss-ui/index.js";
+import { Button } from "@/components/ui/button";
 
 type NavItem = { href: string; label: string; icon: LucideIcon; match?: (loc: string) => boolean };
 
@@ -90,7 +90,7 @@ function ForwardInfo({ forwardTo, count }: { forwardTo: string | null; count: nu
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           <span className="text-[10px] font-medium uppercase tracking-wider text-fg-subtle">Forwarding</span>
-          <span className={cn("pb-dot h-1 w-1", forwardTo ? "bg-success" : "bg-fg-subtle")} />
+          <span className={cn("size-1 rounded-full", forwardTo ? "bg-success" : "bg-fg-subtle")} />
         </div>
         <div className="truncate font-mono text-[11px] text-fg-muted">
           {forwardTo ? `${forwardTo}${count > 1 ? ` +${count - 1}` : ""}` : "capture-only"}

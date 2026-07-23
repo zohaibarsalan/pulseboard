@@ -1,6 +1,7 @@
 import { Key, ShieldAlert, ShieldCheck, ShieldQuestion, ShieldX } from "lucide-react";
 import type { SignatureStatus } from "../lib/api.js";
 import { cn } from "../lib/cn.js";
+import { Badge, type BadgeProps } from "@/components/ui/badge";
 
 type Props = {
   status: SignatureStatus;
@@ -8,12 +9,12 @@ type Props = {
   size?: "sm" | "md";
 };
 
-const STYLES: Record<SignatureStatus, { label: string; icon: typeof ShieldCheck; classes: string }> = {
-  valid: { label: "Signature valid", icon: ShieldCheck, classes: "bg-success/15 text-success" },
-  invalid: { label: "Signature invalid", icon: ShieldX, classes: "bg-danger/15 text-danger" },
-  no_secret: { label: "No secret", icon: Key, classes: "bg-warning/15 text-warning" },
-  unverifiable: { label: "Unverifiable", icon: ShieldQuestion, classes: "bg-bg-muted text-fg-muted" },
-  not_applicable: { label: "No signature", icon: ShieldAlert, classes: "bg-bg-muted text-fg-subtle" },
+const STYLES: Record<SignatureStatus, { label: string; icon: typeof ShieldCheck; variant: BadgeProps["variant"] }> = {
+  valid: { label: "Signature valid", icon: ShieldCheck, variant: "success" },
+  invalid: { label: "Signature invalid", icon: ShieldX, variant: "error" },
+  no_secret: { label: "No secret", icon: Key, variant: "warning" },
+  unverifiable: { label: "Unverifiable", icon: ShieldQuestion, variant: "secondary" },
+  not_applicable: { label: "No signature", icon: ShieldAlert, variant: "secondary" },
 };
 
 export function SignatureBadge({ status, notes, size = "md" }: Props): React.ReactElement | null {
@@ -26,16 +27,16 @@ export function SignatureBadge({ status, notes, size = "md" }: Props): React.Rea
   const compact = size === "sm";
 
   return (
-    <span
+    <Badge
+      variant={cfg.variant}
+      size="sm"
       className={cn(
-        "inline-flex items-center gap-1 rounded font-medium",
-        cfg.classes,
-        compact ? "px-1 py-0 text-[10px]" : "px-1.5 py-0.5 text-2xs",
+        compact && "px-1 text-[10px]",
       )}
       title={notes ?? cfg.label}
     >
-      <Icon className={cn(compact ? "h-2.5 w-2.5" : "h-3 w-3")} />
+      <Icon />
       {!compact && cfg.label}
-    </span>
+    </Badge>
   );
 }

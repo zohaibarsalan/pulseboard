@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { TrendingUp } from "lucide-react";
+import { Card } from "@/components/ui/card";
 
 export type ThroughputBucket = {
   ts: number;
@@ -84,7 +85,7 @@ export function ThroughputChart({ buckets, bucketSeconds, rangeControl }: Props)
   const hovered = hoverIdx != null ? buckets[hoverIdx] : null;
 
   return (
-    <div className="pb-card flex flex-col p-4">
+    <Card className="flex flex-col p-4">
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-fg-subtle" />
@@ -207,7 +208,7 @@ export function ThroughputChart({ buckets, bucketSeconds, rangeControl }: Props)
           )}
         </div>
       )}
-    </div>
+    </Card>
   );
 }
 
