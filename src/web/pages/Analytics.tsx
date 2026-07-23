@@ -476,7 +476,7 @@ function BreakdownList({
 
   return (
     <Card className="overflow-hidden p-0">
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+      <div className="flex items-center justify-between border-b border-border px-4 py-4">
         <div>
           <h3 className="text-sm font-medium">{title}</h3>
           <p className="text-xs text-muted-foreground">Ranked by captured volume</p>
@@ -497,7 +497,7 @@ function BreakdownList({
                   onClick={() => onItemClick(item.key)}
                   variant="ghost"
                   className={cn(
-                    "h-auto w-full rounded-none px-4 py-3 text-left hover:bg-bg-muted/40",
+                    "min-h-16 w-full rounded-none px-4 py-3.5 text-left hover:bg-bg-muted/40",
                     isCurrent && "bg-bg-muted/60",
                   )}
                 >
@@ -509,38 +509,34 @@ function BreakdownList({
             return (
               <li key={item.key}>
                 <Wrapper>
-                  <div className="grid w-full grid-cols-[1.5rem_minmax(0,1fr)_auto] items-center gap-3">
+                  <div className="grid w-full grid-cols-[1.5rem_minmax(0,1fr)] items-center gap-3">
                     <span className="text-xs tabular-nums text-fg-subtle">{index + 1}</span>
                     <div className="min-w-0">
-                      <div className="flex min-w-0 items-center">{renderKey(item.key)}</div>
-                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                      <div className="flex min-w-0 flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-5">
+                        <div className="flex min-w-0 items-center">{renderKey(item.key)}</div>
+                        <div className="flex shrink-0 items-center gap-4 sm:gap-5">
+                          <span className="font-mono text-xs tabular-nums text-fg-muted">
+                            {formatNumber(item.total)} events
+                          </span>
+                          <span
+                            className={cn(
+                              "flex min-w-20 items-center justify-end gap-1 text-xs font-medium tabular-nums",
+                              item.successRate >= 95
+                                ? "text-success"
+                                : item.successRate >= 80
+                                  ? "text-warning"
+                                  : "text-danger",
+                            )}
+                          >
+                            {item.successRate.toFixed(0)}% delivered
+                            {failedPct > 0 && (
+                              <AlertTriangle className="size-3 text-danger" aria-label={`${item.failed} failures`} />
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
                         <div className="h-full rounded-full bg-foreground/25" style={{ width: `${volumePct}%` }} />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-[4.5rem_4.5rem] gap-3 text-right">
-                      <div>
-                        <p className="font-mono text-xs tabular-nums text-fg-muted">{formatNumber(item.total)}</p>
-                        <p className="text-2xs text-fg-subtle">events</p>
-                      </div>
-                      <div>
-                        <p
-                          className={cn(
-                            "text-xs font-medium tabular-nums",
-                            item.successRate >= 95
-                              ? "text-success"
-                              : item.successRate >= 80
-                                ? "text-warning"
-                                : "text-danger",
-                          )}
-                        >
-                          {item.successRate.toFixed(0)}%
-                        </p>
-                        <p className="flex items-center justify-end gap-1 text-2xs text-fg-subtle">
-                          delivery
-                          {failedPct > 0 && (
-                            <AlertTriangle className="size-3 text-danger" aria-label={`${item.failed} failures`} />
-                          )}
-                        </p>
                       </div>
                     </div>
                   </div>
