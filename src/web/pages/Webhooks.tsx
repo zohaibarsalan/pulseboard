@@ -183,7 +183,7 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
 
         <section className={cn("min-w-0 flex-1", showListOnMobile ? "hidden md:block" : "block")}>
           {selected ? (
-            <WebhookDetail webhook={selected} readonly={health?.readonly ?? false} onBack={() => navigate("/")} />
+            <WebhookDetail webhook={selected} readonly={health?.readonly ?? false} />
           ) : selectedLoading ? (
             <DetailSkeleton />
           ) : selectedError ? (
