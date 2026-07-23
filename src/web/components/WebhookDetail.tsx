@@ -104,10 +104,6 @@ export function WebhookDetail({
 
   const asCurl = buildCurl(webhook, originalHeaders);
   const forwardTargetCount = getForwardTargetCount(webhook);
-  const showSignatureNotes =
-    (webhook.signatureStatus === "invalid" || webhook.signatureStatus === "unverifiable") &&
-    webhook.signatureNotes;
-
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
@@ -259,11 +255,6 @@ export function WebhookDetail({
               ) : "Original request"
             }
           />
-          {showSignatureNotes && (
-            <div className="sm:col-span-2 xl:col-span-4">
-              <DetailItem label="Signature note" value={webhook.signatureNotes} tone="danger" />
-            </div>
-          )}
         </dl>
       </section>
 
@@ -331,16 +322,14 @@ export function WebhookDetail({
 function DetailItem({
   label,
   value,
-  tone = "default",
 }: {
   label: string;
   value: React.ReactNode;
-  tone?: "default" | "danger";
 }): React.ReactElement {
   return (
     <div className="min-w-0">
       <dt className="text-2xs text-fg-subtle">{label}</dt>
-      <dd className={cn("mt-0.5 min-w-0 text-xs text-fg-muted", tone === "danger" && "text-danger")}>
+      <dd className="mt-0.5 min-w-0 text-xs text-fg-muted">
         {value}
       </dd>
     </div>
