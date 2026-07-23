@@ -218,9 +218,9 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
             </div>
           </div>
 
-          <div data-testid="webhook-controls" className="min-h-40 space-y-2 border-b border-border p-3">
+          <div data-testid="webhook-controls" className="flex min-h-40 flex-col justify-center gap-2 border-b border-border p-3">
               <SearchInput value={search} onChange={setSearch} placeholder="Search webhooks…" />
-              <div className="grid grid-cols-2 gap-2">
+              <div data-testid="webhook-filters" className="grid grid-cols-2 gap-2">
                 <PulseboardSelect
                   value={statusFilter}
                   onChange={(value) => setStatusFilter(value as StatusFilter)}
