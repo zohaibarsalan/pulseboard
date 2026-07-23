@@ -11,6 +11,7 @@ test("capture, inspect response, edit, replay, and clear", async ({ page, reques
   await page.getByRole("button").filter({ hasText: "e2e.created" }).click();
   await expect(page).toHaveURL(/\/webhooks\//);
   await expect(page.getByLabel("Search webhooks…")).toBeVisible();
+  await expect(page.getByRole("button").filter({ hasText: "e2e.created" })).toHaveAttribute("aria-current", "true");
   await expect(page.getByText('"value": "original"')).toBeVisible();
 
   await page.getByRole("tab", { name: "Forwarding" }).click();

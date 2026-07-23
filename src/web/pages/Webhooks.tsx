@@ -164,6 +164,7 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
               <WebhookRow
                 key={wh.id}
                 webhook={wh}
+                selected={wh.id === selectedId}
                 onClick={() => navigate(`/webhooks/${wh.id}`)}
               />
             ))}
@@ -212,9 +213,11 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
 
 function WebhookRow({
   webhook,
+  selected,
   onClick,
 }: {
   webhook: Webhook;
+  selected: boolean;
   onClick: () => void;
 }): React.ReactElement {
   const statusDot =
@@ -228,8 +231,13 @@ function WebhookRow({
     <Button
       onClick={onClick}
       variant="ghost"
-      className="flex h-auto min-h-16 w-full items-center gap-3 rounded-none border-x-0 border-b border-t-0 border-border/60 bg-bg px-4 py-3.5 text-left last:border-b-0 hover:bg-bg-muted/50"
+      aria-current={selected ? "true" : undefined}
+      className={cn(
+        "flex h-auto min-h-16 w-full items-center gap-3 rounded-none border-x-0 border-b border-t-0 border-border/60 bg-bg px-4 py-3.5 text-left last:border-b-0 hover:bg-bg-muted/50",
+        selected && "bg-bg-muted hover:bg-bg-muted",
+      )}
     >
+      {selected && <span aria-hidden="true" className="absolute inset-y-2 left-0 w-0.5 rounded-r bg-primary" />}
       <span className={cn("h-2 w-2 shrink-0 rounded-full", statusDot)} />
       <div className="min-w-0 flex-1">
         <div className="flex min-h-6 items-center gap-2">
