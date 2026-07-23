@@ -23,41 +23,30 @@ afterEach(() => {
   Reflect.deleteProperty(globalThis, "localStorage");
 });
 
-test("uses the default refresh interval without a saved preference", () => {
+test("refresh preferences default, persist, and support manual-only mode", () => {
   assert.equal(getWebhookRefreshInterval(), DEFAULT_WEBHOOK_REFRESH_INTERVAL);
-});
-test("persists and loads a valid refresh interval", () => {
   setWebhookRefreshInterval(60_000);
   assert.equal(values.get(WEBHOOK_REFRESH_KEY), "60000");
   assert.equal(getWebhookRefreshInterval(), 60_000);
-});
-test("supports manual-only refresh", () => {
   setWebhookRefreshInterval(0);
   assert.equal(getWebhookRefreshInterval(), 0);
 });
-test("rejects refresh intervals below the minimum", () => {
-  values.set(WEBHOOK_REFRESH_KEY, "1000");
-  assert.equal(getWebhookRefreshInterval(), DEFAULT_WEBHOOK_REFRESH_INTERVAL);
+
+test("invalid saved refresh values safely fall back to the default", () => {
+  for (const value of ["1000", "7200000", "often"]) {
+    values.set(WEBHOOK_REFRESH_KEY, value);
+    assert.equal(getWebhookRefreshInterval(), DEFAULT_WEBHOOK_REFRESH_INTERVAL);
+  }
 });
-test("rejects refresh intervals above the maximum", () => {
-  values.set(WEBHOOK_REFRESH_KEY, "7200000");
-  assert.equal(getWebhookRefreshInterval(), DEFAULT_WEBHOOK_REFRESH_INTERVAL);
-});
-test("rejects nonnumeric saved refresh values", () => {
-  values.set(WEBHOOK_REFRESH_KEY, "often");
-  assert.equal(getWebhookRefreshInterval(), DEFAULT_WEBHOOK_REFRESH_INTERVAL);
-});
-test("rounds custom refresh values to whole seconds", () => {
+
+test("custom refresh values normalize to whole seconds without becoming presets", () => {
   values.set(WEBHOOK_REFRESH_KEY, "60555");
   assert.equal(getWebhookRefreshInterval(), 61_000);
-});
-test("recognizes a built-in refresh preset", () => {
   assert.equal(isWebhookRefreshPreset(30_000), true);
-});
-test("does not treat arbitrary custom intervals as presets", () => {
   assert.equal(isWebhookRefreshPreset(45_000), false);
 });
-test("formats seconds and minutes for refresh tooltips", () => {
+
+test("refresh intervals produce human-readable tooltip labels", () => {
   assert.equal(formatWebhookRefreshInterval(5_000), "5 seconds");
   assert.equal(formatWebhookRefreshInterval(60_000), "1 minute");
 });

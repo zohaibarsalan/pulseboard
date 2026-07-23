@@ -178,8 +178,9 @@ pnpm start
 
 ## Test strategy
 
-Pulseboard has a minimum release gate of 100 named automated tests. The suite is
-deliberately split across independent failure boundaries:
+Pulseboard uses a risk-based automated release gate. Tests are grouped by
+behavior so the suite stays useful and maintainable instead of chasing a test
+count. It covers these independent failure boundaries:
 
 - configuration defaults, environment parsing, CLI precedence, invalid values,
   routing rules, forwarding allowlists, and SSRF protections;
@@ -195,7 +196,7 @@ deliberately split across independent failure boundaries:
 - clean-room npm tarball and Docker smoke tests, including process restart and
   SQLite persistence for the installed package.
 
-Run the fast 100-test suite with:
+Run the fast unit and integration suite with:
 
 ```bash
 pnpm test

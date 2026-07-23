@@ -15,26 +15,40 @@ const secrets: Record<string, string> = {
   paddle: "paddle-secret",
 };
 
-for (const source of SIGNABLE_SOURCES) {
-  test(`${source} signatures round-trip through signer and verifier`, () => {
+test("every signable provider round-trips through its real signer and verifier", () => {
+  for (const source of SIGNABLE_SOURCES) {
     const body = JSON.stringify({ source, id: 42 });
     const secret = secrets[source]!;
     const headers = signFor(source, body, secret);
-    assert.equal(verifySignature({ source, headers, body, secret }).status, "valid");
-  });
+    assert.equal(
+      verifySignature({ source, headers, body, secret }).status,
+      "valid",
+      `${source} should verify its generated signature`,
+    );
+  }
+});
 
-  test(`${source} signatures reject a modified payload`, () => {
+test("every provider rejects payload tampering after signing", () => {
+  for (const source of SIGNABLE_SOURCES) {
     const body = JSON.stringify({ source, id: 42 });
     const secret = secrets[source]!;
     const headers = signFor(source, body, secret);
-    const result = verifySignature({ source, headers, body: `${body} `, secret });
-    assert.equal(result.status, "invalid");
-    assert.ok(result.notes);
-  });
+    assert.equal(
+      verifySignature({ source, headers, body: `${body} `, secret }).status,
+      "invalid",
+      `${source} should reject modified bytes`,
+    );
+  }
+});
 
-  test(`${source} reports a missing configured secret`, () => {
+test("recognized providers report missing secrets while unknown sources remain not applicable", () => {
+  for (const source of SIGNABLE_SOURCES) {
     const result = verifySignature({ source, headers: {}, body: "{}", secret: null });
     assert.equal(result.status, "no_secret");
     assert.match(result.notes ?? "", new RegExp(source, "i"));
-  });
-}
+  }
+  assert.equal(
+    verifySignature({ source: "unknown", headers: {}, body: "{}", secret: null }).status,
+    "not_applicable",
+  );
+});
