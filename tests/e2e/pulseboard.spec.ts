@@ -81,6 +81,29 @@ test("authentication works through a reverse proxy in a real browser", async ({ 
   await context.close();
 });
 
+test("left and right arrows move through the webhook inspector", async ({ page, request }) => {
+  await request.post("/hook/keyboard-first", {
+    headers: { "content-type": "application/json" },
+    data: { type: "keyboard.first" },
+  });
+  await request.post("/hook/keyboard-second", {
+    headers: { "content-type": "application/json" },
+    data: { type: "keyboard.second" },
+  });
+
+  await page.goto("/");
+  const rows = page.getByTestId("webhook-row");
+  await expect(rows).toHaveCount(2);
+  await rows.first().click();
+  await expect(rows.first()).toHaveAttribute("aria-current", "true");
+
+  await page.keyboard.press("ArrowRight");
+  await expect(rows.nth(1)).toHaveAttribute("aria-current", "true");
+
+  await page.keyboard.press("ArrowLeft");
+  await expect(rows.first()).toHaveAttribute("aria-current", "true");
+});
+
 test("coss command, webhook search, select, and checkbox primitives are operable", async ({ page, request }) => {
   const searchable = await request.post("/hook/palette", {
     headers: { "content-type": "application/json" },

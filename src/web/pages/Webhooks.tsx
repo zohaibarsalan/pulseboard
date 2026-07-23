@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Check, Copy, Inbox, RefreshCw, Trash2, Webhook as WebhookIcon } from "lucide-react";
 import { useLocation } from "wouter";
@@ -84,12 +84,55 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
     refetchInterval: refreshInterval || false,
   });
 
-  const webhooks = data?.pages.flatMap((page) => page.webhooks) ?? [];
+  const webhooks = useMemo(
+    () => data?.pages.flatMap((page) => page.webhooks) ?? [],
+    [data],
+  );
   const { data: selected, isLoading: selectedLoading, error: selectedError } = useQuery({
     queryKey: ["webhook", selectedId],
     queryFn: () => api.webhook(selectedId!),
     enabled: selectedId != null,
   });
+
+  useEffect(() => {
+    if (!selectedId || webhooks.length === 0) return;
+
+    const moveSelection = (event: KeyboardEvent): void => {
+      if (
+        event.defaultPrevented ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        (event.key !== "ArrowLeft" && event.key !== "ArrowRight")
+      ) {
+        return;
+      }
+
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        target.closest('input, textarea, select, [contenteditable="true"], [role="dialog"], [role="listbox"], [role="menu"]')
+      ) {
+        return;
+      }
+
+      const currentIndex = webhooks.findIndex((webhook) => webhook.id === selectedId);
+      if (currentIndex === -1) return;
+
+      const nextIndex = currentIndex + (event.key === "ArrowRight" ? 1 : -1);
+      const nextWebhook = webhooks[nextIndex];
+      if (!nextWebhook) return;
+
+      event.preventDefault();
+      document
+        .querySelector<HTMLElement>(`[data-webhook-id="${CSS.escape(nextWebhook.id)}"]`)
+        ?.scrollIntoView({ block: "nearest" });
+      navigate(`/webhooks/${nextWebhook.id}`);
+    };
+
+    window.addEventListener("keydown", moveSelection);
+    return () => window.removeEventListener("keydown", moveSelection);
+  }, [navigate, selectedId, webhooks]);
 
   const clearMutation = useMutation({
     mutationFn: () => api.clear(),
@@ -301,6 +344,8 @@ function WebhookRow({
     <Button
       onClick={onClick}
       variant="ghost"
+      data-testid="webhook-row"
+      data-webhook-id={webhook.id}
       aria-current={selected ? "true" : undefined}
       className={cn(
         "flex h-auto min-h-16 w-full items-center gap-3 rounded-none border-x-0 border-b border-t-0 border-border/60 bg-bg px-4 py-3.5 text-left last:border-b-0 hover:bg-bg-muted/50",
