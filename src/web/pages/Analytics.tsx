@@ -249,8 +249,6 @@ function BreakdownList({
   onItemClick?: (key: string) => void;
   currentKey?: string | null;
 }): React.ReactElement {
-  const max = items.length > 0 ? items[0]!.total : 1;
-
   return (
     <Card className="overflow-hidden p-0">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -260,9 +258,14 @@ function BreakdownList({
       {items.length === 0 ? (
         <div className="px-4 py-8 text-center text-sm text-fg-subtle">No data</div>
       ) : (
+        <>
+        <div className="grid grid-cols-[minmax(0,1fr)_5rem_5rem] gap-3 border-b bg-muted/20 px-4 py-2 text-xs text-muted-foreground">
+          <span>{title === "By source" ? "Source" : "Event"}</span>
+          <span className="text-right">Total</span>
+          <span className="text-right">Success</span>
+        </div>
         <ul className="divide-y divide-border">
           {items.map((item) => {
-            const widthPct = (item.total / max) * 100;
             const failedPct = item.total > 0 ? (item.failed / item.total) * 100 : 0;
             const isCurrent = currentKey === item.key;
             const Wrapper = ({ children }: { children: React.ReactNode }): React.ReactElement =>
@@ -283,20 +286,14 @@ function BreakdownList({
             return (
               <li key={item.key}>
                 <Wrapper>
-                  <div className="relative px-4 py-2.5">
-                    <div
-                      className="absolute inset-y-0 left-0 bg-fg/[0.04]"
-                      style={{ width: `${widthPct}%` }}
-                    />
-                    <div className="relative flex items-center justify-between gap-3">
-                      <div className="min-w-0 flex-1">{renderKey(item.key)}</div>
-                      <div className="flex shrink-0 items-center gap-3">
+                  <div className="grid grid-cols-[minmax(0,1fr)_5rem_5rem] items-center gap-3 px-4 py-2.5">
+                      <div className="min-w-0">{renderKey(item.key)}</div>
                         <span className="font-mono text-xs tabular-nums text-fg-muted">
                           {formatNumber(item.total)}
                         </span>
                         <span
                           className={cn(
-                            "w-12 text-right text-xs font-medium tabular-nums",
+                            "relative text-right text-xs font-medium tabular-nums",
                             item.successRate >= 95
                               ? "text-success"
                               : item.successRate >= 80
@@ -305,21 +302,20 @@ function BreakdownList({
                           )}
                         >
                           {item.successRate.toFixed(0)}%
+                          {failedPct > 0 && (
+                            <AlertTriangle
+                              className="absolute -right-3 top-0 size-3 text-danger"
+                              aria-label={`${item.failed} failures`}
+                            />
+                          )}
                         </span>
-                        {failedPct > 0 && (
-                          <AlertTriangle
-                            className="h-3 w-3 text-danger"
-                            aria-label={`${item.failed} failures`}
-                          />
-                        )}
-                      </div>
-                    </div>
                   </div>
                 </Wrapper>
               </li>
             );
           })}
         </ul>
+        </>
       )}
       {onItemClick && currentKey && (
         <div className="border-t border-border px-4 py-2 text-2xs text-fg-subtle">

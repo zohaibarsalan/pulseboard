@@ -42,6 +42,9 @@ export function CommandPalette({ open, onClose }: Props): React.ReactElement {
   };
 
   const isDark = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
+  const normalizedSearch = search.trim().toLowerCase();
+  const labels = ["webhooks", "compose", "analytics", "settings", isDark ? "switch to light mode" : "switch to dark mode"];
+  const hasMatches = labels.some((label) => label.includes(normalizedSearch));
 
   return (
     <CommandDialog open={open} onOpenChange={(next) => !next && onClose()}>
@@ -54,7 +57,7 @@ export function CommandPalette({ open, onClose }: Props): React.ReactElement {
           />
           <CommandPanel>
             <CommandList>
-              <CommandEmpty>No matches.</CommandEmpty>
+              {normalizedSearch && !hasMatches ? <CommandEmpty>No matches.</CommandEmpty> : null}
               <CommandGroup>
                 <CommandGroupLabel>Pages</CommandGroupLabel>
                 <PaletteItem icon={Webhook} label="Webhooks" onSelect={() => go("/")} />

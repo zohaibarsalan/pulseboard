@@ -52,9 +52,9 @@ test("coss command, select, and checkbox primitives are operable", async ({ page
 
   await page.getByRole("link", { name: "Compose" }).click();
   await expect(page.getByRole("heading", { name: "Compose" })).toBeVisible();
-  await page.getByLabel("Webhook preset").click();
+  await page.getByRole("combobox", { name: "Preset" }).click();
   await page.getByRole("option", { name: "GitHub: push" }).click();
-  await expect(page.getByLabel("Webhook source")).toHaveText("github");
+  await expect(page.getByRole("combobox", { name: "Source" })).toHaveText("github");
   await page.getByRole("checkbox", { name: "Auto-sign" }).click();
   await expect(page.getByRole("checkbox", { name: "Auto-sign" })).not.toBeChecked();
 });

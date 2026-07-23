@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Eye, EyeOff, Key, Save, Trash2, X } from "lucide-react";
+import { Check, Eye, EyeOff, Save, Trash2, X } from "lucide-react";
 import { api, type SecretInfo } from "../lib/api.js";
 import { SourceBadge } from "./SourceBadge.js";
 import { Button } from "@/components/ui/button";
@@ -121,20 +121,19 @@ function SecretRow({ info, readonly }: { info: SecretInfo; readonly: boolean }):
           </div>
           <Button
             onClick={() => setEditing(true)}
-            variant="outline"
-            size="sm"
+            variant={info.configured ? "ghost" : "outline"}
+            size="xs"
             disabled={readonly}
           >
-            <Key className="h-3 w-3" />
-            {info.configured ? "Update" : "Add secret"}
+            {info.configured ? "Edit" : "Add"}
           </Button>
           {info.configured && (
             <Button
               onClick={() => setRemoveOpen(true)}
               disabled={remove.isPending}
-              variant="danger"
-              size="icon"
-              className="h-7 w-7"
+              variant="ghost"
+              size="icon-xs"
+              className="text-muted-foreground hover:text-danger"
               title="Remove secret"
               aria-label={`Remove ${info.source} signing secret`}
             >

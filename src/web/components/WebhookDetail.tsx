@@ -110,7 +110,7 @@ export function WebhookDetail({
       {/* Header */}
       <div className="border-b border-border px-5 py-4">
         {onBack && (
-          <Button onClick={onBack} variant="ghost" size="sm" className="mb-3 md:hidden">
+          <Button onClick={onBack} variant="ghost" size="sm" className="mb-3">
             <ArrowLeft className="size-3.5" aria-hidden="true" />
             Back to webhooks
           </Button>

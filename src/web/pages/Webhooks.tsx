@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { Check, Copy, Inbox, RefreshCw, Trash2, Webhook as WebhookIcon } from "lucide-react";
+import { Check, Copy, Inbox, RefreshCw, Trash2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { Topbar } from "../components/Topbar.js";
 import { SourceBadge } from "../components/SourceBadge.js";
@@ -64,12 +64,10 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
   });
 
   const webhooks = data?.pages.flatMap((page) => page.webhooks) ?? [];
-  const inspectedId = selectedId ?? webhooks[0]?.id ?? null;
-
   const { data: selected, isLoading: selectedLoading, error: selectedError } = useQuery({
-    queryKey: ["webhook", inspectedId],
-    queryFn: () => api.webhook(inspectedId!),
-    enabled: inspectedId != null,
+    queryKey: ["webhook", selectedId],
+    queryFn: () => api.webhook(selectedId!),
+    enabled: selectedId != null,
   });
 
   const clearMutation = useMutation({
@@ -82,8 +80,6 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
     },
   });
 
-  const showListOnMobile = selectedId == null;
-
   const refreshEvents = (): void => {
     live.acknowledge();
     void queryClient.invalidateQueries({ queryKey: ["webhooks"] });
@@ -93,14 +89,21 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
     <div className="flex h-full flex-col">
       <Topbar title="Webhooks" subtitle={<LiveBadge status={live.status} />} />
 
-      <div className="flex min-h-0 flex-1">
-        {/* Left: list pane */}
-        <div className={cn(
-          "w-full flex-col border-r border-border bg-bg-subtle/35 md:flex md:w-[420px] xl:w-[500px]",
-          showListOnMobile ? "flex" : "hidden",
-        )}>
+      {selectedId ? (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {selected ? (
+            <WebhookDetail webhook={selected} readonly={health?.readonly ?? false} onBack={() => navigate("/")} />
+          ) : selectedLoading ? (
+            <DetailSkeleton />
+          ) : selectedError ? (
+            <Alert variant="error" className="m-5"><AlertDescription>Could not load this webhook: {selectedError.message}</AlertDescription></Alert>
+          ) : null}
+        </div>
+      ) : (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-5">
           {/* Stats bar */}
-          <div className="flex items-center gap-4 border-b border-border px-4 py-3 text-xs">
+          <div className="flex items-center gap-4 border-b border-border pb-4 text-xs">
             <span><span className="font-semibold tabular-nums">{stats?.total ?? 0}</span> <span className="text-fg-subtle">total</span></span>
             <span className="text-success"><span className="font-semibold tabular-nums">{stats?.succeeded ?? 0}</span> ok</span>
             <span className="text-danger"><span className="font-semibold tabular-nums">{stats?.failed ?? 0}</span> failed</span>
@@ -124,14 +127,14 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
               onClick={refreshEvents}
               variant="outline"
               size="sm"
-              className="mx-3 mt-3"
+              className="mt-3"
             >
               <RefreshCw aria-hidden="true" />
               {live.newEventCount} new {live.newEventCount === 1 ? "event" : "events"} · refresh
             </Button>
           )}
 
-          <div className="grid grid-cols-[minmax(0,1fr)_7.5rem_8.5rem] gap-2 border-b border-border p-3">
+          <div className="grid grid-cols-1 gap-2 border-b border-border py-3 sm:grid-cols-[minmax(0,1fr)_9rem_11rem]">
             <SearchInput value={search} onChange={setSearch} placeholder="Search webhooks…" />
             <PulseboardSelect
               value={statusFilter}
@@ -161,14 +164,21 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
           </div>
 
           {/* List */}
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="overflow-hidden rounded-lg border border-border">
+            {webhooks.length > 0 && (
+              <div className="hidden grid-cols-[minmax(14rem,1.2fr)_minmax(12rem,1fr)_7rem_6rem] gap-4 border-b bg-muted/20 px-4 py-2 text-xs text-muted-foreground md:grid">
+                <span>Event</span>
+                <span>Endpoint</span>
+                <span>Received</span>
+                <span className="text-right">Latency</span>
+              </div>
+            )}
             {isLoading && <WebhookListSkeleton />}
             {!isLoading && webhooks.length === 0 && <EmptyList captureUrl={health?.captureUrl} />}
             {webhooks.map((wh) => (
               <WebhookRow
                 key={wh.id}
                 webhook={wh}
-                selected={wh.id === inspectedId}
                 onClick={() => navigate(`/webhooks/${wh.id}`)}
               />
             ))}
@@ -184,20 +194,8 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
             )}
           </div>
         </div>
-
-        {/* Right: detail pane */}
-        <div className={cn("min-w-0 flex-1", showListOnMobile ? "hidden md:block" : "block")}>
-          {selected ? (
-            <WebhookDetail webhook={selected} readonly={health?.readonly ?? false} onBack={() => navigate("/")} />
-          ) : selectedLoading ? (
-            <DetailSkeleton />
-          ) : selectedError ? (
-            <Alert variant="error" className="m-5"><AlertDescription>Could not load this webhook: {selectedError.message}</AlertDescription></Alert>
-          ) : (
-            <EmptyDetail />
-          )}
         </div>
-      </div>
+      )}
       <ConfirmDialog
         open={clearOpen}
         onOpenChange={setClearOpen}
@@ -218,11 +216,9 @@ export function WebhooksPage({ selectedId = null }: { selectedId?: string | null
 
 function WebhookRow({
   webhook,
-  selected,
   onClick,
 }: {
   webhook: Webhook;
-  selected: boolean;
   onClick: () => void;
 }): React.ReactElement {
   const statusDot =
@@ -236,10 +232,7 @@ function WebhookRow({
     <Button
       onClick={onClick}
       variant="ghost"
-      className={cn(
-        "flex h-auto w-full items-center gap-3 rounded-none border-x-0 border-b border-t-0 border-border/60 bg-bg px-4 py-2.5 text-left hover:bg-bg-muted/50",
-        selected && "bg-bg-muted/70",
-      )}
+      className="grid h-auto w-full grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-none border-x-0 border-b border-t-0 border-border/60 bg-bg px-4 py-3 text-left last:border-b-0 hover:bg-bg-muted/50 md:grid-cols-[auto_minmax(14rem,1.2fr)_minmax(12rem,1fr)_7rem_6rem]"
     >
       <span className={cn("h-2 w-2 shrink-0 rounded-full", statusDot)} />
       <div className="min-w-0 flex-1">
@@ -250,14 +243,14 @@ function WebhookRow({
             <span className="truncate font-mono text-xs font-medium text-fg">{webhook.eventType}</span>
           )}
         </div>
-        <div className="mt-1 truncate font-mono text-2xs text-fg-subtle">
-          {webhook.method} {webhook.path}
-        </div>
       </div>
-      <div className="shrink-0 text-right">
-        <div className="text-2xs text-fg-subtle">{formatRelativeTime(webhook.receivedAt)}</div>
+      <div className="hidden truncate font-mono text-xs text-fg-muted md:block">
+          {webhook.method} {webhook.path}
+      </div>
+      <div className="hidden text-xs text-fg-subtle md:block">{formatRelativeTime(webhook.receivedAt)}</div>
+      <div className="hidden text-right text-xs text-fg-subtle md:block">
         {webhook.forwardDurationMs != null && (
-          <div className="text-2xs text-fg-subtle">{formatDuration(webhook.forwardDurationMs)}</div>
+          <span>{formatDuration(webhook.forwardDurationMs)}</span>
         )}
       </div>
     </Button>
@@ -309,16 +302,6 @@ function EmptyList({ captureUrl }: { captureUrl?: string }): React.ReactElement 
         </Button>
       </EmptyContent>
     </Empty>
-  );
-}
-
-function EmptyDetail(): React.ReactElement {
-  return (
-    <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
-      <WebhookIcon className="h-8 w-8 text-fg-subtle" />
-      <p className="text-sm text-fg-muted">Select a webhook to inspect</p>
-      <p className="text-xs text-fg-subtle">Headers, body, and forwarding details appear here</p>
-    </div>
   );
 }
 

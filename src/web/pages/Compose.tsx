@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { CheckCircle2, Plus, Send, ShieldOff, X, XCircle } from "lucide-react";
 import { Topbar } from "../components/Topbar.js";
-import { SourceBadge } from "../components/SourceBadge.js";
 import { api } from "../lib/api.js";
 import { formatDuration } from "../lib/format.js";
 import { PRESETS, findPreset, type Preset } from "../lib/presets.js";
@@ -132,7 +131,7 @@ export function ComposePage(): React.ReactElement {
       <Topbar title="Compose" subtitle="Send a webhook to your local app" />
 
       <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6 lg:py-8">
-        <div className="mx-auto max-w-5xl space-y-4">
+        <div className="mx-auto max-w-4xl space-y-4">
           {readonly && (
             <Alert variant="warning">
               <AlertDescription>Pulseboard is running in read-only mode — sending is disabled.</AlertDescription>
@@ -140,28 +139,25 @@ export function ComposePage(): React.ReactElement {
           )}
 
           <Card className="overflow-hidden">
-            <div className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center">
-              <Select
-                value={presetId}
-                options={PRESETS.map((preset) => ({ value: preset.id, label: preset.label }))}
-                onChange={(next) => {
-                  const preset = findPreset(next);
-                  if (preset) applyPreset(preset);
-                }}
-                className="w-full sm:w-56"
-                ariaLabel="Webhook preset"
-              />
-              <div className="flex items-center gap-2 sm:ml-auto">
-                <SourceBadge source={source} />
+            <div className="grid gap-3 border-b p-4 sm:grid-cols-[minmax(0,1fr)_12rem_auto] sm:items-end">
+              <Field label="Preset">
                 <Select
-                  value={source}
-                  options={SOURCE_SELECT_OPTIONS}
-                  onChange={setSource}
-                  className="w-36 text-xs"
-                  ariaLabel="Webhook source"
+                  value={presetId}
+                  options={PRESETS.map((preset) => ({ value: preset.id, label: preset.label }))}
+                  onChange={(next) => {
+                    const preset = findPreset(next);
+                    if (preset) applyPreset(preset);
+                  }}
+                  className="w-full"
+                  ariaLabel="Webhook preset"
                 />
+              </Field>
+              <Field label="Source">
+                <Select value={source} options={SOURCE_SELECT_OPTIONS} onChange={setSource} className="w-full capitalize" ariaLabel="Webhook source" />
+              </Field>
+              <div className="pb-0.5">
                 <CossField className="w-auto">
-                  <FieldLabel className="cursor-pointer gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-xs">
+                  <FieldLabel className="cursor-pointer gap-2 whitespace-nowrap rounded-lg border px-3 py-2.5 text-xs">
                     <Checkbox checked={autoSign} onCheckedChange={(checked) => setAutoSign(checked === true)} />
                     Auto-sign
                   </FieldLabel>
@@ -170,9 +166,13 @@ export function ComposePage(): React.ReactElement {
             </div>
 
             <div className="space-y-4 p-4 sm:p-5">
-              <div className="grid grid-cols-[7rem_minmax(0,1fr)] gap-2">
-                <Select value={method} options={METHOD_OPTIONS} onChange={setMethod} className="font-mono text-xs" ariaLabel="HTTP method" />
-                <Input aria-label="Request path" value={path} onChange={(event) => setPath(event.target.value)} className="font-mono" />
+              <div className="grid grid-cols-[9rem_minmax(0,1fr)] gap-2">
+                <Field label="Method">
+                  <Select value={method} options={METHOD_OPTIONS} onChange={setMethod} className="w-full font-mono text-xs" ariaLabel="HTTP method" />
+                </Field>
+                <Field label="Path">
+                  <Input aria-label="Request path" value={path} onChange={(event) => setPath(event.target.value)} className="font-mono" />
+                </Field>
               </div>
               <Field label="Forward target">
                 <Input
@@ -216,9 +216,9 @@ export function ComposePage(): React.ReactElement {
                       setBody(event.target.value);
                       if (parseError) setParseError(null);
                     }}
-                    rows={12}
+                    rows={9}
                     spellCheck={false}
-                    className="min-h-56 resize-y font-mono text-xs leading-relaxed"
+                    className="min-h-44 resize-y font-mono text-xs leading-relaxed"
                   />
                 </TabsPanel>
                 <TabsPanel value="headers" className="space-y-2 pt-4">
