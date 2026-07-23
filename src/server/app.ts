@@ -15,6 +15,8 @@ import { captureRoute } from "./routes/capture.js";
 import { secretsRoutes } from "./routes/secrets.js";
 import { analyticsRoutes } from "./routes/analytics.js";
 import { senderRoutes } from "./routes/sender.js";
+import { deliveriesRoutes } from "./routes/deliveries.js";
+import { startDeliveryScheduler } from "../delivery/attempts.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -70,6 +72,8 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
   }, 60 * 60 * 1000);
   maintenanceTimer.unref();
   app.addHook("onClose", async () => clearInterval(maintenanceTimer));
+  const stopDeliveryScheduler = startDeliveryScheduler(ctx);
+  app.addHook("onClose", async () => stopDeliveryScheduler());
 
   const devProxyTarget = process.env.PULSEBOARD_DEV_PROXY ?? process.env.WEBHOOK_STUDIO_DEV_PROXY;
 
@@ -82,6 +86,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
   await secretsRoutes(app, ctx);
   await analyticsRoutes(app, ctx);
   await senderRoutes(app, ctx);
+  await deliveriesRoutes(app, ctx);
   await liveRoute(app, ctx);
   await captureRoute(app, ctx);
 

@@ -5,6 +5,7 @@ import { webhooks, type NewWebhook, type Webhook } from "../../db/schema.js";
 import { forwardWebhook } from "../../capture/forwarder.js";
 import { rowToWebhook, webhookForClient } from "../serialize.js";
 import { deliveryFields, targetsForWebhook, validateOverrideTarget } from "../../capture/routing.js";
+import { persistInitialAttempts } from "../../delivery/attempts.js";
 
 type ListQuery = {
   source?: string;
@@ -208,6 +209,7 @@ export async function webhooksRoutes(app: FastifyInstance, ctx: AppContext): Pro
         signatureNotes: wasEdited ? "Edited replay — original signature no longer applies" : original.signatureNotes,
       };
       ctx.db.insert(webhooks).values(replayRecord).run();
+      persistInitialAttempts(ctx, replayRecord.id, results);
 
       // Bump the original's replay counter.
       ctx.db.$client

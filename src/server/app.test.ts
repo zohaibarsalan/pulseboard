@@ -11,7 +11,7 @@ import type { Config } from "../config/index.js";
 import { closeDb, openDb } from "../db/client.js";
 import { maintainDatabase } from "../db/maintenance.js";
 import { runMigrations } from "../db/migrate.js";
-import { webhooks } from "../db/schema.js";
+import { deliveryAttempts, webhooks } from "../db/schema.js";
 import { buildApp } from "./app.js";
 
 const cleanup: Array<() => Promise<void> | void> = [];
@@ -112,6 +112,15 @@ test("capture preserves exact bytes, redacts client headers, and requires config
   assert.equal(JSON.parse(stored.deliveries_json).length, 2);
   assert.equal(stored.response_body, '{"accepted":true}');
 
+  const storedWebhook = ctx.db.$client
+    .prepare("SELECT id FROM webhooks ORDER BY received_at DESC LIMIT 1")
+    .get() as { id: string };
+  const attemptRows = ctx.db.$client
+    .prepare("SELECT target, attempt_number, state FROM delivery_attempts WHERE webhook_id = ? ORDER BY target")
+    .all(storedWebhook.id) as Array<{ target: string; attempt_number: number; state: string }>;
+  assert.equal(attemptRows.length, 2);
+  assert.deepEqual(new Set(attemptRows.map((row) => row.state)), new Set(["delivered"]));
+
   const unauthorized = await app.inject({ method: "GET", url: "/api/webhooks" });
   assert.equal(unauthorized.statusCode, 401);
 
@@ -128,6 +137,47 @@ test("capture preserves exact bytes, redacts client headers, and requires config
   assert.equal(responseHeaders["x-token"], "••••••••");
   assert.equal(JSON.parse(authorized.json().webhooks[0].deliveriesJson).length, 2);
   assert.equal(authorized.json().webhooks[0].bodyBase64, undefined);
+
+  const deliveries = await app.inject({
+    method: "GET",
+    url: `/api/webhooks/${storedWebhook.id}/deliveries`,
+    headers: { authorization: `Basic ${Buffer.from("pulseboard:test-password").toString("base64")}` },
+  });
+  assert.equal(deliveries.statusCode, 200);
+  assert.equal(deliveries.json().targets.length, 2);
+  assert.equal(deliveries.json().policy.automaticRetries, false);
+
+  const retry = await app.inject({
+    method: "POST",
+    url: `/api/webhooks/${storedWebhook.id}/deliveries/retry`,
+    headers: {
+      authorization: `Basic ${Buffer.from("pulseboard:test-password").toString("base64")}`,
+      "content-type": "application/json",
+    },
+    payload: JSON.stringify({ attemptId: deliveries.json().targets[0].attempts[0].id }),
+  });
+  assert.equal(retry.statusCode, 200);
+  assert.equal(retry.json().attempt.attemptNumber, 2);
+  assert.equal(retry.json().attempt.trigger, "manual");
+  assert.equal(retry.json().attempt.state, "delivered");
+
+  const policyUpdate = await app.inject({
+    method: "PUT",
+    url: "/api/delivery-policy",
+    headers: {
+      authorization: `Basic ${Buffer.from("pulseboard:test-password").toString("base64")}`,
+      "content-type": "application/json",
+    },
+    payload: JSON.stringify({
+      automaticRetries: true,
+      maxAttempts: 4,
+      baseDelayMs: 5_000,
+      maxDelayMs: 60_000,
+    }),
+  });
+  assert.equal(policyUpdate.statusCode, 200);
+  assert.equal(policyUpdate.json().automaticRetries, true);
+  assert.equal(policyUpdate.json().maxAttempts, 4);
 
   const filterHeaders = { authorization: `Basic ${Buffer.from("pulseboard:test-password").toString("base64")}` };
   const matchingFilters = await app.inject({
@@ -241,6 +291,47 @@ test("analytics exposes latency percentiles and actionable delivery diagnostics"
     },
     { ...base, id: "slow", path: "/slow", forwardStatus: 200, forwardDurationMs: 7_000 },
   ]).run();
+  ctx.db.insert(deliveryAttempts).values([
+    {
+      id: "healthy-attempt",
+      webhookId: "healthy",
+      target: "http://target.test",
+      attemptNumber: 1,
+      trigger: "initial",
+      state: "delivered",
+      scheduledAt: now,
+      startedAt: now,
+      completedAt: now + 100,
+      statusCode: 200,
+      durationMs: 100,
+    },
+    {
+      id: "timeout-attempt-1",
+      webhookId: "timeout",
+      target: "http://target.test",
+      attemptNumber: 1,
+      trigger: "initial",
+      state: "failed",
+      scheduledAt: now,
+      startedAt: now,
+      completedAt: now + 2_000,
+      durationMs: 2_000,
+      error: "Timed out after 2000ms",
+    },
+    {
+      id: "timeout-attempt-2",
+      webhookId: "timeout",
+      target: "http://target.test",
+      attemptNumber: 2,
+      trigger: "manual",
+      state: "delivered",
+      scheduledAt: now + 3_000,
+      startedAt: now + 3_000,
+      completedAt: now + 3_050,
+      statusCode: 200,
+      durationMs: 50,
+    },
+  ]).run();
 
   const app = await buildApp(ctx);
   cleanup.push(() => app.close());
@@ -264,4 +355,8 @@ test("analytics exposes latency percentiles and actionable delivery diagnostics"
   assert.equal(payload.statusClasses.find((row: { key: string }) => row.key === "network_error")?.count, 1);
   assert.equal(payload.slowestEndpoints[0].path, "/slow");
   assert.equal(payload.recentIssues.length, 4);
+  assert.equal(payload.deliveryLifecycle.targets, 2);
+  assert.equal(payload.deliveryLifecycle.retriedTargets, 1);
+  assert.equal(payload.deliveryLifecycle.recoveredTargets, 1);
+  assert.equal(payload.deliveryLifecycle.firstAttemptSuccessRate, 50);
 });

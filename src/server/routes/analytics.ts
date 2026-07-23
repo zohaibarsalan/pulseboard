@@ -375,6 +375,81 @@ export async function analyticsRoutes(app: FastifyInstance, ctx: AppContext): Pr
         reason: string;
       }>;
 
+    const attemptClauses = ["w.received_at >= ?"];
+    const attemptParams: Array<string | number> = [since];
+    if (req.query.source) {
+      attemptClauses.push("w.source = ?");
+      attemptParams.push(req.query.source);
+    }
+    if (req.query.status === "success") {
+      attemptClauses.push("w.forward_status >= 200 AND w.forward_status < 300");
+    } else if (req.query.status === "failed") {
+      attemptClauses.push("(w.forward_error IS NOT NULL OR w.forward_status >= 400)");
+    } else if (req.query.status === "pending") {
+      attemptClauses.push("w.forwarded_to IS NULL");
+    }
+    if (req.query.signature) {
+      attemptClauses.push("w.signature_status = ?");
+      attemptParams.push(req.query.signature);
+    }
+    const attemptWhere = attemptClauses.join(" AND ");
+    const lifecycle = ctx.db.$client
+      .prepare(
+        `WITH target_rollup AS (
+          SELECT
+            a.webhook_id,
+            a.target,
+            COUNT(*) AS attempts,
+            MAX(CASE WHEN a.attempt_number = 1 AND a.state = 'delivered' THEN 1 ELSE 0 END) AS first_success,
+            MAX(CASE WHEN a.attempt_number > 1 AND a.state = 'delivered' THEN 1 ELSE 0 END) AS recovered,
+            MAX(CASE WHEN a.state IN ('queued', 'sending') THEN 1 ELSE 0 END) AS active
+          FROM delivery_attempts a
+          JOIN webhooks w ON w.id = a.webhook_id
+          WHERE ${attemptWhere}
+          GROUP BY a.webhook_id, a.target
+        )
+        SELECT
+          COUNT(*) AS targets,
+          COALESCE(SUM(attempts), 0) AS attempts,
+          COALESCE(SUM(first_success), 0) AS first_successes,
+          COALESCE(SUM(CASE WHEN attempts > 1 THEN 1 ELSE 0 END), 0) AS retried,
+          COALESCE(SUM(recovered), 0) AS recovered,
+          COALESCE(SUM(active), 0) AS active,
+          COALESCE(AVG(attempts), 0) AS avg_attempts
+        FROM target_rollup`,
+      )
+      .get(...attemptParams) as {
+        targets: number;
+        attempts: number;
+        first_successes: number;
+        retried: number;
+        recovered: number;
+        active: number;
+        avg_attempts: number;
+      };
+    const policy = ctx.db.$client
+      .prepare("SELECT max_attempts FROM delivery_policy WHERE id = 1")
+      .get() as { max_attempts: number } | undefined;
+    const maxAttempts = policy?.max_attempts ?? 3;
+    const exhausted = ctx.db.$client
+      .prepare(
+        `WITH latest AS (
+          SELECT a.webhook_id, a.target, MAX(a.attempt_number) AS attempt_number
+          FROM delivery_attempts a
+          JOIN webhooks w ON w.id = a.webhook_id
+          WHERE ${attemptWhere}
+          GROUP BY a.webhook_id, a.target
+        )
+        SELECT COUNT(*) AS count
+        FROM latest l
+        JOIN delivery_attempts a
+          ON a.webhook_id = l.webhook_id
+          AND a.target = l.target
+          AND a.attempt_number = l.attempt_number
+        WHERE a.state = 'failed' AND a.attempt_number >= ?`,
+      )
+      .get(...attemptParams, maxAttempts) as { count: number };
+
     const issueTotal = failureReasons.reduce((sum, item) => sum + item.count, 0);
     return {
       rangeDays: days,
@@ -402,6 +477,17 @@ export async function analyticsRoutes(app: FastifyInstance, ctx: AppContext): Pr
         receivedAt: item.received_at,
         reason: item.reason,
       })),
+      deliveryLifecycle: {
+        targets: lifecycle.targets ?? 0,
+        attempts: lifecycle.attempts ?? 0,
+        firstAttemptSuccessRate:
+          lifecycle.targets > 0 ? (lifecycle.first_successes / lifecycle.targets) * 100 : 0,
+        retriedTargets: lifecycle.retried ?? 0,
+        recoveredTargets: lifecycle.recovered ?? 0,
+        exhaustedTargets: exhausted.count ?? 0,
+        activeRetries: lifecycle.active ?? 0,
+        averageAttempts: lifecycle.avg_attempts ?? 0,
+      },
     };
   });
 }

@@ -7,6 +7,7 @@ import { signFor } from "../../capture/signer.js";
 import { verifySignature } from "../../capture/signature.js";
 import { rowToWebhook } from "../serialize.js";
 import { deliveryFields, targetsForWebhook, validateOverrideTarget } from "../../capture/routing.js";
+import { persistInitialAttempts } from "../../delivery/attempts.js";
 
 type SendBody = {
   method?: string;
@@ -120,6 +121,7 @@ export async function senderRoutes(app: FastifyInstance, ctx: AppContext): Promi
       signatureNotes: signature.notes ?? null,
     };
     ctx.db.insert(webhooks).values(record).run();
+    persistInitialAttempts(ctx, record.id, results);
     ctx.lastCapturedAt.value = now;
 
     const stored = ctx.db.$client

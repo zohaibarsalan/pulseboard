@@ -67,7 +67,7 @@ export function webhookForClient(webhook: Webhook, redactedHeaderTokens: string[
   };
 }
 
-function redactHeaderRecord(headers: Record<string, string>, tokens: string[]): void {
+export function redactHeaderRecord(headers: Record<string, string>, tokens: string[]): void {
   const loweredTokens = tokens.map((token) => token.toLowerCase());
   for (const key of Object.keys(headers)) {
     const loweredKey = key.toLowerCase();
