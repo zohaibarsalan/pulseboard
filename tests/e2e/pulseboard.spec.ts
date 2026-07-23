@@ -48,11 +48,22 @@ test("authentication works through a reverse proxy in a real browser", async ({ 
   await context.close();
 });
 
-test("coss command, select, and checkbox primitives are operable", async ({ page }) => {
+test("coss command, webhook search, select, and checkbox primitives are operable", async ({ page, request }) => {
+  const searchable = await request.post("/hook/palette", {
+    headers: { "content-type": "application/json" },
+    data: { type: "palette.search", value: "find-me" },
+  });
+  expect(searchable.ok()).toBeTruthy();
+
   await page.goto("/");
   await page.getByRole("button", { name: "Open command palette" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
-  await page.getByPlaceholder("Go to a page or action…").fill("Analytics");
+  await page.getByPlaceholder("Search webhooks, pages, and actions…").fill("palette.search");
+  await page.getByRole("dialog").getByText("palette.search", { exact: true }).click();
+  await expect(page).toHaveURL(/\/webhooks\//);
+
+  await page.getByRole("button", { name: "Open command palette" }).click();
+  await page.getByPlaceholder("Search webhooks, pages, and actions…").fill("Analytics");
   await page.getByRole("dialog").getByText("Analytics", { exact: true }).click();
   await expect(page.getByRole("heading", { name: "Analytics" })).toBeVisible();
 
