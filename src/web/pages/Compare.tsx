@@ -88,9 +88,12 @@ export function ComparePage(): React.ReactElement {
       <Topbar title="Compare" subtitle="Select two captures, then inspect what changed" />
 
       <div className="flex min-h-0 flex-1 flex-col xl:flex-row">
-        <aside className="flex max-h-[48%] min-h-0 w-full shrink-0 flex-col border-b bg-bg-subtle/20 xl:max-h-none xl:w-[420px] xl:border-b-0 xl:border-r">
+        <aside className={cn(
+          "flex min-h-0 w-full shrink-0 flex-col border-b bg-bg-subtle/20 xl:max-h-none xl:w-[420px] xl:border-b-0 xl:border-r",
+          ordered ? "max-h-[48%]" : "max-h-[65%]",
+        )}>
           <div className="flex shrink-0 flex-col justify-center border-b p-4 xl:h-28">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <SelectionSlot
                 label="Webhook A"
                 webhook={left}
@@ -222,7 +225,6 @@ function SelectionSlot({
       variant={active ? "outline" : "ghost"}
       className={cn(
         "min-h-20 min-w-0 justify-start px-4 py-3 text-left",
-        active && "ring-1 ring-ring",
       )}
       aria-pressed={active}
     >
@@ -250,10 +252,10 @@ function ComparisonSummary({
   later: Webhook;
 }): React.ReactElement {
   return (
-    <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch border-b bg-bg-subtle/15 xl:h-28">
+    <div className="grid shrink-0 items-stretch border-b bg-bg-subtle/15 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] xl:h-28">
       <SummaryWebhook label="Earlier" webhook={earlier} />
-      <div className="flex items-center border-x px-4 text-muted-foreground">
-        <ArrowRight className="size-4" aria-hidden="true" />
+      <div className="flex items-center justify-center border-y py-2 text-muted-foreground sm:border-x sm:border-y-0 sm:px-4 sm:py-0">
+        <ArrowRight className="size-4 rotate-90 sm:rotate-0" aria-hidden="true" />
       </div>
       <SummaryWebhook label="Later" webhook={later} />
     </div>

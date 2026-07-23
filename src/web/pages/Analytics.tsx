@@ -492,7 +492,7 @@ function FilterBar({
   onSig: (next: SignatureFilter) => void;
 }): React.ReactElement {
   return (
-    <div className="flex flex-col gap-3 border-b pb-5 lg:flex-row lg:items-end">
+    <div className="flex flex-col gap-3 border-b pb-5 xl:flex-row xl:items-end">
       <div className="mr-auto">
         <h2 id="analytics-overview-heading" className="text-balance text-lg font-medium">Overview</h2>
         <p className="text-pretty text-sm text-muted-foreground">Delivery volume, latency, and signature verification.</p>

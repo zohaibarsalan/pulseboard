@@ -34,7 +34,7 @@ export function App(): React.ReactElement {
     <CommandPaletteContext.Provider value={{ open: () => setPaletteOpen(true) }}>
       <div className="flex h-dvh w-screen overflow-hidden bg-bg text-fg">
         <Sidebar />
-        <main className="flex min-w-0 flex-1 flex-col pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0">
+        <main className="flex min-w-0 flex-1 flex-col pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-0">
           <Switch>
             <Route path="/">{() => <WebhooksPage />}</Route>
             <Route path="/webhooks/:id">

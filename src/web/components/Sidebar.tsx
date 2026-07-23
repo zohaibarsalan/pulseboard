@@ -32,7 +32,7 @@ export function Sidebar(): React.ReactElement {
 
   return (
     <>
-    <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-bg-subtle md:flex">
+    <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-bg-subtle lg:flex">
       <div className="flex h-16 items-center gap-2.5 px-4">
         <PulseboardMark className="size-7" />
         <span className="text-sm font-semibold">Pulseboard</span>
@@ -70,7 +70,7 @@ export function Sidebar(): React.ReactElement {
         </div>
       </div>
     </aside>
-    <nav className="fixed inset-x-0 bottom-0 z-30 flex h-[calc(3.5rem+env(safe-area-inset-bottom))] items-start justify-around border-t border-border bg-bg px-2 pt-1.5 pb-[env(safe-area-inset-bottom)] md:hidden" aria-label="Primary navigation">
+    <nav className="fixed inset-x-0 bottom-0 z-30 flex h-[calc(3.5rem+env(safe-area-inset-bottom))] items-start gap-1 overflow-x-auto border-t border-border bg-bg px-2 pt-1.5 pb-[env(safe-area-inset-bottom)] lg:hidden" aria-label="Primary navigation">
       {items.map((item) => {
         const isActive = item.match ? item.match(location) : location.startsWith(item.href);
         const Icon = item.icon;
@@ -80,7 +80,7 @@ export function Sidebar(): React.ReactElement {
             href={item.href}
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "flex min-w-0 flex-1 flex-col items-center gap-1 rounded-md px-1 py-1 text-[10px] text-fg-muted",
+              "flex min-w-16 flex-1 flex-col items-center gap-1 rounded-md px-1 py-1 text-[10px] text-fg-muted",
               isActive && "bg-bg-muted text-fg",
             )}
           >

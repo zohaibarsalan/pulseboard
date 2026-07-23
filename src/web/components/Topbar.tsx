@@ -12,18 +12,18 @@ export function Topbar({ title, subtitle }: Props): React.ReactElement {
   const { open } = useCommandPalette();
 
   return (
-    <header className="flex min-h-14 shrink-0 items-center justify-between border-b border-border bg-bg px-4 py-2 sm:px-6">
+    <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-bg px-4 sm:px-6">
       <div className="flex min-w-0 items-center gap-3">
         <h1 className="shrink-0 text-lg font-medium text-balance">{title}</h1>
         {subtitle && (
           typeof subtitle === "string" ? (
-            <span className="hidden truncate font-mono text-xs text-fg-subtle sm:inline">{subtitle}</span>
+            <span className="hidden truncate font-mono text-xs text-fg-subtle xl:inline">{subtitle}</span>
           ) : (
             subtitle
           )
         )}
       </div>
-      <div className="hidden items-center gap-2 sm:flex">
+      <div className="hidden items-center gap-2 lg:flex">
         <Button
           onClick={open}
           variant="outline"

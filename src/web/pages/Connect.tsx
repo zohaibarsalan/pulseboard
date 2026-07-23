@@ -148,7 +148,7 @@ export function ConnectPage(): React.ReactElement {
             </CardPanel>
           </Card>
 
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
             <div className="flex min-w-0 flex-col gap-5">
               <Card>
                 <CardHeader className="border-b">

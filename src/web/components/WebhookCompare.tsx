@@ -52,14 +52,8 @@ export function WebhookCompare({
             <TabsTab value="delivery" className="h-16 rounded-none">Delivery</TabsTab>
           </TabsList>
         </div>
-        <div className="flex h-10 items-center justify-end border-b px-4 sm:px-6">
-          <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
-            <Checkbox checked={showUnchanged} onCheckedChange={setShowUnchanged} />
-            Show unchanged
-          </label>
-        </div>
-
         <TabsPanel value="body" className="min-h-0 overflow-y-auto p-5 sm:p-6">
+          <UnchangedToggle checked={showUnchanged} onCheckedChange={setShowUnchanged} />
           <DiffCard
             title={bodyDiff.structured ? "JSON body" : "Raw body"}
             description={
@@ -72,6 +66,7 @@ export function WebhookCompare({
           />
         </TabsPanel>
         <TabsPanel value="headers" className="min-h-0 overflow-y-auto p-5 sm:p-6">
+          <UnchangedToggle checked={showUnchanged} onCheckedChange={setShowUnchanged} />
           <DiffCard
             title="Request headers"
             description="Header names are compared case-insensitively."
@@ -80,6 +75,7 @@ export function WebhookCompare({
           />
         </TabsPanel>
         <TabsPanel value="delivery" className="min-h-0 overflow-y-auto p-5 sm:p-6">
+          <UnchangedToggle checked={showUnchanged} onCheckedChange={setShowUnchanged} />
           <DeliveryComparison
             earlier={earlier}
             later={later}
@@ -88,6 +84,23 @@ export function WebhookCompare({
           />
         </TabsPanel>
       </Tabs>
+    </div>
+  );
+}
+
+function UnchangedToggle({
+  checked,
+  onCheckedChange,
+}: {
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}): React.ReactElement {
+  return (
+    <div className="mb-4 flex justify-end">
+      <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+        <Checkbox checked={checked} onCheckedChange={onCheckedChange} />
+        Show unchanged
+      </label>
     </div>
   );
 }
@@ -219,23 +232,23 @@ function DeliveryComparison({
           <CardDescription className="text-xs">Downstream response and signature verification for each request.</CardDescription>
         </CardHeader>
         <CardPanel className="p-0">
-          <div className="grid grid-cols-[minmax(8rem,0.5fr)_minmax(0,1fr)_minmax(0,1fr)] gap-px border-b bg-border text-xs text-muted-foreground">
+          <div className="hidden grid-cols-[minmax(8rem,0.5fr)_minmax(0,1fr)_minmax(0,1fr)] gap-px border-b bg-border text-xs text-muted-foreground md:grid">
             <span className="bg-muted/30 px-4 py-2">Metric</span>
             <span className="bg-muted/30 px-4 py-2">Earlier</span>
             <span className="bg-muted/30 px-4 py-2">Later</span>
           </div>
           <div className="divide-y">
             {rows.map((row) => (
-              <div key={row.label} className="grid grid-cols-[minmax(8rem,0.5fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4 px-4 py-3 text-xs">
+              <div key={row.label} className="grid gap-2 px-4 py-3 text-xs md:grid-cols-[minmax(8rem,0.5fr)_minmax(0,1fr)_minmax(0,1fr)] md:gap-4">
                 <span className="text-muted-foreground">{row.label}</span>
-                <code className="break-all font-mono">{row.before}</code>
-                <code className="break-all font-mono">{row.after}</code>
+                <code className="break-all font-mono before:mr-2 before:text-muted-foreground before:content-['Earlier:'] md:before:content-none">{row.before}</code>
+                <code className="break-all font-mono before:mr-2 before:text-muted-foreground before:content-['Later:'] md:before:content-none">{row.after}</code>
               </div>
             ))}
-            <div className="grid grid-cols-[minmax(8rem,0.5fr)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-4 px-4 py-3 text-xs">
+            <div className="grid items-center gap-2 px-4 py-3 text-xs md:grid-cols-[minmax(8rem,0.5fr)_minmax(0,1fr)_minmax(0,1fr)] md:gap-4">
               <span className="text-muted-foreground">Signature</span>
-              <SignatureBadge status={earlier.signatureStatus} notes={earlier.signatureNotes} />
-              <SignatureBadge status={later.signatureStatus} notes={later.signatureNotes} />
+              <div className="flex items-center gap-2 before:text-muted-foreground before:content-['Earlier:'] md:before:content-none"><SignatureBadge status={earlier.signatureStatus} notes={earlier.signatureNotes} /></div>
+              <div className="flex items-center gap-2 before:text-muted-foreground before:content-['Later:'] md:before:content-none"><SignatureBadge status={later.signatureStatus} notes={later.signatureNotes} /></div>
             </div>
           </div>
         </CardPanel>

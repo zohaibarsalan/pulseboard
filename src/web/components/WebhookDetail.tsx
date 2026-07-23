@@ -218,7 +218,7 @@ export function WebhookDetail({
         className="flex min-h-40 flex-col justify-center border-b border-border bg-bg-subtle/30 px-5 py-3"
       >
         <h2 id="request-details-heading" className="mb-3 text-balance text-xs font-medium text-fg-muted">Request details</h2>
-        <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 xl:grid-cols-4">
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 2xl:grid-cols-4">
           <DetailItem label="Received" value={formatExactTime(webhook.receivedAt)} />
           <DetailItem
             label="Request ID"

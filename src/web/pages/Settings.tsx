@@ -326,7 +326,7 @@ function Section({
   children: React.ReactNode;
 }): React.ReactElement {
   return (
-    <section className="grid gap-4 border-b p-5 last:border-b-0 md:grid-cols-[13rem_minmax(0,1fr)] md:p-6">
+    <section className="grid gap-4 border-b p-5 last:border-b-0 lg:grid-cols-[13rem_minmax(0,1fr)] lg:p-6">
       <div>
         <div className="flex items-center gap-2">
           <Icon className="size-4 text-muted-foreground" />

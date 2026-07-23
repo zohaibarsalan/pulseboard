@@ -139,7 +139,7 @@ export function ComposePage(): React.ReactElement {
           )}
 
           <Card className="overflow-hidden">
-            <div className="grid gap-3 border-b p-4 sm:grid-cols-[minmax(0,1fr)_12rem_auto] sm:items-end">
+            <div className="grid gap-3 border-b p-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_12rem_auto] lg:items-end">
               <Field label="Preset">
                 <Select
                   value={presetId}
@@ -155,7 +155,7 @@ export function ComposePage(): React.ReactElement {
               <Field label="Source">
                 <Select value={source} options={SOURCE_SELECT_OPTIONS} onChange={setSource} className="w-full capitalize" ariaLabel="Webhook source" />
               </Field>
-              <div className="pb-0.5">
+              <div className="pb-0.5 sm:col-span-2 lg:col-span-1">
                 <CossField className="w-auto">
                   <FieldLabel className="h-8 cursor-pointer gap-2 whitespace-nowrap rounded-lg border px-3 text-xs">
                     <Checkbox checked={autoSign} onCheckedChange={(checked) => setAutoSign(checked === true)} />
@@ -166,7 +166,7 @@ export function ComposePage(): React.ReactElement {
             </div>
 
             <div className="space-y-4 p-4 sm:p-5">
-              <div className="grid grid-cols-[9rem_minmax(0,1fr)] gap-2">
+              <div className="grid gap-3 sm:grid-cols-[9rem_minmax(0,1fr)] sm:gap-2">
                 <Field label="Method">
                   <Select value={method} options={METHOD_OPTIONS} onChange={setMethod} className="w-full font-mono text-xs" ariaLabel="HTTP method" />
                 </Field>
@@ -223,9 +223,9 @@ export function ComposePage(): React.ReactElement {
                 </TabsPanel>
                 <TabsPanel value="headers" className="space-y-2 pt-4">
                   {headers.map((row, index) => (
-                    <div key={row.id} className="grid grid-cols-[minmax(9rem,0.4fr)_minmax(0,1fr)_2rem] gap-2">
+                    <div key={row.id} className="grid grid-cols-[minmax(0,1fr)_2rem] gap-2 sm:grid-cols-[minmax(9rem,0.4fr)_minmax(0,1fr)_2rem]">
                       <Input aria-label={`Header ${index + 1} name`} value={row.key} onChange={(event) => updateHeader(row.id, { key: event.target.value })} placeholder="Header" className="font-mono text-xs" />
-                      <Input aria-label={`Header ${index + 1} value`} value={row.value} onChange={(event) => updateHeader(row.id, { value: event.target.value })} placeholder="Value" className="font-mono text-xs" />
+                      <Input aria-label={`Header ${index + 1} value`} value={row.value} onChange={(event) => updateHeader(row.id, { value: event.target.value })} placeholder="Value" className="order-3 col-span-2 font-mono text-xs sm:order-none sm:col-span-1" />
                       <Button onClick={() => removeHeader(row.id)} variant="ghost" size="icon-xs" aria-label="Remove header"><X /></Button>
                     </div>
                   ))}
