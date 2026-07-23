@@ -109,8 +109,8 @@ export function WebhookDetail({
     <div className="flex h-full flex-col">
       {/* Header */}
       <div data-testid="webhook-identity" className="min-h-20 border-b border-border px-5 py-4">
-        <div className="flex flex-wrap items-start gap-4">
-          <div className="min-w-48 flex-1">
+        <div className="flex flex-wrap items-center gap-4">
+          <div data-testid="webhook-metadata" className="min-w-48 flex-1">
             <div className="flex min-w-0 items-center gap-2">
               <Badge variant={methodVariant(webhook.method)} size="sm" className="font-mono">
                 {webhook.method}
@@ -135,7 +135,7 @@ export function WebhookDetail({
           </div>
 
           {/* Actions */}
-          <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+          <div data-testid="webhook-actions" className="ml-auto flex flex-wrap items-center justify-end gap-2">
             {editing ? (
               <>
                 <Button

@@ -34,6 +34,13 @@ test("capture, inspect response, edit, replay, and clear", async ({ page, reques
   ]);
   expect(Math.abs((summaryBox!.y + summaryBox!.height) - (identityBox!.y + identityBox!.height))).toBeLessThanOrEqual(1);
   expect(Math.abs((controlsBox!.y + controlsBox!.height) - (detailsBox!.y + detailsBox!.height))).toBeLessThanOrEqual(1);
+  const [metadataBox, actionsBox] = await Promise.all([
+    page.getByTestId("webhook-metadata").boundingBox(),
+    page.getByTestId("webhook-actions").boundingBox(),
+  ]);
+  const metadataCenter = metadataBox!.y + metadataBox!.height / 2;
+  const actionsCenter = actionsBox!.y + actionsBox!.height / 2;
+  expect(Math.abs(metadataCenter - actionsCenter)).toBeLessThanOrEqual(1);
   const [detailsHeadingBox, detailsListBox] = await Promise.all([
     page.getByTestId("request-details").locator("h2").boundingBox(),
     page.getByTestId("request-details").locator("dl").boundingBox(),
