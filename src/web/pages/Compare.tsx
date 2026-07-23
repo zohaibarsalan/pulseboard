@@ -89,14 +89,14 @@ export function ComparePage(): React.ReactElement {
 
       <div className="flex min-h-0 flex-1 flex-col xl:flex-row">
         <aside className="flex max-h-[48%] min-h-0 w-full shrink-0 flex-col border-b bg-bg-subtle/20 xl:max-h-none xl:w-[420px] xl:border-b-0 xl:border-r">
-          <div className="flex flex-col gap-4 border-b p-5">
+          <div className="flex shrink-0 flex-col gap-3 border-b p-4 xl:h-44">
             <div>
               <h2 className="text-balance text-sm font-medium">Webhook selector</h2>
               <p className="mt-1 text-pretty text-xs text-muted-foreground">
                 Choose a slot, then select a webhook from the list.
               </p>
             </div>
-            <div className="flex flex-col gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <SelectionSlot
                 label="Webhook A"
                 webhook={left}
@@ -112,12 +112,14 @@ export function ComparePage(): React.ReactElement {
             </div>
           </div>
 
-          <div className="border-b p-4">
-            <SearchInput
-              value={search}
-              onChange={setSearch}
-              placeholder={`Search for Webhook ${activeSide === "left" ? "A" : "B"}…`}
-            />
+          <div className="flex min-h-16 shrink-0 items-center border-b px-4">
+            <div className="w-full">
+              <SearchInput
+                value={search}
+                onChange={setSearch}
+                placeholder={`Search for Webhook ${activeSide === "left" ? "A" : "B"}…`}
+              />
+            </div>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto" data-testid="compare-selector-list">
@@ -254,7 +256,7 @@ function ComparisonSummary({
   later: Webhook;
 }): React.ReactElement {
   return (
-    <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch border-b bg-bg-subtle/15">
+    <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch border-b bg-bg-subtle/15 xl:h-44">
       <SummaryWebhook label="Earlier" webhook={earlier} />
       <div className="flex items-center border-x px-4 text-muted-foreground">
         <ArrowRight className="size-4" aria-hidden="true" />
@@ -266,7 +268,7 @@ function ComparisonSummary({
 
 function SummaryWebhook({ label, webhook }: { label: string; webhook: Webhook }): React.ReactElement {
   return (
-    <div className="min-w-0 px-6 py-4">
+    <div className="flex min-w-0 flex-col justify-center px-6 py-4">
       <span className="text-xs font-medium text-muted-foreground">{label}</span>
       <div className="mt-2 flex min-w-0 items-center gap-2">
         <SourceBadge source={webhook.source} />
