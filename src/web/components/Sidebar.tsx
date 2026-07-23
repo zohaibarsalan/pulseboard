@@ -10,7 +10,13 @@ import { PulseboardMark } from "./PulseboardMark.js";
 type NavItem = { href: string; label: string; icon: LucideIcon; match?: (loc: string) => boolean };
 
 const items: NavItem[] = [
-  { href: "/", label: "Webhooks", icon: Webhook, match: (l) => l === "/" },
+  {
+    href: "/",
+    label: "Webhooks",
+    icon: Webhook,
+    match: (location) =>
+      location === "/" || location === "/webhooks" || location.startsWith("/webhooks/"),
+  },
   { href: "/connect", label: "Connect", icon: PlugZap },
   { href: "/compose", label: "Compose", icon: Send },
   { href: "/analytics", label: "Analytics", icon: Activity },
@@ -40,6 +46,7 @@ export function Sidebar(): React.ReactElement {
             <Link
               key={item.href}
               href={item.href}
+              aria-current={isActive ? "page" : undefined}
               className={cn(
                 "flex h-9 items-center gap-3 rounded-md px-3 text-sm text-fg-muted transition-colors hover:bg-bg-muted hover:text-fg",
                 isActive && "bg-bg-muted text-fg",
@@ -68,6 +75,7 @@ export function Sidebar(): React.ReactElement {
           <Link
             key={item.href}
             href={item.href}
+            aria-current={isActive ? "page" : undefined}
             className={cn(
               "flex min-w-16 flex-col items-center gap-1 rounded-md px-2 py-1 text-[10px] text-fg-muted",
               isActive && "bg-bg-muted text-fg",

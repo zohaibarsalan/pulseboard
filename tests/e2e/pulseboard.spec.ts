@@ -12,6 +12,7 @@ test("capture, inspect response, edit, replay, and clear", async ({ page, reques
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute("href", "/favicon.svg");
   await page.getByRole("button").filter({ hasText: "e2e.created" }).click();
   await expect(page).toHaveURL(/\/webhooks\//);
+  await expect(page.getByRole("link", { name: "Webhooks" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByLabel("Search webhooks…")).toBeVisible();
   await expect(page.getByRole("button").filter({ hasText: "e2e.created" })).toHaveAttribute("aria-current", "true");
   await expect(page.getByText('"value": "original"')).toBeVisible();
