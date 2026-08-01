@@ -1,62 +1,59 @@
-# Pulseboard
+<p align="center">
+  <img src="src/web/public/favicon.svg" width="72" height="72" alt="Pulseboard logo">
+</p>
 
-Pulseboard is a local-first dashboard for capturing, inspecting, replaying, and forwarding webhooks.
+<h1 align="center">Pulseboard</h1>
 
-It sits between a webhook provider and your local application:
+<p align="center">
+  <strong>Postman for incoming requests.</strong><br>
+  Capture, inspect, replay, compare, and forward webhooks from a local dashboard.
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/@zohaibarsalan/pulseboard"><img src="https://img.shields.io/npm/v/%40zohaibarsalan%2Fpulseboard?style=flat-square&color=111827" alt="npm version"></a>
+  <a href="https://github.com/zohaibarsalan/pulseboard/releases"><img src="https://img.shields.io/github/v/release/zohaibarsalan/pulseboard?style=flat-square&color=111827" alt="GitHub release"></a>
+  <img src="https://img.shields.io/badge/Node.js-%E2%89%A520-111827?style=flat-square" alt="Node.js 20 or newer">
+</p>
+
+<p align="center">
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#what-you-can-do">Features</a> ·
+  <a href="#configuration">Configuration</a> ·
+  <a href="#development">Development</a>
+</p>
+
+![Pulseboard webhook inspector](docs/product-shots/webhook-inspector.png)
+
+Pulseboard sits between a webhook provider and your application. It keeps the
+exact request bytes in SQLite, forwards them without re-serialization, verifies
+supported provider signatures, and shows the entire delivery lifecycle in a
+live web interface.
 
 ```text
 Provider → your tunnel → Pulseboard :4500/hook/* → your app
 ```
 
-Pulseboard stores exact request bytes in SQLite, forwards them without re-serialization, detects common providers, verifies signatures, and provides a live web interface.
-
-## Product shots
-
-### Inspect a webhook
-
-![Pulseboard webhook inspector](docs/product-shots/webhook-inspector.png)
-
-### Monitor delivery health
-
-![Pulseboard analytics](docs/product-shots/analytics.png)
-
-### Compare captures
-
-![Pulseboard webhook comparison](docs/product-shots/compare.png)
+No hosted account or cloud database is required. Pulseboard listens on
+`127.0.0.1` by default and keeps your webhook history on your machine.
 
 ## Quick start
 
-Requirements: Node.js 20 or newer and pnpm.
-
-```bash
-pnpm install
-pnpm dev
-```
-
-Open [http://localhost:4500](http://localhost:4500). Development mode includes an echo target and generated webhook traffic.
-
-For real use:
+Requires Node.js 20 or newer.
 
 ```bash
 npx @zohaibarsalan/pulseboard --forward http://localhost:3000
 ```
 
-### Where Pulseboard runs
+Then:
 
-The npm package starts a local Node.js process on the machine where you run the
-command. By default it:
+1. Open [http://localhost:4500](http://localhost:4500).
+2. Point your provider or tunnel at `http://localhost:4500/hook/your-path`.
+3. Trigger an event and inspect the request, signature, forwarding result, and response.
 
-- listens only on `127.0.0.1:4500`;
-- serves the dashboard and capture API from that same process;
-- stores history in `~/.pulseboard/pulseboard.db`; and
-- keeps running in the foreground until you press `Ctrl+C` or terminate it.
+Pulseboard strips the `/hook` prefix when forwarding. For example,
+`/hook/stripe` is delivered to `http://localhost:3000/stripe`.
 
-`npx` installs the package into npm's cache and launches it; it does not create
-a hosted Pulseboard account or permanent cloud server. Running the command
-again starts another local process and reuses the same SQLite history unless
-you pass a different `--db` path. Only one process can bind to the same port.
-
-To choose explicit runtime locations:
+Choose explicit runtime locations when needed:
 
 ```bash
 npx @zohaibarsalan/pulseboard \
@@ -65,80 +62,68 @@ npx @zohaibarsalan/pulseboard \
   --forward http://localhost:3000
 ```
 
-Keep that terminal open while receiving webhooks. Use a tunnel when an external
-provider needs to reach the local capture endpoint.
+## What you can do
 
-Installing globally changes only how the command is resolved:
+| | Capability | What it gives you |
+|---|---|---|
+| 📥 | **Capture exactly** | Raw request bytes, headers, paths, query strings, and searchable JSON previews stored in SQLite |
+| 🔎 | **Inspect end to end** | Provider detection, signature state, downstream status, headers, response body, duration, and attempt history |
+| ↻ | **Replay and edit** | Resend the original request or modify its body, headers, and destination before replaying |
+| ⇄ | **Compare captures** | Field-level JSON, header, signature, delivery, and response differences in chronological order |
+| ⑂ | **Route and fan out** | Deliver to multiple targets or select targets with source and path-prefix rules |
+| ⚕ | **Diagnose failures** | Concrete guidance for DNS, TLS, timeout, redirect, authentication, rate-limit, route, handler, and signature errors |
+| ⏱ | **Retry safely** | Persisted target-level attempts, manual retries, optional exponential backoff, and queued-attempt cancellation |
+| ✎ | **Compose test events** | Provider presets and signing support for exercising the complete capture-to-delivery path |
 
-```bash
-npm install --global @zohaibarsalan/pulseboard
-pulseboard --forward http://localhost:3000
-```
+## Product tour
 
-It still runs locally in the foreground and uses the same default port and
-database. For an always-on shared instance, run the Docker image or command
-under your own process manager on a server, bind deliberately with
-`PULSEBOARD_HOST=0.0.0.0`, and configure authentication before exposing it.
+### Understand delivery health
 
-Point your provider or tunnel at:
+See P95 latency, slow handlers, response classes, failure causes, recovered
+deliveries, and exhausted retries. Every issue links back to the captured event.
 
-```text
-http://localhost:4500/hook/your-path
-```
-
-Pulseboard strips `/hook` before forwarding, so `/hook/stripe` is sent to `http://localhost:3000/stripe`.
-
-### Connect a provider
-
-Open **Connect** in the dashboard to generate a setup for Stripe, GitHub, Shopify,
-Vercel, Slack, or a generic HTTP provider. The flow:
-
-- generates the Pulseboard start command for local, Vercel, AWS, Docker, and custom targets;
-- generates Stripe CLI, Cloudflare Tunnel, ngrok, or existing-public-URL instructions;
-- reports signing-secret and forwarding readiness; and
-- sends an inspectable synthetic event through the configured capture and forwarding path.
-
-The synthetic connection test verifies Pulseboard and the configured downstream
-target. Send a real provider event afterward to confirm public reachability and
-provider signature verification.
-
-### Diagnose deliveries
-
-Pulseboard translates common delivery failures into an explanation and a
-concrete next step. It recognizes connection, DNS, TLS, timeout, redirect,
-authentication, rate-limit, route, handler, and signature failures while
-preserving the raw response and error evidence.
-
-Each forwarding target has a persisted attempt timeline in the webhook
-inspector. You can retry only the failed target, inspect every response, and
-cancel a queued automatic retry without duplicating the captured webhook.
-Automatic retries are disabled by default. Enable them under **Settings →
-Delivery retries**, then choose the maximum attempts, initial delay, and delay
-cap. Pulseboard retries transient network errors, `408`, `429`, and `5xx`
-responses with capped exponential backoff; permanent `4xx` responses remain
-manual so a broken request is not hammered repeatedly.
-
-Analytics adds a developer-focused view of delivery health: P95 latency, slow
-handler counts, failure causes, response classes, slowest endpoints, recent
-events that need attention, first-attempt success, recovered deliveries, and
-exhausted retries. Every issue links back to the captured webhook.
+![Pulseboard delivery analytics](docs/product-shots/analytics.png)
 
 ### Compare webhook requests
 
-Open **Compare** from the sidebar, or choose **Compare** on a captured webhook
-to preload it as Webhook A in the dedicated workspace. The selected pair is kept in the
-URL, so the comparison can be bookmarked or shared with someone using the same
-Pulseboard instance. A persistent selector lets you switch either side and
-search captured events without opening the command palette. The workspace shows:
+Compare two captures across structured bodies, request headers, signatures,
+delivery outcomes, and downstream responses. Comparison URLs are bookmarkable.
 
-- added, removed, changed, and unchanged JSON fields by path;
-- case-insensitive request-header changes;
-- delivery target, status, duration, and signature differences; and
-- structured downstream response-body changes.
+![Pulseboard webhook comparison](docs/product-shots/compare.png)
 
-The comparison is chronological, so the earlier and later values remain clear
-even when you start from the older request. Non-JSON payloads fall back to a
-whole-body comparison instead of hiding the change.
+## Connect a provider
+
+The **Connect** workflow generates setup instructions for Stripe, GitHub,
+Shopify, Vercel, Slack, and generic HTTP providers. It supports Stripe CLI,
+Cloudflare Tunnel, ngrok, existing public URLs, Docker, and custom targets.
+
+Its synthetic connection test exercises Pulseboard and the configured
+downstream target, producing a real inspectable event. Send a provider event
+afterward to confirm public reachability and signature verification.
+
+## Delivery behavior
+
+Each target gets a persisted attempt timeline. You can retry only the failed
+target, inspect every response, or cancel a queued automatic retry without
+duplicating the captured webhook.
+
+Automatic retries are disabled by default. When enabled, Pulseboard retries
+transient network failures, `408`, `429`, and `5xx` responses using capped
+exponential backoff. Permanent `4xx` responses remain manual.
+
+## Local by default
+
+The npm package starts one foreground Node.js process that serves the dashboard
+and capture API. By default it:
+
+- listens only on `127.0.0.1:4500`;
+- stores history in `~/.pulseboard/pulseboard.db`;
+- reuses that SQLite history on the next run; and
+- stops when you press `Ctrl+C`.
+
+For an always-on shared instance, run Pulseboard with Docker or a process
+manager, bind deliberately with `PULSEBOARD_HOST=0.0.0.0`, and configure
+authentication before exposing it.
 
 ## Configuration
 
@@ -177,7 +162,19 @@ status, duration, error, response headers, and the first 64 KB of its response
 body. Configured sensitive header names are redacted from dashboard/API
 responses.
 
-## Commands
+## Development
+
+```bash
+git clone https://github.com/zohaibarsalan/pulseboard.git
+cd pulseboard
+pnpm install
+pnpm dev
+```
+
+Open [http://localhost:4500](http://localhost:4500). Development mode starts
+the dashboard, API, an echo target, and generated webhook traffic.
+
+### Quality checks
 
 ```bash
 pnpm typecheck
@@ -237,6 +234,19 @@ The release is not considered verified if any layer fails.
 
 ## Docker
 
-An example is available at `docker/docker-compose.example.yml`.
+Build and run the image locally:
+
+```bash
+docker build -f docker/Dockerfile -t pulseboard .
+docker run --rm \
+  -p 4500:4500 \
+  -v pulseboard-data:/data \
+  -e PULSEBOARD_HOST=0.0.0.0 \
+  -e PULSEBOARD_DB_PATH=/data/pulseboard.db \
+  pulseboard
+```
+
+A Compose example is available at
+[`docker/docker-compose.example.yml`](docker/docker-compose.example.yml).
 
 Keep the dashboard bound to localhost unless authentication is configured and the surrounding network is trusted.
